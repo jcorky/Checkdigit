@@ -1,0 +1,2 @@
+# Golden fixtures and their inputs must stay byte-exact; never convert line endings.
+* -text
