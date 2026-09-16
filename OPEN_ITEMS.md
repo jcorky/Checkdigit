@@ -121,6 +121,13 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   files. Phase C builds the streaming and durable-job path and the benchmark.
 - OPEN: Lighthouse and the deployed-URL checks for the Electric Yard pages are not run
   until a deployment is authorized.
+- OPEN: At 360 px the eleven cells are about 19 px wide, below a comfortable touch
+  target; the whole-number field is the mobile entry path. Phase B should stack the
+  cells into two rows (prefix + category, serial + check) on narrow screens.
+- OPEN: Only one desktop screenshot of the landing page could be captured in this
+  session; the Browser pane's screenshots timed out while the window was hidden.
+  Populated, error, empty, mobile and light states were verified through the DOM and
+  computed styles instead. Capture the screenshot set when the pane is visible.
 
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 
