@@ -202,6 +202,15 @@ describe("wrangler dev serves every route", () => {
     if (!child?.pid) return;
     if (process.platform === "win32") {
       spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+      // workerd is not always in the node process tree on Windows; also kill
+      // whatever is still listening on the test port so no orphan survives.
+      const netstat = spawnSync("netstat", ["-ano"], { encoding: "utf8" }).stdout ?? "";
+      const pids = new Set<string>();
+      for (const line of netstat.split(/\r?\n/)) {
+        const m = /^\s*TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+(\d+)\s*$/.exec(line);
+        if (m && Number(m[1]) === port) pids.add(m[2] as string);
+      }
+      for (const pid of pids) spawnSync("taskkill", ["/pid", pid, "/F"], { stdio: "ignore" });
     } else {
       try {
         process.kill(-child.pid, "SIGTERM");
