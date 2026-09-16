@@ -1,8 +1,9 @@
-// Regenerates tests/vectors/calc_vectors.json from the Python kernel.
-// Runs checkdigit/run_pass11.py, which writes the vectors under the OS temp
-// directory and prints the path; the file is then copied into tests/vectors.
+// Regenerates tests/vectors/*.json from the Python kernel.
+// 1. checkdigit/run_pass11.py writes calc_vectors.json under the OS temp
+//    directory and prints the path; the file is copied into tests/vectors.
+// 2. scripts/gen_decision_vectors.py writes decision_vectors.json directly.
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,5 +30,19 @@ if (!match || !existsSync(match[1].trim())) {
   console.error("run_pass11.py did not report a vectors path; nothing copied");
   process.exit(1);
 }
-copyFileSync(match[1].trim(), target);
+// Python opens the file in text mode, so on Windows it arrives with CRLF;
+// store it with LF so the committed vectors are identical on every platform.
+const CRLF = String.fromCharCode(13, 10);
+writeFileSync(target, readFileSync(match[1].trim(), "utf8").split(CRLF).join("\n"));
 console.log(`vectors copied to ${target}`);
+
+const decisions = spawnSync(python, [resolve(here, "gen_decision_vectors.py")], {
+  cwd: resolve(here, ".."),
+  encoding: "utf8",
+});
+process.stdout.write(decisions.stdout);
+process.stderr.write(decisions.stderr);
+if (decisions.status !== 0) {
+  console.error(`gen_decision_vectors.py exited with status ${decisions.status}`);
+  process.exit(1);
+}

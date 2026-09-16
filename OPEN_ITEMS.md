@@ -85,6 +85,19 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   this machine with `npx wrangler telemetry disable`; not done, as it is a user-level
   setting.
 
+## Intentional differences recorded in Pass 1
+
+- Digit matching is ASCII-only in TypeScript. Python's `\d` in `_RE_BIC_LIKE`,
+  `_RE_CONTAINER_SHAPED`, `_RE_UIC`, and `str.isdigit()` in `iso6346_value`, `uic_check_digit`
+  and `explain` also accept non-ASCII decimal digits (for example Arabic-Indic digits),
+  and `int()` converts them. The port uses `[0-9]`, so such a token is INVALID_STRUCTURE
+  instead of being computed. No fixture, sample, or standard uses non-ASCII digits; the
+  difference is documented rather than emulated. `str.isalpha()` in
+  `correct_x12_equipment` is likewise limited to `[A-Za-z]`.
+- `tests/vectors/decision_vectors.json` is generated data (289 kB, compact JSON). It is
+  committed so `npm test` needs no Python; `npm run vectors` regenerates both vector
+  files and must leave no diff.
+
 ## Decisions taken during Pass 0 (stated assumptions)
 
 - Real routes with a 404 page, not a single-page application. Each view is its own
