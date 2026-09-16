@@ -8,7 +8,8 @@
     "test": "vitest run",
     "preview": "wrangler dev",
     "vectors": "node scripts/regen-vectors.mjs",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "sync": "node scripts/sync-onedrive.mjs"
   },
   "type": "module",
   "devDependencies": {

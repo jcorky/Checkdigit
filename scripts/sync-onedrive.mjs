@@ -1,0 +1,36 @@
+// Mirrors the working tree into the OneDrive folder so the files are backed up
+// there as well as on GitHub. Build output, dependencies and the .git directory
+// are left out: they are reproducible, and a .git directory under OneDrive sync
+// is easily corrupted. History lives on GitHub.
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const source = resolve(here, "..");
+const target =
+  process.env.CHECKDIGIT_ONEDRIVE ??
+  "C:\\Users\\Jayde.Cork\\OneDrive - Kaleris Corporation\\Documents\\Checkdigit full";
+
+if (process.platform !== "win32") {
+  console.error("sync-onedrive: robocopy is Windows-only; nothing done");
+  process.exit(1);
+}
+if (!existsSync(dirname(target))) {
+  console.error(`sync-onedrive: parent of target does not exist: ${dirname(target)}`);
+  process.exit(1);
+}
+
+const excludeDirs = ["node_modules", "dist", ".git", ".wrangler", "__pycache__", "out", ".spa-build", "static"];
+const run = spawnSync(
+  "robocopy",
+  [source, target, "/MIR", "/R:2", "/W:2", "/NFL", "/NDL", "/NJH", "/XD", ...excludeDirs],
+  { stdio: "inherit" },
+);
+// robocopy exit codes below 8 mean success (0 = nothing to do, 1 = files copied, ...).
+if (run.status === null || run.status >= 8) {
+  console.error(`sync-onedrive: robocopy failed with exit code ${run.status}`);
+  process.exit(1);
+}
+console.log(`sync-onedrive: mirrored to ${target}`);
