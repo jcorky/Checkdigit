@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check one number — CHECKDIGIT</title>
+<meta name="description" content="Worked check-digit calculation for one ISO 6346 container, ILU code or UIC wagon number: every character, value, weight and product. Runs in your browser.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230E1418'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23F3A93B' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23F3A93B' fill-opacity='0.18' stroke='%23F3A93B' stroke-width='2'/%3E%3C/svg%3E">
+<script type="module" src="/pages/check.ts"></script>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="#F3A93B" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="#F3A93B" fill-opacity="0.18" stroke="#F3A93B" stroke-width="2"/>
+      </svg>
+      CHECKDIGIT
+    </a>
+    <nav aria-label="Site">
+      <a class="navlink" href="/check" aria-current="page">Check one</a>
+      <a class="navlink" href="/#how">How it works</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  <div class="wrap">
+    <p class="eyebrow">Single number</p>
+    <h1>Check one number, with the working shown</h1>
+    <p class="intro">Type a container or ILU number (10 characters computes the check digit, 11 verifies it) or a UIC wagon number (11 digits computes, 12 verifies). Nothing you type leaves this page.</p>
+
+    <div class="panel">
+      <div class="field-row">
+        <label for="tok">Number</label>
+        <input id="tok" class="text-in" type="text" maxlength="24" autocomplete="off"
+               autocapitalize="characters" spellcheck="false"
+               placeholder="e.g. MSKU1234565, csqu 305438, 21 81 2471 217-3">
+      </div>
+      <div id="out"></div>
+    </div>
+
+    <div class="callout amber" id="ilu-note">
+      <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
+      <p><b>ILU codes (EN 13044).</b> Category letters A, B, D, E and K are routed to the ILU set and checked with the same mod-11 arithmetic as ISO 6346. That equivalence has not yet been confirmed against the normative EN 13044-1 text; only the label differs.</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">CHECKDIGIT — ISO&nbsp;6346 / ILU / UIC check digits, verified in your browser</span>
+    <span class="mono-sm"><a href="/">Home</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

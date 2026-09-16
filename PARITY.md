@@ -83,9 +83,9 @@ Enum member names and string values are the Python ones (`Status.CORRECTED === "
 
 | Source block | Replacement | Proven by | Status |
 |---|---|---|---|
-| `checkdigit/checkdigit_app.jsx:69-119` `calcExplain` | `explain` | `tests/kernel.parity.test.ts` (behaviour) | PARITY for behaviour; `tests/site.test.ts` CALC-PURE build equality still OPEN |
-| `checkdigit/site/index.html:362-372` `checkOf` | `iso6346CheckDigit` | `tests/site.test.ts` | OPEN |
-| `checkdigit/site/check-digit.html:225-247` `checkOf`, `breakdown` | `iso6346CheckDigit`, `explain` | `tests/site.test.ts` | OPEN |
+| `checkdigit/checkdigit_app.jsx:69-119` `calcExplain` | `explain` | `tests/kernel.parity.test.ts`; `tests/site.test.ts` runs both vector sets against the built kernel chunk | PARITY |
+| `checkdigit/site/index.html:362-372` `checkOf` | `iso6346CheckDigit` via `src/pages/index.ts` | `tests/site.test.ts` (single CALC-PURE block; letter table shipped once) | PARITY |
+| `checkdigit/site/check-digit.html:225-247` `checkOf`, `breakdown` | `iso6346CheckDigit`, `explain` via `src/pages/check.ts` | `tests/site.test.ts` | PARITY (the `/how-it-works` page itself is still to be built) |
 
 ## Phase 1 supporting modules
 
@@ -130,8 +130,10 @@ Enum member names and string values are the Python ones (`Status.CORRECTED === "
 
 | Property | Proven by | Status |
 |---|---|---|
-| Zero external `http(s)://` script, link, img, or font references in the build | `tests/site.test.ts` | OPEN |
-| Zero `fetch(`, `XMLHttpRequest`, `WebSocket`, `sendBeacon` outside the service worker's own asset caching | `tests/site.test.ts` | OPEN |
-| Every CALC-PURE block in the build equals the shared module | `tests/site.test.ts` | OPEN |
-| Every route returns 200 from `wrangler dev` | `tests/site.test.ts` | OPEN |
-| `wrangler.jsonc` declares no bindings and no `main` | `tests/cost.test.ts` | PARITY (4 tests, green in Pass 0) |
+| Zero external `http(s)://` script, link, img, or font references in the build | `tests/site.test.ts` | PARITY |
+| Zero `fetch(`, `XMLHttpRequest`, `WebSocket`, `sendBeacon` outside the service worker's own asset caching | `tests/site.test.ts` | PARITY (no service worker yet) |
+| Every CALC-PURE block in the build equals the shared module | `tests/site.test.ts`: one block in `src/`, letter table in one built chunk, built chunk passes all 668 vectors | PARITY |
+| Every route returns 200 from `wrangler dev` | `tests/site.test.ts` (routes derived from the Vite page list; unknown path gets the 404 page) | PARITY for `/`, `/check`; other routes are added as they are built |
+| `wrangler.jsonc` declares no bindings and no `main` | `tests/cost.test.ts` | PARITY |
+| First-load JavaScript for `/` at or under 60 kB gzipped | `tests/site.test.ts` | PARITY (about 5.6 kB) |
+| Text contrast at or above 4.5:1 on both palettes; verdict tokens unchanged in the stylesheet | `tests/site.test.ts` | PARITY |

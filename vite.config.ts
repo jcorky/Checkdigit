@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 
 const root = resolve(import.meta.dirname, "src");
 
+export const pages = ["index", "check", "404"] as const;
+
 export default defineConfig({
   root,
   publicDir: resolve(import.meta.dirname, "public"),
@@ -13,13 +15,19 @@ export default defineConfig({
     modulePreload: { polyfill: false },
     rollupOptions: {
       input: {
-        index: resolve(root, "index.html"),
-        "404": resolve(root, "404.html"),
+        ...Object.fromEntries(pages.map((p) => [p, resolve(root, `${p}.html`)])),
+        // The kernel is its own entry so the build emits one shared chunk with
+        // its export names intact; tests/site.test.ts runs the parity vectors
+        // against that built chunk to prove the pages ship the same code.
+        checkdigit: resolve(root, "lib/checkdigit.ts"),
       },
+      preserveEntrySignatures: "strict",
     },
   },
   test: {
     root: import.meta.dirname,
     include: ["tests/**/*.test.ts"],
+    testTimeout: 120_000,
+    hookTimeout: 120_000,
   },
 });

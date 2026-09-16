@@ -98,6 +98,24 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   committed so `npm test` needs no Python; `npm run vectors` regenerates both vector
   files and must leave no diff.
 
+## Pass 2 notes
+
+- Light palette: the verdict tokens are used unchanged for borders, fills and the dark
+  palette's text, but as text on white they fall below 4.5:1 (green 2.6:1). The light
+  palette therefore uses darkened text variants of the same hues (`--valid-text` and
+  friends); `tests/site.test.ts` checks both palettes. The `--faint` label colour was
+  lightened to 4.8:1 on the raised surface.
+- The segmented validator uses eleven labelled single-character inputs rather than one
+  transparent input over painted cells, so each cell is reachable and named for a
+  screen reader; paste and typing redistribute across cells.
+- `/check` judges a 12-digit token with `explain()` (the arithmetic) and shows the
+  kernel's verdict for both the rail-vehicle and the unknown context, since the
+  calculator has no field context of its own.
+- OPEN: Lighthouse performance is still unmeasured (needs the deployed URL). The
+  first-load JavaScript for `/` is about 5.6 kB gzipped.
+- OPEN: web manifest and service worker are not built yet; the network-call check in
+  `tests/site.test.ts` already exempts `sw.js` for its own asset caching.
+
 ## Decisions taken during Pass 0 (stated assumptions)
 
 - Real routes with a 404 page, not a single-page application. Each view is its own
