@@ -9,7 +9,9 @@
     "preview": "wrangler dev",
     "vectors": "node scripts/regen-vectors.mjs",
     "deploy": "wrangler deploy",
-    "sync": "node scripts/sync-onedrive.mjs"
+    "sync": "node scripts/sync-onedrive.mjs",
+    "test:py": "node scripts/run-python-tests.mjs",
+    "test:all": "npm test && npm run test:py"
   },
   "type": "module",
   "devDependencies": {

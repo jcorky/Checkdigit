@@ -158,10 +158,12 @@ describe("design tokens", () => {
   };
 
   it("keeps text at or above 4.5:1 on both palettes", () => {
-    const dark = { bg: "#0e1418", panel: "#141c23", raised: "#1a242e" };
-    const darkText = ["#e7eef4", "#90a0b0", "#7f909f", "#f3a93b", "#52b98a", "#5b9df0", "#e5604f"];
-    const light = { bg: "#f4f7f9", panel: "#ffffff", raised: "#e9eef2" };
-    const lightText = ["#0e1418", "#46586a", "#576878", "#8a5a0b", "#1f7a55", "#1f5fb8", "#b2382a"];
+    // Electric Yard tokens (src/styles/site.css). Text colours are checked on
+    // every surface they appear on; decorative blocks carry their own text token.
+    const dark = { bg: "#172229", panel: "#24343c", raised: "#2d4048" };
+    const darkText = ["#e8f3e9", "#afc7c6", "#bce962", "#7cd9a2", "#f0a97e", "#f58a7e", "#9fb6ec", "#a9babb"];
+    const light = { bg: "#f2f4e9", panel: "#fffff8", raised: "#e9ecde" };
+    const lightText = ["#1c363b", "#4f6a6d", "#1e6b45", "#8c4a15", "#a9382b", "#2b4fa8", "#4f6164"];
     const failures: string[] = [];
     for (const [name, surface] of Object.entries(dark)) {
       for (const t of darkText) if (contrast(t, surface) < 4.5) failures.push(`dark ${t} on ${name} = ${contrast(t, surface).toFixed(2)}`);
@@ -169,27 +171,45 @@ describe("design tokens", () => {
     for (const [name, surface] of Object.entries(light)) {
       for (const t of lightText) if (contrast(t, surface) < 4.5) failures.push(`light ${t} on ${name} = ${contrast(t, surface).toFixed(2)}`);
     }
-    expect(contrast("#1a1205", "#f3a93b")).toBeGreaterThanOrEqual(4.5);
+    // action buttons and decorative blocks
+    for (const [fg, bg, label] of [
+      ["#21332b", "#bce962", "dark primary action"],
+      ["#ffffff", "#145c63", "light primary action"],
+      ["#17373c", "#bce962", "text on lime (dark)"],
+      ["#17373c", "#ceef77", "text on lime (light)"],
+      ["#17373c", "#e79768", "text on orange (dark)"],
+      ["#17373c", "#f9a572", "text on orange (light)"],
+      ["#17373c", "#7d9feb", "text on blue (light)"],
+    ] as const) {
+      if (contrast(fg, bg) < 4.5) failures.push(`${label} = ${contrast(fg, bg).toFixed(2)}`);
+    }
     expect(failures).toEqual([]);
   });
 
-  it("uses the verdict colours unchanged in the stylesheet", () => {
+  it("keeps brand and semantic tokens separate in the stylesheet", () => {
     const css = read(resolve(srcDir, "styles/site.css")).toLowerCase();
     for (const [token, value] of Object.entries({
-      "--bg": "#0e1418",
-      "--panel": "#141c23",
-      "--raised": "#1a242e",
-      "--line": "#293743",
-      "--text": "#e7eef4",
-      "--muted": "#90a0b0",
-      "--brand": "#f3a93b",
-      "--corrected": "#f3a93b",
-      "--valid": "#52b98a",
-      "--flagged": "#5b9df0",
-      "--invalid": "#e5604f",
+      "--bg": "#172229",
+      "--panel": "#24343c",
+      "--text": "#e8f3e9",
+      "--muted": "#afc7c6",
+      "--line": "#42595c",
+      "--lime": "#bce962",
+      "--action-bg": "#bce962",
+      "--action-text": "#21332b",
+      "--blue": "#718fd2",
+      "--orange": "#e79768",
+      "--on-decor": "#17373c",
     })) {
       expect(css, token).toContain(`${token}: ${value};`);
     }
+    // lime is a brand colour, never the meaning of "valid"
+    const ok = /--ok: (#[0-9a-f]{6});/.exec(css)?.[1];
+    const err = /--err: (#[0-9a-f]{6});/.exec(css)?.[1];
+    expect(ok).toBeDefined();
+    expect(ok).not.toBe("#bce962");
+    expect(err).not.toBe("#bce962");
+    expect(css).toContain(".badge.valid, .badge.passed { color: var(--ok-text)");
   });
 });
 
@@ -255,7 +275,7 @@ describe("wrangler dev serves every route", () => {
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type") ?? "").toContain("text/html");
       const body = await res.text();
-      expect(body).toContain("CHECKDIGIT");
+      expect(body).toContain("Checkdigit");
     });
   }
 

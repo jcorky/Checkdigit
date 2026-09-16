@@ -25,6 +25,7 @@ import datetime
 import io
 import json
 import sqlite3
+import threading
 from typing import Optional
 
 from correction_report import CorrectionReport
@@ -39,7 +40,8 @@ CREATE TABLE IF NOT EXISTS containers (
     last_seen       TEXT NOT NULL,
     times_seen      INTEGER NOT NULL DEFAULT 0,  -- occurrence-weighted (every sighting in every file)
     times_corrected INTEGER NOT NULL DEFAULT 0,  -- event-weighted (+1 per file where we FIXED its check digit)
-    times_flagged   INTEGER NOT NULL DEFAULT 0   -- event-weighted (+1 per file where it was flagged)
+    times_flagged   INTEGER NOT NULL DEFAULT 0,  -- event-weighted (+1 per file where it was flagged)
+    identity_basis  TEXT NOT NULL DEFAULT 'unverified'  -- printed_check_valid | mathematical_candidate | unverified (latest sighting)
 );
 -- The three counters are documented denormalizations: event_containers is the
 -- auditable truth and recompute_counters() proves they agree. times_seen counts
@@ -73,10 +75,13 @@ CREATE TABLE IF NOT EXISTS event_containers (
     role           TEXT,                  -- valid | corrected | flagged | invalid_structure
     printed_check  TEXT,
     computed_check TEXT,
-    occurrences    INTEGER
+    occurrences    INTEGER,
+    normalized     TEXT,                  -- as_found upper-cased, separators removed
+    identity_basis TEXT                   -- printed_check_valid | mathematical_candidate | unverified
 );
 
 CREATE INDEX IF NOT EXISTS ix_evc_eqid  ON event_containers(eqid);
+CREATE INDEX IF NOT EXISTS ix_containers_serial ON containers(substr(eqid, 5, 6));
 CREATE INDEX IF NOT EXISTS ix_evc_event ON event_containers(event_id);
 CREATE INDEX IF NOT EXISTS ix_evt_ts    ON ingestion_events(ts);
 
@@ -189,11 +194,32 @@ def connect(path: str, *, create_schema: bool = True, busy_timeout_ms: int = 500
     conn = sqlite3.connect(path, timeout=busy_timeout_ms / 1000.0,
                            check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")      # required for Litestream replication
     conn.execute(f"PRAGMA busy_timeout={int(busy_timeout_ms)};")
-    conn.execute("PRAGMA synchronous=NORMAL;")    # WAL-recommended; durable + fast
-    conn.execute("PRAGMA foreign_keys=ON;")
-    if create_schema:
+    with _SCHEMA_LOCK:                             # threads in this process take turns
+        # Switching a fresh database to WAL needs exclusive access; concurrent
+        # openers (threads here, processes elsewhere) collide on it, so retry.
+        for _attempt in range(6):
+            try:
+                conn.execute("PRAGMA journal_mode=WAL;")   # required for Litestream replication
+                break
+            except sqlite3.OperationalError as exc:
+                if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+                    import time as _t
+                    _t.sleep(0.02 * (2 ** _attempt))
+                    continue
+                raise
+        conn.execute("PRAGMA synchronous=NORMAL;")    # WAL-recommended; durable + fast
+        conn.execute("PRAGMA foreign_keys=ON;")
+        if create_schema:
+            _create_schema(conn)
+    return conn
+
+
+_SCHEMA_LOCK = threading.Lock()
+
+
+def _create_schema(conn: sqlite3.Connection) -> None:
+    if True:
         # Serialize first-run schema creation across concurrent worker startups.
         # Multiple uvicorn workers (separate processes) may hit a fresh DB at once.
         # executescript() issues its own implicit COMMIT, so we can't wrap it in a
@@ -213,7 +239,6 @@ def connect(path: str, *, create_schema: bool = True, busy_timeout_ms: int = 500
                     _t.sleep(0.05 * (2 ** _attempt))
                     continue
                 raise
-    return conn
 
 
 def execute_write(conn: sqlite3.Connection, sql: str, params=(), *, retries: int = 3,
@@ -242,13 +267,22 @@ def _migrate(conn: sqlite3.Connection) -> None:
     """Additive migrations for databases created before the warehouse schema.
     CREATE TABLE IF NOT EXISTS adds the new tables; pre-existing tables need
     ALTER for new columns. Idempotent: 'duplicate column' is the no-op signal."""
-    for coldef in ("times_corrected INTEGER NOT NULL DEFAULT 0",
-                   "times_flagged   INTEGER NOT NULL DEFAULT 0"):
+    for table, coldef in (("containers", "times_corrected INTEGER NOT NULL DEFAULT 0"),
+                          ("containers", "times_flagged   INTEGER NOT NULL DEFAULT 0"),
+                          ("containers", "identity_basis  TEXT NOT NULL DEFAULT 'unverified'"),
+                          ("event_containers", "normalized TEXT"),
+                          ("event_containers", "identity_basis TEXT")):
+        column = coldef.split()[0]
+        present = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+        if column in present:
+            continue                                   # read-only check: no write lock taken
         try:
-            conn.execute(f"ALTER TABLE containers ADD COLUMN {coldef}")
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {coldef}")
         except sqlite3.OperationalError as exc:
             if "duplicate column" not in str(exc).lower():
                 raise                                  # real problem: stay loud
+    # ix_containers_serial is created by the schema script (CREATE INDEX IF NOT
+    # EXISTS), which also runs for pre-existing databases.
 
 
 def record_event(conn: sqlite3.Connection, *, filename: str, content_type: str,
@@ -281,8 +315,9 @@ def record_event(conn: sqlite3.Connection, *, filename: str, content_type: str,
             flagged = 1 if c.status == "flagged" else 0
             conn.execute(
                 """INSERT INTO containers (eqid, owner, category, id_type,
-                       first_seen, last_seen, times_seen, times_corrected, times_flagged)
-                   VALUES (?,?,?,?,?,?,?,?,?)
+                       first_seen, last_seen, times_seen, times_corrected, times_flagged,
+                       identity_basis)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(eqid) DO UPDATE SET
                        last_seen = excluded.last_seen,
                        times_seen = times_seen + excluded.times_seen,
@@ -290,15 +325,18 @@ def record_event(conn: sqlite3.Connection, *, filename: str, content_type: str,
                        times_flagged = times_flagged + excluded.times_flagged,
                        owner = excluded.owner,
                        category = excluded.category,
-                       id_type = excluded.id_type""",
+                       id_type = excluded.id_type,
+                       identity_basis = excluded.identity_basis""",
                 (c.canonical, c.owner, c.category, c.id_type, ts, ts,
-                 c.occurrences, fixed, flagged))
+                 c.occurrences, fixed, flagged, c.identity_basis))
             conn.execute(
                 """INSERT INTO event_containers
-                       (event_id, eqid, as_found, role, printed_check, computed_check, occurrences)
-                   VALUES (?,?,?,?,?,?,?)""",
+                       (event_id, eqid, as_found, role, printed_check, computed_check,
+                        occurrences, normalized, identity_basis)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
                 (event_id, c.canonical, c.as_found, c.status,
-                 c.printed_check, c.computed_check, c.occurrences))
+                 c.printed_check, c.computed_check, c.occurrences,
+                 c.normalized, c.identity_basis))
     conn.commit()
     return event_id
 
@@ -405,12 +443,70 @@ def container_history(conn: sqlite3.Connection, eqid: str) -> list:
     return [dict(r) for r in rows]
 
 
+def candidate_neighbors(conn: sqlite3.Connection, body10: str, *,
+                        limit_per_probe: int = 100) -> list:
+    """
+    Bounded near-miss candidate retrieval for one 10-character ISO 6346 / ILU
+    body: [(eqid, times_seen)] for previously recorded containers whose body is
+    plausibly within OSA distance 2 of `body10`, gathered by INDEXED PROBES
+    (primary-key ranges and the serial expression index) instead of scanning
+    the whole fleet. Each probe returns at most `limit_per_probe` rows, most
+    frequently seen first.
+
+    Coverage guarantee (subject to the per-probe cap):
+      * every candidate with the same 6-digit serial (owner/category errors,
+        including transpositions inside the letters);
+      * every candidate differing by one substitution inside the serial;
+      * every candidate differing by one adjacent transposition inside the serial;
+      * every candidate sharing the first five characters (owner, category,
+        first serial digit), which covers most two-character errors late in
+        the serial.
+    Two-character differences spread across the prefix and the serial are NOT
+    guaranteed to be found. Callers must still verify distance with
+    nearmiss.suggest (OSA <= 2) and check validity before proposing anything.
+    """
+    if len(body10) != 10:
+        return []
+    probes: list = []
+    kinds = "('iso6346', 'ilu')"
+
+    def prefix_range(prefix: str, extra_sql: str = "", extra_params=()):
+        hi = prefix[:-1] + chr(ord(prefix[-1]) + 1)
+        probes.append((
+            f"SELECT eqid, times_seen FROM containers WHERE id_type IN {kinds} "
+            f"AND eqid >= ? AND eqid < ? {extra_sql} ORDER BY times_seen DESC LIMIT ?",
+            (prefix, hi, *extra_params, limit_per_probe)))
+
+    serial = body10[4:]
+    probes.append((
+        f"SELECT eqid, times_seen FROM containers WHERE id_type IN {kinds} "
+        f"AND substr(eqid, 5, 6) = ? ORDER BY times_seen DESC LIMIT ?",
+        (serial, limit_per_probe)))
+    prefix_range(body10[:5])
+    for p in range(4, 10):                     # one substitution at serial position p
+        prefix, suffix = body10[:p], body10[p + 1:10]
+        if suffix:
+            prefix_range(prefix, "AND substr(eqid, ?, ?) = ?", (p + 2, len(suffix), suffix))
+        else:
+            prefix_range(prefix)
+    for p in range(4, 9):                      # one adjacent transposition inside the serial
+        swapped = body10[:p] + body10[p + 1] + body10[p] + body10[p + 2:]
+        if swapped != body10:
+            prefix_range(swapped)
+
+    found: dict = {}
+    for sql, params in probes:
+        for row in conn.execute(sql, params).fetchall():
+            found[row["eqid"]] = row["times_seen"]
+    return sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))
+
+
 def candidate_pool(conn: sqlite3.Connection) -> list:
     """
-    Near-miss candidate pool: every distinct ISO 6346 / ILU container previously
-    recorded, with its frequency. Callers must additionally filter for check
-    validity before suggesting (a flagged container's canonical form is its
-    as-found, check-invalid form, and must never be offered as a fix).
+    Whole-fleet near-miss pool: every distinct ISO 6346 / ILU container previously
+    recorded, with its frequency. Unbounded; kept for small-workspace tooling and
+    tests. Request paths use candidate_neighbors() instead. Callers must filter
+    for check validity before suggesting.
     """
     rows = conn.execute(
         "SELECT eqid, times_seen FROM containers "

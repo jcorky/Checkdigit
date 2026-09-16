@@ -57,8 +57,13 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   page. The kickoff assumption is "free on a zone already on Cloudflare". Confirm in
   the dashboard when binding the domain; stop if a charge is shown.
 - OPEN: EN 13044 (ILU) check-digit arithmetic is unconfirmed against the normative
-  text. Carried over from `checkdigit/equipment_checkdigit.py:32-33`. The port mirrors
-  the kernel and keeps the caveat visible in the UI.
+  text. Checked 2026-09-16: UIRR (uirr.com/services/ilu-code) states the ILU code is
+  "fully compatible with the worldwide BIC-code used for (maritime) containers according
+  to ISO 6346" and that the check digit follows "a given calculation procedure"; the
+  ILU-code site refers to Annex A of EN 13044-1 without publishing it, and the
+  calculation page and the UNECE presentation were unreachable (connection refused /
+  403). The product therefore states compatibility, not normative compliance, and the
+  kernel keeps its caveat. Closing this needs the EN 13044-1 text.
 - OPEN: Lighthouse performance >= 95 can only be measured on the deployed URL. Not
   measurable before deploy.
 - OPEN: Toolchain versions installed (TypeScript 7.0.2, Vite 8.3.0, Vitest 5.0.1,
@@ -85,15 +90,42 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   this machine with `npx wrangler telemetry disable`; not done, as it is a user-level
   setting.
 
-## Intentional differences recorded in Pass 1
+## Resolved in Phase A
 
-- Digit matching is ASCII-only in TypeScript. Python's `\d` in `_RE_BIC_LIKE`,
-  `_RE_CONTAINER_SHAPED`, `_RE_UIC`, and `str.isdigit()` in `iso6346_value`, `uic_check_digit`
-  and `explain` also accept non-ASCII decimal digits (for example Arabic-Indic digits),
-  and `int()` converts them. The port uses `[0-9]`, so such a token is INVALID_STRUCTURE
-  instead of being computed. No fixture, sample, or standard uses non-ASCII digits; the
-  difference is documented rather than emulated. `str.isalpha()` in
-  `correct_x12_equipment` is likewise limited to `[A-Za-z]`.
+- Digit and letter matching is ASCII-only on both sides. The Python kernel now uses
+  `[0-9]` / `[A-Z]` classes and explicit ASCII checks instead of `\d`, `str.isdigit()`
+  and `str.isalpha()`; the decision vectors include non-ASCII cases and both sides return
+  `INVALID_STRUCTURE`. The earlier INTENTIONAL-DIFF rows are PARITY.
+- The reviewed defects (review-only trust, public near-miss privacy, paste and
+  normalization, response contract, ingress limits, expansion budgets, offset semantics,
+  raw-versus-candidate identity, bounded near-miss retrieval, enrichment storage,
+  malformed mapping options) are fixed with regression tests in `checkdigit/test_phase_a.py`
+  and `tests/segmented.test.ts`; see `MIGRATION.md` for consumer-visible changes.
+- The schema-initialization race in `db.connect` (pre-existing: `run_pass25.py` failed
+  in 20 of 20 harness runs on the original module) is fixed by serializing pragmas and
+  schema creation per process and retrying the WAL switch.
+
+## Open after Phase A
+
+- OPEN: Starlette caps a multipart form part at 1 MiB and answers 400 itself, so pasted
+  text above 1 MiB never reaches the 413 path; documented as `limits.MAX_PASTE_BYTES`.
+- OPEN: `run_pass16.py` asserted an ungated `/insights` route that has been admin-gated
+  since the earlier auth work; the assertion was corrected. The driver had been failing
+  before Phase A and is not part of `run_acceptance.py`.
+- OPEN: Provider adapters (BoxTech, carriers) remain untested against real endpoints; no
+  credentials exist in this repository.
+- OPEN: Terminal system profiles (Navis N4 versions, Tideworks, CyberLogitec OPUS, RBS
+  TOPS) need vendor specifications and fixtures before any profile can leave the
+  `unverified` state.
+- OPEN: Three-million-record processing is unmeasured; the current parsers read whole
+  files. Phase C builds the streaming and durable-job path and the benchmark.
+- OPEN: Lighthouse and the deployed-URL checks for the Electric Yard pages are not run
+  until a deployment is authorized.
+
+## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
+
+- (Superseded) Digit matching was ASCII-only in TypeScript while Python accepted other
+  Unicode digits. Since Phase A both sides are ASCII-only; see "Resolved in Phase A".
 - `tests/vectors/decision_vectors.json` is generated data (289 kB, compact JSON). It is
   committed so `npm test` needs no Python; `npm run vectors` regenerates both vector
   files and must leave no diff.

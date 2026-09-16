@@ -1,0 +1,45 @@
+{
+  "$comment": "Per-profile contract register: the genuinely external decisions a profile must answer before the dependent operational effect is enabled. Copy this template per terminal/partner profile. Each entry records its source, version, an example fixture and a verification state (contracts/enums.json contract_verification_state). An entry left unverified disables only the effect that depends on it.",
+  "profile": "TEMPLATE",
+  "system": "",
+  "system_version": "",
+  "terminal_site": "",
+  "partner": "",
+  "contracts": {
+    "snapshot_coverage_evidence": {
+      "question": "How does a full snapshot declare its scope and completeness (part counts, trailer totals, manifest)?",
+      "source": "", "version": "", "fixture": "", "verification_state": "unverified",
+      "dependent_effect": "absence-based retirement in full_snapshot mode"
+    },
+    "field_clear_semantics": {
+      "question": "Which fields may be cleared by explicit null, what an empty string means, and what an omitted field means per import mode?",
+      "source": "", "version": "", "fixture": "", "verification_state": "unverified",
+      "dependent_effect": "attribute clears in incremental and full_snapshot modes"
+    },
+    "message_keys_and_order": {
+      "question": "Authoritative business-transaction key, message-revision key, reference reuse window and ordering rules per message function?",
+      "source": "", "version": "", "fixture": "", "verification_state": "unverified",
+      "dependent_effect": "automatic lifecycle application (change, replacement, cancellation)"
+    },
+    "visit_movement_keys": {
+      "question": "Authoritative terminal visit and movement keys, or the composite key and its scope?",
+      "source": "", "version": "", "fixture": "", "verification_state": "unverified",
+      "dependent_effect": "visit and movement linking beyond an unresolved association"
+    },
+    "linked_field_groups": {
+      "question": "Which fields must change together for one entity (for example SNX container/equipment/unit references)?",
+      "source": "", "version": "", "fixture": "", "verification_state": "unverified",
+      "dependent_effect": "atomic linked edits"
+    },
+    "response_correlation_and_acceptance": {
+      "question": "How receiver feedback references our messages, what codes mean, and whether item-level results imply anything about other items?",
+      "source": "", "version": "", "fixture": "", "verification_state": "unverified",
+      "dependent_effect": "automatic feedback correlation and acceptance states"
+    },
+    "retry_and_amendment": {
+      "question": "Receiver duplicate handling, idempotency, retry and amendment/cancellation contract?",
+      "source": "", "version": "", "fixture": "", "verification_state": "unverified",
+      "dependent_effect": "automatic retransmission and repair reissue"
+    }
+  }
+}

@@ -37,6 +37,7 @@ from bisect import bisect_right
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
+import limits
 from snx_locator import XmlSecurityError, harden_and_parse
 from txt_locator import _RE_BIC as _RE_TOKEN     # exact parity with .txt scanning
 
@@ -97,21 +98,70 @@ class XlsxFlagRef:
     offset: int = -1
 
 
-def load_workbook(data: bytes) -> WorkbookParts:
+def _read_member_bounded(zf: "zipfile.ZipFile", info: "zipfile.ZipInfo") -> bytes:
+    """Read one member in chunks, refusing to expand beyond its declared size.
+    A member that keeps producing bytes past its header is a lying archive."""
+    declared = info.file_size
+    chunks: List[bytes] = []
+    total = 0
+    try:
+        with zf.open(info) as fh:
+            while True:
+                chunk = fh.read(min(limits.READ_CHUNK, declared - total + 1))
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > declared:
+                    raise XlsxError(
+                        f"member {info.filename!r} expands beyond its declared "
+                        f"{declared} bytes")
+                chunks.append(chunk)
+    except zipfile.BadZipFile as exc:                 # CRC or structure failure
+        raise XlsxError(f"corrupt ZIP member {info.filename!r}: {exc}") from exc
+    return b"".join(chunks)
+
+
+def load_workbook(data: bytes, *, deadline: Optional["limits.Deadline"] = None) -> WorkbookParts:
+    """Open the workbook container with expansion budgets applied BEFORE and DURING
+    decompression (limits.XLSX_*): member count, per-member declared size, total
+    declared size, compression ratio, actual bytes versus declared, and the
+    caller's wall-clock deadline between members."""
     if not is_zip(data):
         raise XlsxError("not a ZIP container")
     try:
         zf = zipfile.ZipFile(io.BytesIO(data))
-        bad = zf.testzip()
+        infos = zf.infolist()
     except zipfile.BadZipFile as exc:
         raise XlsxError(f"corrupt ZIP archive: {exc}") from exc
-    if bad is not None:
-        raise XlsxError(f"corrupt ZIP member: {bad!r}")
-    names = zf.namelist()
+    if len(infos) > limits.XLSX_MAX_MEMBERS:
+        raise XlsxError(f"workbook has {len(infos)} members; limit is {limits.XLSX_MAX_MEMBERS}")
+    total_declared = 0
+    for info in infos:
+        if info.is_dir():
+            continue
+        if info.file_size > limits.XLSX_MAX_MEMBER_BYTES:
+            raise XlsxError(f"member {info.filename!r} declares {info.file_size} bytes; "
+                            f"limit is {limits.XLSX_MAX_MEMBER_BYTES}")
+        if info.compress_size and info.file_size / info.compress_size > limits.XLSX_MAX_COMPRESSION_RATIO:
+            raise XlsxError(f"member {info.filename!r} has a compression ratio above "
+                            f"{limits.XLSX_MAX_COMPRESSION_RATIO}:1; refusing to expand it")
+        total_declared += info.file_size
+        if total_declared > limits.XLSX_MAX_EXPANDED_BYTES:
+            raise XlsxError(f"workbook would expand beyond {limits.XLSX_MAX_EXPANDED_BYTES} bytes")
+    names = [i.filename for i in infos]
     if "xl/workbook.xml" not in names:
         raise XlsxError("ZIP is not an Excel workbook (no xl/workbook.xml)")
-    members = {n: zf.read(n) for n in names}
-    compress = {i.filename: i.compress_type for i in zf.infolist()}
+    if len(set(names)) != len(names):
+        raise XlsxError("workbook has duplicate member names; refusing an ambiguous archive")
+    members: Dict[str, bytes] = {}
+    for info in infos:
+        if deadline is not None:
+            try:
+                deadline.check("workbook decompression")
+            except limits.BudgetExceeded as exc:
+                raise XlsxError(str(exc)) from exc
+        members[info.filename] = b"" if info.is_dir() else _read_member_bounded(zf, info)
+    compress = {i.filename: i.compress_type for i in infos}
     sheets = sorted(n for n in names if _SHEET_RE.match(n))
     return WorkbookParts(names=names, members=members, compress=compress,
                          sheet_paths=sheets,

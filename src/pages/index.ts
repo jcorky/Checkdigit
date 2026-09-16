@@ -1,10 +1,22 @@
 import "../styles/site.css";
-import { correctIdentifier, explain, FieldContext, Status } from "../lib/checkdigit";
+import {
+  backspace,
+  CELL_COUNT,
+  cellsFrom,
+  editCell,
+  evaluate,
+  replaceAll,
+  tokenOf,
+  type Cells,
+  type EditResult,
+  type Notice,
+  type ViewModel,
+} from "../lib/segmented";
 import { byId, html, raw } from "../ui/dom";
 
 // The segmented validator: eleven single-character inputs (owner 3, category 1,
-// serial 6, check 1). The verdict comes from the kernel's decision table under
-// the EQUIPMENT_ID context, exactly as a declared equipment field would be judged.
+// serial 6, check 1) kept in step with a whole-number field. All rules live in
+// src/lib/segmented.ts; this file only binds them to the DOM.
 
 const CELL_LABELS = [
   "Owner letter 1 of 3",
@@ -20,11 +32,13 @@ const CELL_LABELS = [
   "Check digit",
 ];
 const PREFILL = "CSQU3054383";
-const DEFAULT_HINT = "4 letters · 6 digits · 1 check";
 
 const cellsEl = byId("cells");
 const statusEl = byId("status");
 const hintEl = byId("vhint");
+const noticeEl = byId("notice");
+const wholeEl = byId<HTMLInputElement>("whole");
+const clearBtn = byId<HTMLButtonElement>("clear");
 const moreLink = byId<HTMLAnchorElement>("vmore-link");
 const anatomy = {
   owner: byId("a-owner"),
@@ -33,7 +47,9 @@ const anatomy = {
   check: byId("a-check"),
 };
 
-const cells: HTMLInputElement[] = CELL_LABELS.map((label, i) => {
+let cells: Cells = cellsFrom(PREFILL);
+
+const cellInputs: HTMLInputElement[] = CELL_LABELS.map((label, i) => {
   if (i === 10) {
     const gap = document.createElement("div");
     gap.className = "gap";
@@ -43,132 +59,136 @@ const cells: HTMLInputElement[] = CELL_LABELS.map((label, i) => {
   const input = document.createElement("input");
   input.type = "text";
   input.className = "cell" + (i === 10 ? " check" : "");
-  input.maxLength = 11; // allow a paste to land in one cell; it is redistributed
+  input.maxLength = 32; // a paste lands here first and is redistributed or refused
   input.autocomplete = "off";
   input.spellcheck = false;
   input.inputMode = i < 4 ? "text" : "numeric";
   input.setAttribute("autocapitalize", "characters");
   input.setAttribute("aria-label", label);
-  input.value = PREFILL[i] ?? "";
   cellsEl.appendChild(input);
   return input;
 });
 
-const clean = (s: string): string => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-function setFrom(index: number, text: string): number {
-  // Write characters into consecutive cells starting at `index`; return the
-  // index of the cell after the last one written.
-  let i = index;
-  for (const ch of text) {
-    if (i > 10) break;
-    (cells[i] as HTMLInputElement).value = ch;
-    i++;
-  }
-  return i;
+function apply(result: EditResult): void {
+  cells = result.cells;
+  showNotice(result.notice);
+  render();
+  if (result.focus !== null) cellInputs[result.focus]?.focus();
 }
 
-cells.forEach((cell, i) => {
-  cell.addEventListener("input", () => {
-    const typed = clean(cell.value);
-    cell.value = "";
-    const next = setFrom(i, typed);
-    if (typed.length > 0) cells[Math.min(next, 10)]?.focus();
-    render();
+function showNotice(notice: Notice | null): void {
+  if (!notice) {
+    noticeEl.innerHTML = "";
+    noticeEl.hidden = true;
+    return;
+  }
+  noticeEl.hidden = false;
+  const proposal = notice.proposal
+    ? html` <button type="button" class="btn btn-ghost btn-small" id="use-proposal">Use <span class="id">${notice.proposal}</span></button>`
+    : "";
+  noticeEl.innerHTML = html`<span class="notice-${notice.level}">${notice.text}</span>${raw(proposal)}`;
+  const btn = document.getElementById("use-proposal");
+  if (btn && notice.proposal) {
+    const proposal = notice.proposal;
+    btn.addEventListener("click", () => apply(replaceAll(cells, proposal)));
+  }
+}
+
+cellInputs.forEach((input, i) => {
+  input.addEventListener("input", () => {
+    const typed = input.value;
+    input.value = cells[i] ?? "";
+    apply(editCell(cells, i, typed));
   });
-  cell.addEventListener("keydown", (ev) => {
-    if (ev.key === "Backspace" && cell.value === "" && i > 0) {
-      const prev = cells[i - 1] as HTMLInputElement;
-      prev.value = "";
-      prev.focus();
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Backspace") {
       ev.preventDefault();
+      const r = backspace(cells, i);
+      cells = r.cells;
+      showNotice(null);
       render();
+      cellInputs[r.focus]?.focus();
     } else if (ev.key === "ArrowLeft" && i > 0) {
-      cells[i - 1]?.focus();
       ev.preventDefault();
-    } else if (ev.key === "ArrowRight" && i < 10) {
-      cells[i + 1]?.focus();
+      cellInputs[i - 1]?.focus();
+    } else if (ev.key === "ArrowRight" && i < CELL_COUNT - 1) {
       ev.preventDefault();
+      cellInputs[i + 1]?.focus();
     }
   });
-  cell.addEventListener("focus", () => cell.select());
+  input.addEventListener("focus", () => input.select());
 });
 
+wholeEl.addEventListener("input", () => {
+  const r = replaceAll(cells, wholeEl.value);
+  cells = r.cells;
+  showNotice(r.notice);
+  render(false);
+});
+wholeEl.addEventListener("change", () => {
+  wholeEl.value = tokenOf(cells);
+});
+clearBtn.addEventListener("click", () => apply(replaceAll(cells, "")));
+
 function setCheckState(state: "" | "ok" | "fix" | "flag" | "bad" | "computed"): void {
-  const check = cells[10] as HTMLInputElement;
+  const check = cellInputs[10] as HTMLInputElement;
   check.className = "cell check" + (state ? ` ${state}` : "");
 }
 
-function render(): void {
-  const values = cells.map((c) => c.value);
-  const token = values.join("");
-  const firstEmpty = values.findIndex((v) => v === "");
-  const contiguous = firstEmpty === -1 || values.slice(firstEmpty).every((v) => v === "");
+function render(syncWhole = true): void {
+  const vm: ViewModel = evaluate(cells);
+  cellInputs.forEach((input, i) => {
+    input.value = cells[i] ?? "";
+  });
+  if (syncWhole) wholeEl.value = vm.token;
   const dash = "—";
+  anatomy.owner.textContent = vm.anatomy.owner || dash;
+  anatomy.cat.textContent = vm.anatomy.category || dash;
+  anatomy.serial.textContent = vm.anatomy.serial || dash;
+  anatomy.check.textContent = vm.anatomy.check || dash;
+  hintEl.textContent = vm.hint;
+  (cellInputs[10] as HTMLInputElement).placeholder = vm.state === "computed" ? (vm.computedCheck ?? "") : "";
+  moreLink.href = vm.token.length >= 10 ? `/check#${vm.token}` : "/check";
 
-  anatomy.owner.textContent = token.slice(0, 3) || dash;
-  anatomy.cat.textContent = values[3] || dash;
-  anatomy.serial.textContent = values.slice(4, 10).join("") || dash;
-  anatomy.check.textContent = dash;
-  hintEl.textContent = DEFAULT_HINT;
-  setCheckState("");
-  moreLink.href = token.length >= 10 ? `/check#${token}` : "/check";
-
-  if (token.length === 0) {
-    statusEl.innerHTML = html`<span style="color:var(--faint)">e.g. CSQU3054383, MSKU1234565…</span>`;
-    return;
-  }
-  if (!contiguous) {
-    statusEl.innerHTML = html`<span class="t-flag">Fill the cells from left to right.</span>`;
-    return;
-  }
-  if (token.length < 10) {
-    const left = 10 - token.length;
-    statusEl.innerHTML = html`<span class="t-flag">Keep going</span> — ${left} more character${left === 1 ? "" : "s"} to reach the check digit.`;
-    return;
-  }
-
-  if (token.length === 10) {
-    const e = explain(token);
-    if (!e.ok || e.kind !== "iso6346_ilu") {
-      setCheckState("bad");
-      statusEl.innerHTML = html`<span class="t-bad">Invalid structure.</span> Expect 4 letters, then 6 digits, then 1 check digit.`;
-      return;
-    }
-    anatomy.check.textContent = String(e.computed);
-    (cells[10] as HTMLInputElement).placeholder = String(e.computed);
-    setCheckState("computed");
-    hintEl.textContent = "check digit computed";
-    statusEl.innerHTML = html`Check digit is <span class="t-fix">${e.computed}</span>. Full number: <span class="num id">${e.full}</span>.${
-      e.remainder_ten ? raw(' <span class="t-flag">Remainder 10 maps to 0.</span>') : ""
-    }`;
-    return;
-  }
-
-  const r = correctIdentifier(token, FieldContext.EQUIPMENT_ID);
-  if (r.computed_check !== null) anatomy.check.textContent = r.computed_check;
-
-  switch (r.status) {
-    case Status.VALID:
+  const r = vm.result;
+  switch (vm.state) {
+    case "empty":
+      setCheckState("");
+      statusEl.innerHTML = html`<span class="muted">e.g. CSQU3054383, MSKU1234565…</span>`;
+      break;
+    case "gap":
+      setCheckState("");
+      statusEl.innerHTML = html`<span class="t-flag">Fill the cells from left to right.</span>`;
+      break;
+    case "partial":
+      setCheckState("");
+      statusEl.innerHTML = html`<span class="t-flag">Keep going</span> — ${vm.missing} more character${vm.missing === 1 ? "" : "s"} to reach the check digit.`;
+      break;
+    case "computed":
+      setCheckState("computed");
+      statusEl.innerHTML = html`Check digit is <span class="t-fix">${vm.computedCheck}</span>. Full number: <span class="num id">${vm.token}${vm.computedCheck}</span>.${
+        vm.explanation && vm.explanation.ok && vm.explanation.kind === "iso6346_ilu" && vm.explanation.remainder_ten
+          ? raw(' <span class="t-flag">Remainder 10 maps to 0.</span>')
+          : ""
+      }`;
+      break;
+    case "valid":
       setCheckState("ok");
-      hintEl.textContent = "valid";
-      statusEl.innerHTML = html`<span class="t-ok">Valid.</span> The check digit is correct.`;
+      statusEl.innerHTML = html`<span class="t-ok">Check digit agrees.</span> Structure and arithmetic pass; prefix registration and the equipment record are not checked here.`;
       break;
-    case Status.CORRECTED:
+    case "corrected":
       setCheckState("fix");
-      hintEl.textContent = "needs correction";
-      statusEl.innerHTML = html`<span class="t-fix">Check digit should be ${r.computed_check}.</span> The digit you typed (${r.printed_check}) is wrong: <span class="num id">${r.normalized}</span> → <span class="t-fix id">${r.corrected}</span>.`;
+      statusEl.innerHTML = html`<span class="t-fix">Expected check digit for this body: ${r?.computed_check}.</span> The digit you typed (${r?.printed_check}) does not agree: <span class="num id">${r?.normalized}</span> → <span class="t-fix id">${r?.corrected}</span>. If the body is wrong instead, the number is different.`;
       break;
-    case Status.FLAGGED:
+    case "flagged":
       setCheckState("flag");
-      hintEl.textContent = "flagged";
-      statusEl.innerHTML = html`<span class="t-flag">Flagged.</span> ${r.reason}`;
+      statusEl.innerHTML = html`<span class="t-flag">Flagged.</span> ${r?.reason ?? ""}`;
       break;
     default:
       setCheckState("bad");
-      hintEl.textContent = "invalid";
-      statusEl.innerHTML = html`<span class="t-bad">Invalid structure.</span> ${r.reason}`;
+      statusEl.innerHTML = html`<span class="t-bad">Invalid structure.</span> ${r?.reason ?? "Expect 4 letters, then 6 digits, then 1 check digit."}`;
   }
 }
 
+showNotice(null);
 render();

@@ -23,6 +23,8 @@ TOKENS = [
     "APLU 919281 2", "L5G1", "MSKU1234567", "msku-123456-7", "", "12345",
     "CONT1234565", "MSCK1234560", "2181247121734", "22G1", "aplu9192819",
     "TESU1234560", "TSTU1234560",
+    # non-ASCII digits and letters: invalid structure on both sides (ASCII-only by decision)
+    "MSKU١٢٣٤٥٦٧", "21812471217٣", "MSKÜ1234567",
 ]
 CONTEXTS = list(k.FieldContext)
 POLICIES = {
@@ -73,6 +75,7 @@ def main():
         ("EMHU", "123456", "0"), ("EMH", "123456", "1"), ("EMHU", "1234567", "1"),
         ("EMHX", "123456", "1"), ("EMHU", "12", ""), ("emhu", "12-34-56", "2"),
         ("APLU", "919281", "2"), ("APLU", "919281", "9"), ("MSCU", "123456", "0"),
+        ("EMHÜ", "123456", "1"), ("EMHU", "12٣456", ""),
         ("TCLU", "456789", ""), ("HLBU", "112233", None), ("TSTU", "000001", ""),
     ]
     for init, num, chk in x12:

@@ -62,7 +62,7 @@ _ISO6346_LETTER_VALUES = {
 
 def iso6346_value(ch: str) -> int:
     """Numeric value of one ISO 6346 character (letter via table, digit as-is)."""
-    if ch.isdigit():
+    if len(ch) == 1 and ch in _ASCII_DIGITS:      # ASCII only: no other decimal digits are ISO 6346 characters
         return int(ch)
     try:
         return _ISO6346_LETTER_VALUES[ch]
@@ -103,7 +103,7 @@ def uic_check_digit(body11: str) -> int:
     >>> uic_check_digit("21812471217")
     3
     """
-    if len(body11) != 11 or not body11.isdigit():
+    if len(body11) != 11 or not _all_ascii_digits(body11):
         raise ValueError(f"UIC body must be 11 digits, got {body11!r}")
     total = 0
     for i, ch in enumerate(reversed(body11)):
@@ -173,9 +173,18 @@ class CorrectionResult:
 
 # Structural patterns. NB: these match SHAPE only; classification still depends
 # on the category letter and the field context.
-_RE_BIC_LIKE = re.compile(r"^[A-Z]{3}([A-Z])\d{6}(\d)$")   # 4 letters + 7 digits (standard)
-_RE_CONTAINER_SHAPED = re.compile(r"^[A-Z0-9]{4}\d{7}$")   # 4 alnum + 7 digits (incl. pseudo-prefix)
-_RE_UIC = re.compile(r"^\d{12}$")
+# ASCII classes only. Python's \d and str.isdigit() also accept other Unicode
+# decimal digits, which are not ISO 6346 / UIC characters; the TypeScript port is
+# ASCII-only by construction and both sides must agree.
+_RE_BIC_LIKE = re.compile(r"^[A-Z]{3}([A-Z])[0-9]{6}([0-9])$")   # 4 letters + 7 digits (standard)
+_RE_CONTAINER_SHAPED = re.compile(r"^[A-Z0-9]{4}[0-9]{7}$")   # 4 alnum + 7 digits (incl. pseudo-prefix)
+_RE_UIC = re.compile(r"^[0-9]{12}$")
+_RE_ASCII_ALPHA4 = re.compile(r"^[A-Z]{4}$")
+_ASCII_DIGITS = frozenset("0123456789")
+
+
+def _all_ascii_digits(s: str) -> bool:
+    return bool(s) and all(c in _ASCII_DIGITS for c in s)
 _ISO6346_CATEGORIES = frozenset("UJZ")
 _ILU_CATEGORIES = frozenset("ABDEK")       # EN 13044 category letters incl. K (ISO-compat)
 _OWNER_POLICIES = frozenset({"strict", "lenient"})   # accepted owner_policy values
@@ -432,7 +441,7 @@ def correct_x12_equipment(
     signalling "populate the missing check digit".
     """
     init = normalize(initial)
-    num = re.sub(r"\D", "", number)
+    num = re.sub(r"[^0-9]", "", number)
 
     if policy is not None:
         t = policy.resolve(init[:3])
@@ -450,7 +459,7 @@ def correct_x12_equipment(
                     printed_check=base.printed_check, computed_check=base.computed_check)
             return base
 
-    if len(init) != 4 or not init.isalpha():
+    if not _RE_ASCII_ALPHA4.match(init):
         return CorrectionResult(
             f"{initial}/{number}", init + num, IdentifierType.UNKNOWN,
             Status.INVALID_STRUCTURE, confidence="high",
@@ -537,7 +546,7 @@ def explain(token: str) -> dict:
     if not norm:
         return {"ok": False, "error": "Empty input."}
 
-    if norm.isdigit() and len(norm) in (11, 12):
+    if _all_ascii_digits(norm) and len(norm) in (11, 12):
         body, printed = norm[:11], (norm[11] if len(norm) == 12 else None)
         steps, total = [], 0
         for i, ch in enumerate(reversed(body)):          # mirrors uic_check_digit
@@ -555,7 +564,7 @@ def explain(token: str) -> dict:
                 "computed": computed, "verdict": verdict,
                 "full": body + str(computed)}
 
-    if re.fullmatch(r"[A-Z]{4}\d{6,7}", norm):
+    if re.fullmatch(r"[A-Z]{4}[0-9]{6,7}", norm):
         body, printed = norm[:10], (norm[10] if len(norm) == 11 else None)
         chars, total = [], 0
         for i, ch in enumerate(body):                    # mirrors iso6346_check_digit

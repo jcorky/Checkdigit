@@ -30,7 +30,7 @@ import csv
 import json
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Tuple, Dict, List, Optional, Set
 
 
 # ───────────────────────────── owner registry ──────────────────────────────
@@ -209,6 +209,61 @@ SOURCES: List[SourceInfo] = [
 
 
 # ──────────────────────────── HTTP enricher base ───────────────────────────
+@dataclass(frozen=True)
+class StoragePolicy:
+    """What this application may keep from one provider's responses.
+
+    persist_payload   warehouse the provider's complete response (enrichment_fetches
+                      payload + normalized container_events). Off by default: a
+                      provider's terms may forbid copies or database creation.
+    retain_fields     the normalized fields that may be stored in the container
+                      enrichment cache; None means every normalized field.
+    reuse_allowed     whether a stored value may be served again for a later
+                      request instead of asking the provider again.
+    note              the reason, for the connections screen.
+    """
+    persist_payload: bool = False
+    retain_fields: Optional[Tuple[str, ...]] = None
+    reuse_allowed: bool = True
+    note: str = ""
+
+    def apply(self, flat: Dict[str, str], payload):
+        """(flat_to_store, payload_to_store) under this policy."""
+        kept = dict(flat)
+        if self.retain_fields is not None:
+            kept = {k: v for k, v in flat.items() if k in self.retain_fields or k == "source"}
+        return kept, (payload if self.persist_payload else None)
+
+
+DEFAULT_STORAGE_POLICY = StoragePolicy(
+    persist_payload=False, retain_fields=None, reuse_allowed=True,
+    note="Normalized fields only; the provider's full response is not warehoused "
+         "unless CHECKDIGIT_ENRICH_PERSIST_PAYLOADS names this source.")
+
+STORAGE_POLICIES: Dict[str, StoragePolicy] = {
+    "boxtech": StoragePolicy(
+        persist_payload=False,
+        retain_fields=("owner_name", "operator", "size_type", "group_type", "source"),
+        reuse_allowed=False,
+        note="BIC API terms of use restrict copies and database creation. Only the "
+             "fields shown for this request are kept and they are not reused for "
+             "later requests; obtain rights before any bulk caching or mirroring."),
+}
+
+
+def storage_policy_for(source: str, env=None) -> StoragePolicy:
+    """Policy for a provider, honouring the explicit opt-in list
+    CHECKDIGIT_ENRICH_PERSIST_PAYLOADS=name1,name2 for full-payload warehousing."""
+    env = env if env is not None else os.environ
+    base = STORAGE_POLICIES.get((source or "").lower(), DEFAULT_STORAGE_POLICY)
+    opted = {x.strip().lower() for x in (env.get("CHECKDIGIT_ENRICH_PERSIST_PAYLOADS") or "").split(",") if x.strip()}
+    if (source or "").lower() in opted and (source or "").lower() not in STORAGE_POLICIES:
+        return StoragePolicy(persist_payload=True, retain_fields=base.retain_fields,
+                             reuse_allowed=base.reuse_allowed,
+                             note="Full responses warehoused by explicit operator opt-in.")
+    return base
+
+
 class EnricherError(RuntimeError):
     """Configuration/usage error for an enricher (loud; not a transient network fault)."""
 
@@ -569,6 +624,8 @@ class EnrichmentService:
         self.registry = registry
         self.extra = list(extra or [])
 
+    _env = None   # environment used for storage policies (None = os.environ)
+
     @property
     def owner_prefixes(self) -> Set[str]:
         return self.registry.prefixes if self.registry else set()
@@ -587,6 +644,10 @@ class EnrichmentService:
         out = {"owner_name": info.company, "owner_city": info.city,
                "owner_country": info.country, "source": info.source}
         return {k: v for k, v in out.items() if v}
+
+    def storage_policy(self, source: str) -> StoragePolicy:
+        """Provider storage controls; overridable per instance for tests."""
+        return storage_policy_for(source, self._env)
 
     def enrich_detailed(self, eqid: str):
         """Query every enabled network source, returning BOTH views of the data:
@@ -612,8 +673,10 @@ class EnrichmentService:
             if d:
                 src_name = d.pop("source", e.name)
                 sources.append(src_name)
-                triples.append((src_name, dict(d), getattr(e, "_last_payload", None)))
-                out.update({k: v for k, v in d.items() if v})
+                policy = self.storage_policy(src_name)
+                kept, payload = policy.apply(dict(d), getattr(e, "_last_payload", None))
+                triples.append((src_name, kept, payload))
+                out.update({k: v for k, v in kept.items() if v})
         if sources:
             out["source"] = ", ".join(dict.fromkeys(sources))
         return triples, out
@@ -679,7 +742,9 @@ class EnrichmentService:
                 auth_header=header, auth_value=value,
                 prefixes=_split(env.get(f"{prefix}_PREFIXES"))))
 
-        return cls(registry=registry, extra=extra)
+        svc = cls(registry=registry, extra=extra)
+        svc._env = env
+        return svc
 
 
 def _split(value: Optional[str]) -> Optional[List[str]]:

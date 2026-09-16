@@ -37,7 +37,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import db
 import equipment_checkdigit as kernel
-import nearmiss
+import limits
 import service
 import policy as policy_mod
 import enrichment as enrich_mod
@@ -73,6 +73,133 @@ def _current_policy() -> "policy_mod.Policy":
 # surface. CHECKDIGIT_DOCS=0 (set in docker-compose.public.yml) turns all three off;
 # default-on preserves local /docs.
 _DOCS_ENABLED = os.environ.get("CHECKDIGIT_DOCS", "1").strip().lower() not in ("0", "false", "no", "")
+API_VERSION = "2"     # bumped when a response contract changes; see MIGRATION.md
+
+
+class _BodyTooLarge(Exception):
+    pass
+
+
+class BodySizeLimitMiddleware:
+    """Pure ASGI middleware: rejects a request body larger than `max_bytes` at
+    ingress. A declared Content-Length above the cap is answered 413 before any
+    byte of the body is read; a streamed/chunked body is counted as it arrives
+    and cut off with 413 the moment it exceeds the cap, before the handler can
+    buffer it. A reverse proxy limit remains the outer guard (DEPLOY.md)."""
+
+    def __init__(self, app, max_bytes: int):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        headers = dict(scope.get("headers") or [])
+        declared = headers.get(b"content-length")
+        if declared is not None:
+            try:
+                n = int(declared)
+            except ValueError:
+                n = None
+            if n is not None and n > self.max_bytes:
+                await self._reject(send)
+                return
+
+        received = 0
+        started = False
+
+        async def limited_receive():
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:
+                    raise _BodyTooLarge()
+            return message
+
+        async def tracking_send(message):
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, limited_receive, tracking_send)
+        except _BodyTooLarge:
+            if not started:
+                await self._reject(send)
+
+    async def _reject(self, send):
+        body = json.dumps({"detail": f"request body exceeds {self.max_bytes} bytes",
+                           "max_request_bytes": self.max_bytes}).encode("utf-8")
+        await send({"type": "http.response.start", "status": 413,
+                    "headers": [(b"content-type", b"application/json"),
+                                (b"content-length", str(len(body)).encode())]})
+        await send({"type": "http.response.body", "body": body})
+
+
+def _read_limited(fileobj, limit: int, what: str = "file") -> bytes:
+    """Read an upload in bounded chunks; 413 the moment it exceeds `limit`."""
+    chunks = []
+    total = 0
+    while True:
+        chunk = fileobj.read(limits.READ_CHUNK)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            raise HTTPException(status_code=413,
+                                detail=f"{what} exceeds the {limit}-byte limit")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _text_limited(text: str, limit: int) -> bytes:
+    content = text.encode("utf-8")
+    if len(content) > limit:
+        raise HTTPException(status_code=413,
+                            detail=f"pasted text exceeds the {limit}-byte limit")
+    return content
+
+
+def _parse_mapping(format_hint, columns, ranges):
+    """Query-string mapping options -> parse_options, or 422 with the exact problem."""
+    if not format_hint:
+        return None
+    if format_hint == "csv":
+        cols = [c.strip() for c in (columns or "").split(",") if c.strip()]
+        if not cols:
+            raise HTTPException(status_code=422,
+                                detail="format_hint=csv requires `columns` (0-based indices or header names)")
+        out = []
+        for c in cols:
+            if c.lstrip("-").isdigit():
+                idx = int(c)
+                if idx < 0:
+                    raise HTTPException(status_code=422, detail=f"column index {idx} must be >= 0")
+                out.append(idx)
+            else:
+                out.append(c)
+        return {"columns": out}
+    parts = [p.strip() for p in (ranges or "").split(",") if p.strip()]
+    if not parts:
+        raise HTTPException(status_code=422,
+                            detail="fixed-width hint requires `ranges`, e.g. 5-15,20-30 (1-based, inclusive)")
+    rngs = []
+    for part in parts:
+        a, sep, b = part.partition("-")
+        if not sep or not a.strip().isdigit() or not b.strip().isdigit():
+            raise HTTPException(status_code=422,
+                                detail=f"range {part!r} is not start-end with positive integers")
+        lo, hi = int(a), int(b)
+        if lo < 1 or hi < lo:
+            raise HTTPException(status_code=422,
+                                detail=f"range {part!r} must satisfy 1 <= start <= end")
+        rngs.append([lo, hi])
+    return {"ranges": rngs}
+
+
 app = FastAPI(
     title="CHECKDIGIT", version="1.0",
     description="Container check-digit correction service",
@@ -90,6 +217,7 @@ app.add_middleware(
     CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=False,
     allow_methods=["GET", "POST"], allow_headers=["*"],
 )
+app.add_middleware(BodySizeLimitMiddleware, max_bytes=limits.MAX_REQUEST_BYTES)
 
 # --- Admin access boundary (Pass C) --------------------------------------- #
 # WRITE path (/correct, /correct/batch, /visualize, /check, /health) stays OPEN
@@ -181,7 +309,8 @@ def visualize(request: Request,
     has_text = bool(text and text.strip())
     if has_file == has_text:
         raise HTTPException(status_code=422, detail="Provide either a file or text, not both/neither.")
-    raw = (file.file.read() if has_file else (text or "").encode("utf-8"))
+    raw = (_read_limited(file.file, limits.MAX_UPLOAD_BYTES) if has_file
+           else _text_limited(text or "", limits.MAX_PASTE_BYTES))
     try:
         body = raw.decode("utf-8")
     except UnicodeDecodeError:
@@ -239,29 +368,15 @@ def correct(request: Request,
         raise HTTPException(status_code=422,
                             detail="Provide a file upload or non-empty pasted text.")
 
+    parse_options = _parse_mapping(format_hint, columns, ranges)   # 422 on malformed options
     if has_file:
-        content = file.file.read()                   # sync read; same thread as DB
+        content = _read_limited(file.file, limits.MAX_UPLOAD_BYTES)   # bounded; 413 past the cap
         filename = os.path.basename(file.filename or "upload")
         content_type = file.content_type or ""
     else:
-        content = text.encode("utf-8")
+        content = _text_limited(text, limits.MAX_PASTE_BYTES)
         filename = "pasted.txt"
         content_type = "text/plain"
-
-    # Build parse_options for the opt-in structured-text formats from query params.
-    parse_options = None
-    if format_hint in ("csv",):
-        cols = [c.strip() for c in (columns or "").split(",") if c.strip()]
-        # numeric strings -> indices; else header names
-        parse_options = {"columns": [int(c) if c.lstrip("-").isdigit() else c for c in cols]}
-    elif format_hint in ("fixed", "fixedwidth", "fixed_width"):
-        rngs = []
-        for part in (ranges or "").split(","):
-            part = part.strip()
-            if "-" in part:
-                a, b = part.split("-", 1)
-                rngs.append([int(a), int(b)])
-        parse_options = {"ranges": rngs}
 
     conn = db.connect(DB_PATH, create_schema=False)
     try:
@@ -286,10 +401,15 @@ def correct(request: Request,
         background_tasks.add_task(_bg_enrich, sorted({c.canonical for c in report.containers}))
 
     return {
+        "api_version": API_VERSION,
         "status": res["status"],
         "detected_format": res["detected_format"],
         "filename": filename,
         "event_id": res["event_id"],
+        "encoding": res["encoding"],              # codec used to decode; re-encode output with it
+        "offset_kind": report.offset_kind,        # every offset is a code-point index in the decoded text
+        "visualization": res["visualization"],    # bay-plan / intermodal scene when drawable, else None
+        "limits": {"upload_bytes": limits.MAX_UPLOAD_BYTES, "paste_bytes": limits.MAX_PASTE_BYTES},
         "report": report.to_dict(),
     }
 
@@ -320,34 +440,25 @@ def correct_batch(request: Request,
         raise HTTPException(status_code=422,
                             detail="Provide either multiple `files` or one `archive` (.zip), not both/neither.")
 
-    # opt-in structured-text spec (same parsing as /correct)
-    parse_options = None
-    if format_hint == "csv":
-        cols = [c.strip() for c in (columns or "").split(",") if c.strip()]
-        parse_options = {"columns": [int(c) if c.lstrip("-").isdigit() else c for c in cols]}
-    elif format_hint in ("fixed", "fixedwidth", "fixed_width"):
-        rngs = []
-        for part in (ranges or "").split(","):
-            part = part.strip()
-            if "-" in part:
-                a, b = part.split("-", 1)
-                rngs.append([int(a), int(b)])
-        parse_options = {"ranges": rngs}
+    parse_options = _parse_mapping(format_hint, columns, ranges)   # 422 on malformed options
 
     ua = request.headers.get("user-agent", "")
     conn = db.connect(DB_PATH, create_schema=False)
     try:
         if has_archive:
+            archive_bytes = _read_limited(archive.file, limits.MAX_ARCHIVE_BYTES, "archive")
             try:
                 result = batch_mod.process_batch_zip(
-                    conn, archive.file.read(), owner_policy=owner_policy, trust=trust,
+                    conn, archive_bytes, owner_policy=owner_policy, trust=trust,
                     enrichment=_ENRICHMENT, policy=_current_policy(),
                     format_hint=format_hint, parse_options=parse_options,
                     user_agent=ua or "checkdigit-batch/1")
             except Exception as exc:
                 raise HTTPException(status_code=422, detail=f"could not read archive: {exc}")
         else:
-            items = [(os.path.basename(f.filename or "file"), f.file.read()) for f in files]
+            items = [(os.path.basename(f.filename or "file"),
+                      _read_limited(f.file, limits.MAX_UPLOAD_BYTES, f.filename or "file"))
+                     for f in files]
             result = batch_mod.process_batch(
                 conn, items, owner_policy=owner_policy, trust=trust,
                 enrichment=_ENRICHMENT, policy=_current_policy(),
@@ -454,19 +565,34 @@ def check(token: str):
     if not res.get("ok"):
         raise HTTPException(status_code=422, detail=res.get("error", "unrecognized identifier"))
     if _ENRICHMENT is not None and res.get("kind") == "iso6346_ilu":
+        # Offline owner register only (a public reference file), never upload history.
         res["owner"] = _ENRICHMENT.enrich_owner(res["normalized"]) or None
-    # On a mismatch, propose previously-seen check-valid containers within small
-    # edit distance of the body -- the "body might be wrong" branch. Read-only.
-    if res.get("kind") == "iso6346_ilu" and res.get("verdict") == "mismatch":
-        conn = db.connect(DB_PATH, create_schema=False)
-        try:
-            pool = [(e, s) for e, s in db.candidate_pool(conn)
-                    if service._pool_check_valid(e)]
-        finally:
-            conn.close()
-        res["near_misses"] = nearmiss.suggest(
-            res["body"], pool, exclude=res["normalized"]) if pool else []
+        res["owner_source"] = "offline_owner_registry"
+    # Public arithmetic never consults private upload history. Near-miss
+    # candidates from a workspace's own history live behind the workspace gate
+    # (GET /workspace/nearmiss/{token}) and carry their provenance.
+    res["scope"] = "public_arithmetic"
+    res["history_consulted"] = False
     return res
+
+
+@app.get("/workspace/nearmiss/{token}", dependencies=[Depends(admin_required)])
+def workspace_nearmiss(token: str):
+    """Near-miss proposals for a failing container body from THIS workspace's
+    own upload history. Requires workspace authorization; every proposal carries
+    provenance (source, pool, retrieval method) and is a proposal, not a fact."""
+    res = kernel.explain(token)
+    if not res.get("ok"):
+        raise HTTPException(status_code=422, detail=res.get("error", "unrecognized identifier"))
+    if res.get("kind") != "iso6346_ilu":
+        raise HTTPException(status_code=422, detail="near-miss search applies to ISO 6346 / ILU bodies only")
+    conn = db.connect(DB_PATH, create_schema=False)
+    try:
+        candidates = service.near_misses_for(conn, res["body"], exclude=res["normalized"])
+    finally:
+        conn.close()
+    return {"token": res["normalized"], "body": res["body"], "verdict": res["verdict"],
+            "candidates": candidates, "provenance": dict(service.NEAR_MISS_PROVENANCE)}
 
 
 @app.get("/events/{event_id}/containers.csv", dependencies=[Depends(admin_required)])

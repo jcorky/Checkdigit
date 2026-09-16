@@ -7,3 +7,4 @@ checkdigit/__pycache__/
 checkdigit/out/
 checkdigit/.spa-build/
 checkdigit/static/
+.wrangler-*.log

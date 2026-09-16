@@ -173,6 +173,9 @@ def test_token_safety(conn):
             self._last_payload = DCSA_B
             return {"last_event_code": "DISC", "source": "good"}
     svc = E.EnrichmentService(extra=[Failing(), Good()])
+    # Full payloads are warehoused only by explicit opt-in (StoragePolicy); this
+    # driver opts the good source in to exercise the warehouse path.
+    svc._env = {"CHECKDIGIT_ENRICH_PERSIST_PAYLOADS": "good"}
     triples, merged = svc.enrich_detailed("MSKU7351770")
     assert [t[0] for t in triples] == ["good"] and merged["source"] == "good"
     db.persist_enrichment_payloads(conn, "MSKU7351770", triples)
@@ -201,7 +204,7 @@ def test_insights(conn):
 
 def test_api_static():
     src = open("api.py", encoding="utf-8").read()
-    assert '@app.get("/insights")' in src
+    assert '@app.get("/insights"' in src              # admin-gated since Pass C
     assert "enrich_detailed" in src and "persist_enrichment_payloads" in src
     import ast
     ast.parse(src)

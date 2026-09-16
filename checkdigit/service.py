@@ -27,7 +27,18 @@ import xlsx_corrector
 from snx_locator import XmlSecurityError
 from xlsx_locator import XlsxError
 
-MAX_BYTES = 5 * 1024 * 1024          # 5 MB upload cap
+import limits
+
+MAX_BYTES = limits.MAX_UPLOAD_BYTES  # one upload; the same number the HTTP layer enforces at ingress
+
+NEAR_MISS_PROVENANCE = {
+    "source": "workspace_history",
+    "workspace": "default",
+    "pool": "previously_recorded_check_valid",
+    "retrieval": "bounded_indexed_probes",
+    "note": "suggestions are proposals from this workspace's own upload history; "
+            "they are not evidence that the equipment exists or is owned as shown",
+}
 
 
 def process_upload(conn, content: bytes, *, filename: str, content_type: str = "",
@@ -39,7 +50,7 @@ def process_upload(conn, content: bytes, *, filename: str, content_type: str = "
     safe_name = os.path.basename(filename or "")     # strip any path components
 
     # --- size cap (reject before parsing) --------------------------------- #
-    if len(content) > MAX_BYTES:
+    if len(content) > MAX_BYTES:                      # backstop; api.py enforces at ingress
         db.record_event(conn, filename=safe_name, content_type=content_type,
                         detected_format="rejected", file_size=len(content),
                         user_agent=user_agent, owner_policy=owner_policy,
@@ -84,12 +95,12 @@ def process_upload(conn, content: bytes, *, filename: str, content_type: str = "
 
         # --- detect + correct ------------------------------------------------ #
         if format_hint:
-            # Opt-in structured-text path: the declared column is authoritative,
-            # so trust defaults True here (the user asserted "this is the
-            # container column"). They can still pass trust=False to keep it advisory.
+            # Opt-in structured-text path. The caller's trust flag is honoured
+            # exactly as given: a review-only request (trust=False) flags failing
+            # numbers in the declared column and changes nothing.
             det, report = dispatcher.correct_with_hint(
                 text, format_hint=format_hint, parse_options=parse_options,
-                owner_policy=owner_policy, trust=True if not trust else trust,
+                owner_policy=owner_policy, trust=trust,
                 known_owner_prefixes=known_owner_prefixes, policy=policy)
         else:
             det, report = dispatcher.correct(
@@ -116,14 +127,10 @@ def process_upload(conn, content: bytes, *, filename: str, content_type: str = "
     # matched (one row fat-fingering another box on the list is the classic case).
     needing = [c for c in report.containers
                if c.status in ("flagged", "invalid_structure")]
-    if needing:
-        pool = [(e, s) for e, s in db.candidate_pool(conn) if _pool_check_valid(e)]
-        if pool:
-            for c in needing:
-                body = _body10(c.as_found)
-                if body:
-                    c.near_misses = nearmiss.suggest(
-                        body, pool, exclude=kernel.normalize(c.as_found))
+    for c in needing:
+        body = _body10(c.as_found)
+        if body:
+            c.near_misses = near_misses_for(conn, body, exclude=kernel.normalize(c.as_found))
 
     # --- enrich inline with OFFLINE owner identity only ------------------- #
     # Network sources (carrier T&T, BoxTech, ...) are queried out of band so a slow
@@ -174,7 +181,20 @@ def process_upload(conn, content: bytes, *, filename: str, content_type: str = "
 
 
 # ── near-miss helpers ─────────────────────────────────────────────────────────
-_RE_BODY10 = re.compile(r"^([A-Z]{4}\d{6})\d?$")
+_RE_BODY10 = re.compile(r"^([A-Z]{4}[0-9]{6})[0-9]?$")
+
+
+def near_misses_for(conn, body10: str, *, exclude: str = "", limit: int = 3) -> list:
+    """Near-miss proposals for a 10-char body from THIS workspace's history, via
+    bounded indexed probes (db.candidate_neighbors) verified by OSA distance.
+    Every proposal carries provenance so a UI cannot present it as a fact."""
+    pool = [(e, s) for e, s in db.candidate_neighbors(conn, body10) if _pool_check_valid(e)]
+    if not pool:
+        return []
+    out = nearmiss.suggest(body10, pool, exclude=exclude, limit=limit)
+    for item in out:
+        item["provenance"] = dict(NEAR_MISS_PROVENANCE)
+    return out
 
 
 def _body10(token: str) -> str:

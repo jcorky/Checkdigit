@@ -122,7 +122,7 @@ def test_service_routing():
     csv_bytes = f"ref,container\nA1,{BAD}\n".encode()
     res = service.process_upload(
         conn, csv_bytes, filename="loadlist.csv", content_type="text/csv",
-        user_agent="p17", owner_policy="strict",
+        user_agent="p17", owner_policy="strict", trust=True,
         format_hint="csv", parse_options={"columns": ["container"]})
     assert res["status"] == "processed" and res["detected_format"] == "csv"
     assert res["report"].corrected and res["corrected_text"].endswith(f"A1,{GOOD}\n")
@@ -132,9 +132,15 @@ def test_service_routing():
     fw = f"A1 {BAD} OK\n".encode()
     res2 = service.process_upload(
         conn, fw, filename="export.txt", content_type="", user_agent="p17",
-        owner_policy="strict", format_hint="fixed",
+        owner_policy="strict", trust=True, format_hint="fixed",
         parse_options={"ranges": [[4, 14]]})
     assert res2["detected_format"] == "fixed" and res2["report"].corrected
+    # review-only (trust=False) must leave a hinted file unchanged
+    ro = service.process_upload(
+        conn, csv_bytes, filename="loadlist.csv", content_type="text/csv",
+        user_agent="p17", owner_policy="strict", trust=False,
+        format_hint="csv", parse_options={"columns": ["container"]})
+    assert not ro["report"].corrected and ro["corrected_text"] == csv_bytes.decode()
 
     # missing spec -> loud rejection, audited
     bad = service.process_upload(

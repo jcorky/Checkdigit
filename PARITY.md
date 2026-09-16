@@ -16,16 +16,16 @@ by inspection.
 | Python symbol | Lines | TypeScript symbol | Proven by | Status |
 |---|---|---|---|---|
 | `_ISO6346_LETTER_VALUES` | 51-60 | `src/lib/checkdigit.ts` letter table | `tests/kernel.parity.test.ts` | PARITY |
-| `iso6346_value` | 63-70 | `iso6346Value` | `tests/kernel.parity.test.ts` | PARITY (ASCII digits only; Python `str.isdigit` also accepts non-ASCII digits) |
+| `iso6346_value` | 63-70 | `iso6346Value` | `tests/kernel.parity.test.ts` | PARITY (ASCII digits only on both sides) |
 | `iso6346_check_digit` | 73-92 | `iso6346CheckDigit` | `tests/kernel.parity.test.ts` | PARITY |
 | `uic_check_digit` | 95-114 | `uicCheckDigit` | `tests/kernel.parity.test.ts` | PARITY |
 | `IdentifierType` | 121-126 | `IdentifierType` (`ISO6346`, `ILU`, `UIC`, `SIZE_TYPE`, `UNKNOWN`) | `tests/kernel.parity.test.ts` | PARITY |
 | `FieldContext` | 129-146 | `FieldContext` | `tests/kernel.parity.test.ts` | PARITY |
 | `Status` | 149-154 | `Status` (`VALID`, `CORRECTED`, `FLAGGED`, `NOT_A_TARGET`, `INVALID_STRUCTURE`) | `tests/kernel.parity.test.ts` | PARITY |
 | `CorrectionResult` | 157-171 | `CorrectionResult` | `tests/kernel.parity.test.ts` | PARITY |
-| `_RE_BIC_LIKE` | 176 | `RE_BIC_LIKE` | `tests/kernel.parity.test.ts` | INTENTIONAL-DIFF: `[0-9]` instead of Python `\d`, which also matches non-ASCII decimal digits; see OPEN_ITEMS.md |
-| `_RE_CONTAINER_SHAPED` | 177 | `RE_CONTAINER_SHAPED` | `tests/kernel.parity.test.ts` | INTENTIONAL-DIFF: ASCII digits only (as above) |
-| `_RE_UIC` | 178 | `RE_UIC` | `tests/kernel.parity.test.ts` | INTENTIONAL-DIFF: ASCII digits only (as above) |
+| `_RE_BIC_LIKE` | 176 | `RE_BIC_LIKE` | `tests/kernel.parity.test.ts` (non-ASCII vectors) | PARITY (both sides ASCII-only since Phase A) |
+| `_RE_CONTAINER_SHAPED` | 177 | `RE_CONTAINER_SHAPED` | `tests/kernel.parity.test.ts` | PARITY |
+| `_RE_UIC` | 178 | `RE_UIC` | `tests/kernel.parity.test.ts` | PARITY |
 | `_ISO6346_CATEGORIES` (`UJZ`) | 179 | `ISO6346_CATEGORIES` | `tests/kernel.parity.test.ts` | PARITY |
 | `_ILU_CATEGORIES` (`ABDEK`) | 180 | `ILU_CATEGORIES` | `tests/kernel.parity.test.ts` | PARITY |
 | `_OWNER_POLICIES` | 181 | `OWNER_POLICIES` | `tests/kernel.parity.test.ts` | PARITY |
@@ -77,7 +77,7 @@ Enum member names and string values are the Python ones (`Status.CORRECTED === "
 | `test_explain_iso` per-character assertions (`chars[0]`, `chars[3]`, `remainder_ten`, `mod`) | `tests/kernel.parity.test.ts` | PARITY |
 | `test_explain_uic_and_errors` (`steps` sum equals `sum`; malformed shapes return `ok: false`) | `tests/kernel.parity.test.ts` | PARITY |
 | Required extra cases: `MSKU1234567` mismatch with computed 5; lowercase and space-separated token; unknown category gives FLAGGED; 12-digit token outside rail context gives FLAGGED even when Luhn passes | `tests/kernel.parity.test.ts` | PARITY |
-| `scripts/gen_decision_vectors.py` (new): `correct_identifier` over 23 tokens x 5 contexts x strict/lenient x corroboration x 6 operator policies, `correct_x12_equipment` over 15 split inputs x 7 policies, plus 7 `ValueError` messages; every field of every result, reason text included | `tests/kernel.parity.test.ts` (657 cases) | PARITY |
+| `scripts/gen_decision_vectors.py`: `correct_identifier` over 26 tokens (including non-ASCII digits and letters) x 5 contexts x strict/lenient x corroboration x 6 operator policies, `correct_x12_equipment` over 17 split inputs x 7 policies, plus 7 `ValueError` messages; every field of every result, reason text included | `tests/kernel.parity.test.ts` (743 cases) | PARITY |
 
 ## Existing JavaScript mirrors (to be consolidated into `src/lib/checkdigit.ts`)
 
@@ -86,6 +86,15 @@ Enum member names and string values are the Python ones (`Status.CORRECTED === "
 | `checkdigit/checkdigit_app.jsx:69-119` `calcExplain` | `explain` | `tests/kernel.parity.test.ts`; `tests/site.test.ts` runs both vector sets against the built kernel chunk | PARITY |
 | `checkdigit/site/index.html:362-372` `checkOf` | `iso6346CheckDigit` via `src/pages/index.ts` | `tests/site.test.ts` (single CALC-PURE block; letter table shipped once) | PARITY |
 | `checkdigit/site/check-digit.html:225-247` `checkOf`, `breakdown` | `iso6346CheckDigit`, `explain` via `src/pages/check.ts` | `tests/site.test.ts` | PARITY (the `/how-it-works` page itself is still to be built) |
+
+## Shared contracts and site modules (Phase A)
+
+| Python symbol | TypeScript symbol | Proven by | Status |
+|---|---|---|---|
+| `contracts.ENUMS` / `FINDINGS` / `validate_entity` (loads `contracts/*.json`) | `src/lib/contracts.ts`, `tests/helpers/schema.ts` | `checkdigit/test_contracts.py`, `tests/contracts.test.ts` validate the same examples | PARITY |
+| `correction_report.OFFSET_KIND`, identity basis constants | `contracts/enums.json` `offset_kind`, `identity_basis` | both contract tests | PARITY |
+| (no Python counterpart: browser input rules) | `src/lib/segmented.ts` | `tests/segmented.test.ts` | site-only |
+| (no Python counterpart: layered validation for one token) | `src/lib/validation.ts` | `tests/validation.test.ts` | site-only |
 
 ## Phase 1 supporting modules
 

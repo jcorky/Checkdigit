@@ -1,5 +1,12 @@
 # CHECKDIGIT — Coverage Matrix & Web Roadmap
 
+> Status note (Phase A, 2026-09-16): the current capability map is `CAPABILITIES.md`;
+> this file is kept as the review-time coverage matrix and backlog. Section 2.2's
+> documentation contradictions concern the retired self-hosted product's pages, which
+> the static site does not reproduce. The gaps in section 2.1 that Phase A closed are the
+> hinted CSV/fixed-width trust behaviour (review-only now stays review-only) and the
+> `/correct` response dropping `encoding` and `visualization`.
+
 Companion to `CHECKDIGIT_SEED.md`. Everything in the *Handled* / *Not handled* columns was
 verified against the source tree in `checkdigit-full.tar.gz` (105 files) on 2026-09-16;
 `file:line` references point into that tree. The *Brainstorm* section is recommendation,

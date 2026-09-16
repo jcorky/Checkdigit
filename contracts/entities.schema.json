@@ -1,0 +1,555 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thecheckdigit.com/contracts/entities.schema.json",
+  "title": "Checkdigit entities",
+  "version": "1.0.0",
+  "$comment": "Shared entity contracts. A container number is an observed identifier of equipment, never the primary key of a visit, booking, event or row. Every id is a workspace-scoped stable identifier. Enumerated fields reference contracts/enums.json by name in the x-enum annotation and are enforced by both test suites.",
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "version": { "type": "integer", "minimum": 1 },
+
+    "workspace": {
+      "type": "object",
+      "required": ["id", "name", "retention_policy"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "retention_policy": {
+          "type": "object",
+          "required": ["source_retention_days", "third_party_data_retention"],
+          "properties": {
+            "source_retention_days": { "type": "integer", "minimum": 0 },
+            "third_party_data_retention": { "type": "string", "$comment": "per provider; user-owned sources are retained separately from provider data" }
+          }
+        }
+      }
+    },
+
+    "user_role": {
+      "type": "object",
+      "required": ["user_id", "workspace_id", "role"],
+      "properties": {
+        "user_id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "role": { "type": "string", "x-enum": "role" }
+      }
+    },
+
+    "source_file": {
+      "type": "object",
+      "required": ["id", "workspace_id", "filename", "size_bytes", "sha256", "received_at", "immutable"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "filename": { "type": "string" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "encoding": { "type": ["string", "null"] },
+        "declared_content_type": { "type": "string" },
+        "received_at": { "$ref": "#/$defs/timestamp" },
+        "immutable": { "type": "boolean", "const": true }
+      }
+    },
+
+    "mapping_contract": {
+      "type": "object",
+      "required": ["fields", "required_fields", "extension_policy"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "identity": { "type": "string", "$comment": "header name, positional index or XML path that identifies the field" },
+              "unit": { "type": "string" },
+              "date_convention": { "type": "string" }
+            }
+          }
+        },
+        "delimiter": { "type": "string" },
+        "encoding": { "type": "string" },
+        "header_row": { "type": "integer", "minimum": 0 },
+        "positional": { "type": "boolean" },
+        "namespaces": { "type": "object", "additionalProperties": { "type": "string" } },
+        "paths": { "type": "object", "additionalProperties": { "type": "string" } },
+        "schema_version": { "type": "string" },
+        "required_fields": { "type": "array", "items": { "type": "string" } },
+        "extension_policy": { "type": "string", "enum": ["preserve", "reject", "ignore"] }
+      }
+    },
+
+    "feed_profile": {
+      "type": "object",
+      "required": ["id", "workspace_id", "name", "version", "mapping_contract", "verification_state"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "version": { "$ref": "#/$defs/version" },
+        "system": { "type": "string" },
+        "system_version": { "type": "string" },
+        "terminal_site": { "type": "string" },
+        "partner": { "type": "string" },
+        "message_family": { "type": "string" },
+        "message_version": { "type": "string" },
+        "mapping_contract": { "$ref": "#/$defs/mapping_contract" },
+        "structural_fingerprint": { "type": "string" },
+        "correction_policy": { "type": "object" },
+        "output_encoding": { "type": "string" },
+        "acceptance_fixtures": { "type": "array", "items": { "type": "string" } },
+        "verification_state": { "type": "string", "x-enum": "contract_verification_state" },
+        "previous_version_id": { "$ref": "#/$defs/id" }
+      }
+    },
+
+    "coverage_scope": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["terminal", "source_fleet", "location", "voyage", "profile_population"] },
+        "value": { "type": "string" }
+      }
+    },
+
+    "import_intent": {
+      "type": "object",
+      "required": ["id", "job_id", "workspace_id", "mode", "source_file_id", "scope", "effective_time", "field_update_policy"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "job_id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "mode": { "type": "string", "x-enum": "import_mode" },
+        "source_file_id": { "$ref": "#/$defs/id" },
+        "scope": { "$ref": "#/$defs/coverage_scope" },
+        "effective_time": { "$ref": "#/$defs/timestamp" },
+        "baseline_generation_id": { "type": ["string", "null"] },
+        "field_update_policy": { "type": "string", "x-enum": "field_update_policy" },
+        "change_volume_limit": { "type": ["integer", "null"], "$comment": "null means every proposed retirement requires review" },
+        "empty_scope_decision": { "type": ["string", "null"], "$comment": "reviewer decision id when a zero-record snapshot is allowed to empty its scope" },
+        "intent_fingerprint": { "$ref": "#/$defs/sha256" }
+      }
+    },
+
+    "job": {
+      "type": "object",
+      "required": ["id", "workspace_id", "source_file_id", "state", "created_at", "dependency_pins"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "source_file_id": { "$ref": "#/$defs/id" },
+        "profile_id": { "type": ["string", "null"] },
+        "profile_version": { "type": ["integer", "null"] },
+        "import_intent_id": { "type": ["string", "null"] },
+        "state": { "type": "string", "x-enum": "job_state" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "physical_lines": { "type": "integer" },
+            "logical_records": { "type": "integer" },
+            "identifier_occurrences": { "type": "integer" },
+            "unique_equipment": { "type": "integer" }
+          }
+        },
+        "dependency_pins": {
+          "type": "object",
+          "required": ["parser_version", "ruleset_version"],
+          "properties": {
+            "parser_version": { "type": "string" },
+            "ruleset_version": { "type": "string" },
+            "reference_snapshot_ids": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+          }
+        },
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "partial": { "type": "boolean" }
+      }
+    },
+
+    "generation": {
+      "type": "object",
+      "required": ["id", "workspace_id", "scope", "state", "baseline_generation_id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "scope": { "$ref": "#/$defs/coverage_scope" },
+        "state": { "type": "string", "x-enum": "generation_state" },
+        "baseline_generation_id": { "type": ["string", "null"] },
+        "import_intent_id": { "$ref": "#/$defs/id" },
+        "change_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "published_at": { "type": ["string", "null"] }
+      }
+    },
+
+    "source_location": {
+      "type": "object",
+      "required": ["offset_kind"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "offset": { "type": "integer", "minimum": 0 },
+        "offset_kind": { "type": "string", "x-enum": "offset_kind" },
+        "path": { "type": "string", "$comment": "segment/element/cell path such as EQD/C237/8260, container/@eqid or Sheet1!B7" },
+        "member": { "type": "string", "$comment": "archive member or workbook part" }
+      }
+    },
+
+    "source_record": {
+      "type": "object",
+      "required": ["id", "job_id", "ordinal", "location", "raw_hash"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id", "$comment": "job-scoped; independent of any container number" },
+        "job_id": { "$ref": "#/$defs/id" },
+        "ordinal": { "type": "integer", "minimum": 0 },
+        "location": { "$ref": "#/$defs/source_location" },
+        "raw_hash": { "$ref": "#/$defs/sha256" },
+        "quarantine_reason": { "type": ["string", "null"] }
+      }
+    },
+
+    "identifier_assertion": {
+      "type": "object",
+      "required": ["identifier", "scheme", "source", "basis", "effective_from"],
+      "properties": {
+        "identifier": { "type": "string" },
+        "scheme": { "type": "string", "x-enum": "identifier_scheme" },
+        "source": { "type": "string" },
+        "basis": { "type": "string", "x-enum": "identity_basis" },
+        "effective_from": { "$ref": "#/$defs/timestamp" },
+        "effective_to": { "type": ["string", "null"] },
+        "superseded_by": { "type": ["string", "null"] }
+      }
+    },
+
+    "equipment_identity": {
+      "type": "object",
+      "required": ["id", "workspace_id", "assertions"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "assertions": { "type": "array", "items": { "$ref": "#/$defs/identifier_assertion" } }
+      }
+    },
+
+    "layer_result": {
+      "type": "object",
+      "required": ["layer", "state", "source", "rule_version"],
+      "properties": {
+        "layer": { "type": "string", "x-enum": "validation_layer" },
+        "state": { "type": "string", "x-enum": "validation_state" },
+        "source": { "type": "string" },
+        "rule_version": { "type": "string" },
+        "checked_at": { "type": ["string", "null"] },
+        "detail": { "type": "string" }
+      }
+    },
+
+    "identifier_observation": {
+      "type": "object",
+      "required": ["id", "source_record_id", "raw", "normalized", "scheme", "layers"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "source_record_id": { "$ref": "#/$defs/id" },
+        "raw": { "type": "string" },
+        "normalized": { "type": "string" },
+        "scheme": { "type": "string", "x-enum": "identifier_scheme" },
+        "field_context": { "type": "string", "x-enum": "field_context" },
+        "layers": { "type": "array", "items": { "$ref": "#/$defs/layer_result" } },
+        "candidate": { "type": ["string", "null"], "$comment": "expected check digit for this body; a proposal, never an identity" },
+        "equipment_identity_id": { "type": ["string", "null"] },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "terminal_visit": {
+      "type": "object",
+      "required": ["id", "workspace_id", "terminal_site", "visit_scope"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "equipment_identity_id": { "type": ["string", "null"] },
+        "unresolved_association": { "type": ["string", "null"], "$comment": "set when the equipment match is ambiguous" },
+        "terminal_site": { "type": "string" },
+        "source_visit_ref": { "type": ["string", "null"] },
+        "visit_scope": { "type": "string" },
+        "composite_key": { "type": ["string", "null"], "$comment": "profile-defined; never built from empty-string references" }
+      }
+    },
+
+    "movement": {
+      "type": "object",
+      "required": ["id", "workspace_id", "mode"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "mode": { "type": "string", "enum": ["vessel", "rail", "truck", "barge", "unknown"] },
+        "vessel": { "type": ["string", "null"] },
+        "voyage": { "type": ["string", "null"] },
+        "origin": { "type": ["string", "null"] },
+        "destination": { "type": ["string", "null"] },
+        "visit_id": { "type": ["string", "null"] }
+      }
+    },
+
+    "booking_association": {
+      "type": "object",
+      "required": ["id", "reference"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "reference": {
+          "type": "object",
+          "required": ["source", "value"],
+          "properties": { "source": { "type": "string" }, "value": { "type": "string", "minLength": 1 } }
+        },
+        "visit_id": { "type": ["string", "null"] },
+        "movement_id": { "type": ["string", "null"] },
+        "relationship": { "type": "string" }
+      }
+    },
+
+    "event_time": {
+      "type": "object",
+      "required": ["raw", "precision"],
+      "properties": {
+        "raw": { "type": "string" },
+        "tz_offset": { "type": ["string", "null"], "$comment": "null means the offset is unknown; the time stays unresolved for comparison" },
+        "precision": { "type": "string", "enum": ["date", "minute", "second", "millisecond"] },
+        "parsed_utc": { "type": ["string", "null"] },
+        "ambiguous": { "type": "boolean" }
+      }
+    },
+
+    "event_assertion": {
+      "type": "object",
+      "required": ["id", "source", "source_event_id", "subject", "event_type", "classifier", "event_time", "receipt_time"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "source": { "type": "string" },
+        "source_event_id": { "type": "string" },
+        "source_event_version": { "type": ["string", "null"] },
+        "subject": { "type": "object" },
+        "event_type": { "type": "string" },
+        "classifier": { "type": "string", "x-enum": "event_classifier" },
+        "event_time": { "$ref": "#/$defs/event_time" },
+        "source_created_at": { "type": ["string", "null"] },
+        "receipt_time": { "$ref": "#/$defs/timestamp" },
+        "provenance": { "type": "string" },
+        "related_event_id": { "type": ["string", "null"] }
+      }
+    },
+
+    "message_transaction": {
+      "type": "object",
+      "required": ["id", "workspace_id", "source_feed_id", "business_key", "revision_key", "function", "raw_hash", "lifecycle_resolution"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "source_feed_id": { "$ref": "#/$defs/id" },
+        "transport_envelope_ref": { "type": ["string", "null"] },
+        "business_key": { "type": "string" },
+        "revision_key": { "type": "string" },
+        "function": { "type": "string", "x-enum": "message_function" },
+        "sender": { "type": ["string", "null"] },
+        "receiver": { "type": ["string", "null"] },
+        "sender_validated": { "type": "boolean" },
+        "business_scope": { "type": ["string", "null"] },
+        "predecessor_refs": { "type": "array", "items": { "type": "string" } },
+        "raw_hash": { "$ref": "#/$defs/sha256" },
+        "semantic_digest": { "type": ["string", "null"] },
+        "lifecycle_resolution": { "type": "string", "x-enum": "lifecycle_resolution" }
+      }
+    },
+
+    "finding": {
+      "type": "object",
+      "required": ["id", "code", "severity", "blocking_scope", "explanation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+        "severity": { "type": "string", "enum": ["info", "warning", "blocking"] },
+        "blocking_scope": { "type": "string", "enum": ["none", "record", "feed_transformation", "publication", "transmission"] },
+        "location": { "$ref": "#/$defs/source_location" },
+        "explanation": { "type": "string" },
+        "recovery": { "type": "string" },
+        "rule_id": { "type": "string" },
+        "rule_version": { "type": "string" }
+      }
+    },
+
+    "edit": {
+      "type": "object",
+      "required": ["record_id", "field", "before", "after", "rule_id", "rule_version"],
+      "properties": {
+        "record_id": { "$ref": "#/$defs/id" },
+        "occurrence_ids": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "field": { "type": "string" },
+        "before": { "type": ["string", "null"] },
+        "after": { "type": ["string", "null"] },
+        "rule_id": { "type": "string" },
+        "rule_version": { "type": "string" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "linked_group_id": { "type": ["string", "null"] },
+        "preconditions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "change_set": {
+      "type": "object",
+      "required": ["id", "job_id", "analysis_version", "edits", "fingerprint", "baseline_generation_id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "job_id": { "$ref": "#/$defs/id" },
+        "analysis_version": { "$ref": "#/$defs/version" },
+        "edits": { "type": "array", "items": { "$ref": "#/$defs/edit" } },
+        "fingerprint": { "$ref": "#/$defs/sha256", "$comment": "stable, versioned digest of the effective inputs; identifies inputs, does not grant access" },
+        "fingerprint_version": { "type": "string" },
+        "baseline_generation_id": { "type": ["string", "null"] },
+        "destination_profile_id": { "type": ["string", "null"] },
+        "rule_versions": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+
+    "selection_manifest": {
+      "type": "object",
+      "required": ["count", "digest", "storage_ref"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "digest": { "$ref": "#/$defs/sha256" },
+        "storage_ref": { "type": "string", "$comment": "streamed from storage; never a browser array of ids" }
+      }
+    },
+
+    "approval": {
+      "type": "object",
+      "required": ["id", "change_set_id", "change_set_fingerprint", "approver", "authorization_scope", "decided_at", "decision", "state"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "change_set_id": { "$ref": "#/$defs/id" },
+        "change_set_fingerprint": { "$ref": "#/$defs/sha256" },
+        "approver": { "type": "string" },
+        "authorization_scope": { "type": "string", "enum": ["draft", "export", "transmission"] },
+        "decided_at": { "$ref": "#/$defs/timestamp" },
+        "decision": { "type": "string", "enum": ["approve", "reject", "defer"] },
+        "state": { "type": "string", "x-enum": "proposal_state" },
+        "stale_reason": { "type": ["string", "null"] },
+        "selection_manifest": { "$ref": "#/$defs/selection_manifest" },
+        "previous_approval_id": { "type": ["string", "null"] }
+      }
+    },
+
+    "reference_snapshot": {
+      "type": "object",
+      "required": ["id", "source", "version", "retrieved_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "source": { "type": "string" },
+        "version": { "type": "string" },
+        "retrieved_at": { "$ref": "#/$defs/timestamp" },
+        "license_note": { "type": "string" }
+      }
+    },
+
+    "enrichment_request": {
+      "type": "object",
+      "required": ["id", "workspace_id", "provider", "purpose", "fields", "scope", "authorized_by"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "workspace_id": { "$ref": "#/$defs/id" },
+        "provider": { "type": "string" },
+        "purpose": { "type": "string" },
+        "fields": { "type": "array", "items": { "type": "string" } },
+        "scope": { "type": "string" },
+        "authorized_by": { "type": "string" },
+        "estimated_requests": { "type": "integer", "minimum": 0 },
+        "budget": { "type": "object" },
+        "status": { "type": "string", "enum": ["planned", "running", "paused", "completed", "failed"] },
+        "storage_policy": { "type": "string" }
+      }
+    },
+
+    "export_artifact": {
+      "type": "object",
+      "required": ["id", "job_id", "change_set_id", "approval_ids", "sha256", "state", "output_mode", "lineage"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "job_id": { "$ref": "#/$defs/id" },
+        "change_set_id": { "$ref": "#/$defs/id" },
+        "approval_ids": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "state": { "type": "string", "x-enum": "artifact_state" },
+        "output_mode": { "type": "string", "enum": ["surgical", "conversion"] },
+        "loss_report": { "type": ["string", "null"], "$comment": "required when output_mode is conversion" },
+        "profile_id": { "type": ["string", "null"] },
+        "rule_versions": { "type": "object", "additionalProperties": { "type": "string" } },
+        "counts": { "type": "object" },
+        "built_at": { "type": ["string", "null"] },
+        "lineage": {
+          "type": "object",
+          "required": ["source_file_id"],
+          "properties": {
+            "source_file_id": { "$ref": "#/$defs/id" },
+            "previous_artifact_id": { "type": ["string", "null"] },
+            "repair_of_feedback_id": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+
+    "delivery_attempt": {
+      "type": "object",
+      "required": ["id", "artifact_id", "destination", "state", "idempotency_key"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "artifact_id": { "$ref": "#/$defs/id" },
+        "destination": { "type": "string" },
+        "state": { "type": "string", "x-enum": "delivery_state" },
+        "idempotency_key": { "type": "string" },
+        "started_at": { "type": ["string", "null"] },
+        "control_reference": { "type": ["string", "null"] },
+        "outcome_evidence": { "type": ["string", "null"] }
+      }
+    },
+
+    "receiver_feedback": {
+      "type": "object",
+      "required": ["id", "origin", "raw_hash", "received_at", "correlation", "technical_ack_state", "business_processing_state"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "origin": { "type": "string", "x-enum": "feedback_origin" },
+        "raw_hash": { "$ref": "#/$defs/sha256" },
+        "received_at": { "$ref": "#/$defs/timestamp" },
+        "response_profile_version": { "type": ["string", "null"] },
+        "correlation": {
+          "type": "object",
+          "required": ["state"],
+          "properties": {
+            "state": { "type": "string", "x-enum": "feedback_correlation" },
+            "attempt_id": { "type": ["string", "null"] },
+            "message_refs": { "type": "array", "items": { "type": "string" } },
+            "decision_by": { "type": ["string", "null"], "$comment": "required for manual correlation" }
+          }
+        },
+        "technical_ack_state": { "type": "string", "x-enum": "technical_ack_state" },
+        "business_processing_state": { "type": "string", "x-enum": "business_processing_state" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["export_item_ref", "outcome"],
+            "properties": {
+              "export_item_ref": { "type": "string" },
+              "source_record_id": { "type": ["string", "null"] },
+              "outcome": { "type": "string", "enum": ["accepted", "rejected", "pending", "unknown"] },
+              "code": { "type": ["string", "null"] },
+              "text": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

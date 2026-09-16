@@ -1,0 +1,174 @@
+{
+  "$comment": "Structured finding codes. A finding is an expected workflow outcome, not a server error. blocking_scope names what the finding blocks: none (informational), record, feed_transformation, publication, transmission.",
+  "version": "1.0.0",
+  "findings": [
+    {
+      "code": "IMPORT_INTENT_UNRESOLVED",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "The job has no bound import mode, scope, effective time, baseline version or field-update policy, or the feed is unrecognized.",
+      "recovery": "Bind an import intent explicitly or select an authorized feed profile. Until then the job runs in comparison-only mode."
+    },
+    {
+      "code": "SNAPSHOT_INCOMPLETE",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "A full snapshot cannot establish completeness: parts are missing, declared counts disagree, parsing did not finish, keys conflict, or quarantine removed records needed for membership.",
+      "recovery": "Supply the missing parts or resolve the conflicts, then re-run. Diagnostics continue; no retirement is proposed from this snapshot."
+    },
+    {
+      "code": "EMPTY_SNAPSHOT_DECISION_REQUIRED",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "A zero-record full snapshot would empty its declared scope.",
+      "recovery": "Record an explicit, reviewed empty-scope decision or reject the snapshot."
+    },
+    {
+      "code": "BASELINE_CONFLICT",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "The baseline generation this analysis was computed against is no longer current.",
+      "recovery": "Recompute the comparison against the current generation and renew affected approvals."
+    },
+    {
+      "code": "DUPLICATE_APPLICATION_PREVENTED",
+      "severity": "info",
+      "blocking_scope": "none",
+      "explanation": "An import intent with this identity was already applied; the replay produced no second effect.",
+      "recovery": "None. Reanalyze under a different profile to create a separately identified analysis."
+    },
+    {
+      "code": "MAPPING_DRIFT",
+      "severity": "blocking",
+      "blocking_scope": "feed_transformation",
+      "explanation": "The observed feed structure differs from the approved mapping contract in a way that changes field meaning: reordered positional columns, duplicate or renamed required headers, changed namespace URI, mandatory path, unit, date convention or schema version.",
+      "recovery": "Review the observed-versus-expected comparison and create a new profile version. Read-only inspection continues."
+    },
+    {
+      "code": "MAPPING_REORDER_HARMLESS",
+      "severity": "info",
+      "blocking_scope": "none",
+      "explanation": "Named columns were reordered but remain uniquely identified by approved header names.",
+      "recovery": "None. Identity-based mapping continues; the reorder is recorded."
+    },
+    {
+      "code": "MAPPING_EXTENSION_PRESERVED",
+      "severity": "info",
+      "blocking_scope": "none",
+      "explanation": "New optional fields allowed by the contract were found and preserved.",
+      "recovery": "None."
+    },
+    {
+      "code": "MAPPING_VIOLATION_LATE",
+      "severity": "blocking",
+      "blocking_scope": "feed_transformation",
+      "explanation": "A value or field discovered after sampling does not satisfy the selected contract, so completeness of the transformation cannot be claimed.",
+      "recovery": "Inspect the offending location; decide whether it is an isolated invalid record or a layout change."
+    },
+    {
+      "code": "MESSAGE_ID_CONFLICT",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "A message with the same revision key carries a different authoritative payload digest and the profile defines no amendment mechanism.",
+      "recovery": "Investigate the two payloads; keep both as evidence; do not apply either automatically."
+    },
+    {
+      "code": "MESSAGE_DUPLICATE",
+      "severity": "info",
+      "blocking_scope": "none",
+      "explanation": "A message with the same revision key and matching payload digest was received again; the delivery was recorded and the business effect was not repeated.",
+      "recovery": "None."
+    },
+    {
+      "code": "PREDECESSOR_UNRESOLVED",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "A change, replacement or cancellation references a predecessor that is missing or ambiguous.",
+      "recovery": "Hold the lifecycle effect; reconcile when the predecessor arrives or is identified."
+    },
+    {
+      "code": "REVISION_OUT_OF_ORDER",
+      "severity": "warning",
+      "blocking_scope": "none",
+      "explanation": "An older revision arrived after a newer one; history was retained without replacing the current version.",
+      "recovery": "None unless the profile's ordering rules say otherwise."
+    },
+    {
+      "code": "CONTEXT_AMBIGUOUS",
+      "severity": "blocking",
+      "blocking_scope": "record",
+      "explanation": "The visit, movement, booking or time context cannot be resolved unambiguously: missing keys, ambiguous local time, or conflicting provider assertions.",
+      "recovery": "Retain an unresolved association for review; do not merge or overwrite."
+    },
+    {
+      "code": "IDENTITY_COLLISION",
+      "severity": "blocking",
+      "blocking_scope": "record",
+      "explanation": "A proposed identifier correction would collide with an existing equipment identity or record.",
+      "recovery": "Review explicitly; do not merge identities by string similarity."
+    },
+    {
+      "code": "APPROVAL_STALE",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "An approval's change set, dependencies or evidence changed after approval.",
+      "recovery": "Show the new difference and obtain renewed review for the affected scope."
+    },
+    {
+      "code": "LINKED_EDIT_PRECONDITION_FAILED",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "One precondition of a linked edit group failed; none of the group's edits were published.",
+      "recovery": "Resolve the failed precondition and retry the whole group."
+    },
+    {
+      "code": "SELECTION_DRIFT",
+      "severity": "warning",
+      "blocking_scope": "publication",
+      "explanation": "Rows now matching a saved filter differ from the frozen selection manifest that was approved.",
+      "recovery": "Show additions, removals and stale rows; renew approval on the new manifest."
+    },
+    {
+      "code": "FEEDBACK_UNMATCHED",
+      "severity": "warning",
+      "blocking_scope": "none",
+      "explanation": "Receiver feedback could not be correlated to any export attempt.",
+      "recovery": "Investigation queue; job acceptance state unchanged."
+    },
+    {
+      "code": "FEEDBACK_AMBIGUOUS",
+      "severity": "warning",
+      "blocking_scope": "none",
+      "explanation": "Receiver feedback matches more than one export attempt or item.",
+      "recovery": "Investigation queue; manual correlation requires a recorded decision."
+    },
+    {
+      "code": "FEEDBACK_CODE_UNKNOWN",
+      "severity": "warning",
+      "blocking_scope": "none",
+      "explanation": "The receiver returned a code or text the response profile does not define.",
+      "recovery": "Keep the original code and text visible and unresolved; do not infer success."
+    },
+    {
+      "code": "DELIVERY_OUTCOME_UNKNOWN",
+      "severity": "warning",
+      "blocking_scope": "transmission",
+      "explanation": "A transmission attempt timed out or returned no usable status; the message may or may not have been received.",
+      "recovery": "Reconcile status with the receiver before any resend; no automatic retry where duplicate handling is unknown."
+    },
+    {
+      "code": "RESOURCE_BUDGET_EXCEEDED",
+      "severity": "blocking",
+      "blocking_scope": "record",
+      "explanation": "An input or archive member exceeded a size, count, ratio or time budget and was not expanded or processed.",
+      "recovery": "Split or reduce the input, or process it through the private workspace's durable path."
+    },
+    {
+      "code": "UNSUPPORTED_INPUT",
+      "severity": "blocking",
+      "blocking_scope": "record",
+      "explanation": "The input is a format the application does not parse (for example a Word document or PDF) and was not scanned as text.",
+      "recovery": "Convert or export the data from its source system in a supported format."
+    }
+  ]
+}
