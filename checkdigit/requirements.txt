@@ -1,0 +1,21 @@
+# CHECKDIGIT service runtime deps. Pin exact versions in your own lockfile.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9     # REQUIRED: multipart/form-data parsing for file uploads
+httpx>=0.27                 # external enrichment ONLY (lazy-imported); not needed if you
+                            # don't configure any network source. Core stays stdlib.
+PyYAML>=6.0                 # used ONLY by run_acceptance.py under --verify (parses the
+                            # compose files); not a runtime dependency of the service.
+
+# --- OPTIONAL extras (lazy-imported; the app runs without them) ---
+# defusedxml>=0.7           # extra SNX/XML hardening layer; stdlib expat hardening
+#                           # already protects against XXE, so this is belt-and-braces.
+PyJWT[crypto]>=2.8          # REQUIRED when admin Google sign-in is enabled: auth.py
+                            # verifies the Google id_token signature (RS256 against
+                            # Google's JWKS). Also used by the optional Cloudflare
+                            # Access JWT guard (cf_access.py). Lazy-imported, so the
+                            # core still runs without it when admin auth is off.
+
+# The correction core (equipment_checkdigit, *_locator, *_corrector, dispatcher,
+# db, service, correction_report, substitution) uses only the Python standard
+# library -- no third-party deps.

@@ -1,0 +1,116 @@
+# ============================================================================
+# PUBLIC deployment of thecheckdigit.com: Cloudflare Tunnel exposes two hostnames;
+# Caddy switches on Host and is the internal body-size/header guard. NO host ports
+# are published -- the ONLY way in is the outbound tunnel.
+#
+#   thecheckdigit.com      -> the static landing page (./site, served by Caddy)
+#   app.thecheckdigit.com  -> this FastAPI app (SPA + API + admin)
+#
+# Wire BOTH hostnames in the tunnel to the same service, http://caddy:80. Host
+# routing lives in Caddyfile.public-site (mounted into caddy below).
+#
+# ACCESS MODEL: the upload/correct app is PUBLIC -- anyone can submit a
+# file and get its check digits corrected. The dashboard, history, container
+# registry, and policy are gated by an IN-APP Google sign-in (admin allow-list),
+# enforced server-side. Therefore:
+#   * Do NOT put a blanket Cloudflare Access policy on this hostname -- it would
+#     force every uploader to log in at the edge.
+#   * Do NOT put Access on /admin/* or /admin/auth/callback -- it would break the
+#     Google OAuth redirect.
+#   The in-app 401 is the boundary. If you want the WHOLE app private instead, use
+#   Tailscale (see DEPLOY_PUBLIC.md) rather than a public tunnel.
+#
+#   READ DEPLOY_PUBLIC.md FIRST. Cloudflare terminates TLS at its edge and can see
+#   your uploaded files in plaintext (container numbers, booking origins). If the
+#   data is sensitive/operational, use Tailscale instead -- same doc.
+#
+# Bring up with:  docker compose -f docker-compose.public.yml up -d --build
+# Requires a .env (NOT committed) next to this file:
+#   CLOUDFLARED_TOKEN=...                  # tunnel token (Zero Trust dashboard)
+#   PUBLIC_ORIGIN=https://app.thecheckdigit.com         # public origin: scheme + host, no trailing slash
+#   CHECKDIGIT_GOOGLE_CLIENT_ID=...        # Google OAuth client (Web application)
+#   CHECKDIGIT_GOOGLE_CLIENT_SECRET=...
+#   CHECKDIGIT_ADMIN_EMAILS=jayde.cork@gmail.com
+#   CHECKDIGIT_SESSION_SECRET=...          # 48+ random bytes (see .env.example)
+# ============================================================================
+
+services:
+  app:
+    build: .
+    environment:
+      CHECKDIGIT_DB: /data/checkdigit.db
+      CHECKDIGIT_CORS_ORIGINS: ${PUBLIC_ORIGIN}
+      CHECKDIGIT_STATIC: /app/static          # serve the built SPA same-origin (no CORS)
+      # --- Admin dashboard sign-in (Google). Gates dashboard/history/registry/policy.
+      #     The user-facing upload/correct app stays PUBLIC; only these read paths need it.
+      #     If ADMIN_AUTH=google and any value below is missing, the app FAILS LOUD at boot.
+      CHECKDIGIT_ADMIN_AUTH: google
+      CHECKDIGIT_GOOGLE_CLIENT_ID: ${CHECKDIGIT_GOOGLE_CLIENT_ID}
+      CHECKDIGIT_GOOGLE_CLIENT_SECRET: ${CHECKDIGIT_GOOGLE_CLIENT_SECRET}
+      CHECKDIGIT_ADMIN_EMAILS: ${CHECKDIGIT_ADMIN_EMAILS}
+      CHECKDIGIT_SESSION_SECRET: ${CHECKDIGIT_SESSION_SECRET}
+      # Derived from PUBLIC_ORIGIN; MUST byte-match the Authorized redirect URI in Google.
+      CHECKDIGIT_OAUTH_REDIRECT_URI: ${PUBLIC_ORIGIN}/admin/auth/callback
+      CHECKDIGIT_COOKIE_SECURE: "1"            # HTTPS at the Cloudflare edge -> Secure cookies
+      CHECKDIGIT_DOCS: "0"                     # Swagger/OpenAPI off in prod (hide admin routes)
+      # Enrichment (optional): place the BIC register at /data/owner_registry.csv,
+      # then uncomment. If set but missing, the app fails loud at startup by design.
+      # CHECKDIGIT_OWNER_REGISTRY: /data/owner_registry.csv
+    volumes:
+      - data:/data
+    networks:
+      edge:
+        ipv4_address: 172.28.0.10
+    # No `ports:` -- never published to the host or LAN. Caddy reaches it internally.
+    expose:
+      - "8000"
+    command: >
+      uvicorn api:app --host 0.0.0.0 --port 8000
+      --proxy-headers --forwarded-allow-ips=172.28.0.11
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    depends_on: [app]
+    volumes:
+      - ./Caddyfile.public-site:/etc/caddy/Caddyfile:ro   # two hosts: landing + app
+      - ./site:/srv/site:ro                               # the static landing page
+      - caddy_data:/data
+    networks:
+      edge:
+        ipv4_address: 172.28.0.11           # the only IP the app trusts for X-Forwarded-*
+    expose:
+      - "80"
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest    # pin a release tag in production
+    depends_on: [caddy]
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    networks:
+      - edge
+    restart: unless-stopped
+
+  litestream:
+    image: litestream/litestream:latest     # pin a release tag in production
+    depends_on: [app]
+    volumes:
+      - data:/data
+      - backups:/backups                    # put on a separate disk, or use an S3/B2 replica
+      - ./litestream.yml:/etc/litestream.yml:ro
+    networks:
+      - edge
+    command: replicate -config /etc/litestream.yml
+    restart: unless-stopped
+
+networks:
+  edge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  data:
+  backups:
+  caddy_data:

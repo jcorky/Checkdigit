@@ -1,0 +1,21 @@
+# Caddy sits INSIDE the docker network, behind Cloudflare Tunnel. Cloudflare
+# terminates public TLS at its edge and the tunnel encrypts the hop to here, so
+# Caddy listens on plain HTTP (:80) internally and does NOT provision certs.
+#
+# Its job is the upload size cap -- the real DoS guard, because the app reads the
+# whole request body before its own 5 MB check. Caddy rejects oversize bodies
+# with 413 before they ever reach the app. Keep this in sync with service.MAX_BYTES.
+
+:80 {
+	request_body {
+		max_size 5MB
+	}
+
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+
+	reverse_proxy app:8000
+}

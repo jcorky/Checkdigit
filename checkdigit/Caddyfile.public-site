@@ -1,0 +1,46 @@
+# Two-hostname PUBLIC deployment behind Cloudflare Tunnel.
+#
+#   thecheckdigit.com      -> the static landing page (this repo's site/)   [public]
+#   app.thecheckdigit.com  -> the FastAPI app (SPA + API + admin), unchanged [public app,
+#                             admin paths gated by the in-app Google sign-in]
+#
+# Cloudflare terminates TLS at its edge; Caddy serves plain HTTP internally and
+# switches on the Host header. In the Zero Trust tunnel, add BOTH public hostnames
+# and point each at the same service: http://caddy:80.
+#
+# To use this instead of the single-host Caddyfile, in docker-compose.public.yml
+# change the caddy service volumes to:
+#     - ./Caddyfile.public-site:/etc/caddy/Caddyfile:ro
+#     - ./site:/srv/site:ro
+#     - caddy_data:/data
+# and set PUBLIC_ORIGIN=https://app.thecheckdigit.com in .env (the OAuth redirect
+# URI is derived from it, so register https://app.thecheckdigit.com/admin/auth/callback
+# in Google).
+
+(sechdr) {
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+	}
+}
+
+# --- landing page (static; no uploads, no auth) ----------------------------
+http://thecheckdigit.com, http://www.thecheckdigit.com {
+	import sechdr
+	root * /srv/site
+	# clean URLs: /help -> help.html, /check-digit -> check-digit.html
+	try_files {path} {path}.html
+	encode gzip
+	file_server
+}
+
+# --- the app (SPA + API + admin) -------------------------------------------
+http://app.thecheckdigit.com {
+	import sechdr
+	# Upload size cap -- the real DoS guard. Keep equal to service.MAX_BYTES.
+	request_body {
+		max_size 5MB
+	}
+	reverse_proxy app:8000
+}

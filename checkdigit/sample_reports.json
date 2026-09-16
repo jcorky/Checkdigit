@@ -1,0 +1,267 @@
+{
+  "snx": {
+    "owner_policy": "strict",
+    "total_containers": 4,
+    "corrected": [
+      {
+        "old": "APLU9192812",
+        "new": "APLU9192819",
+        "printed_check": "2",
+        "computed_check": "9",
+        "id_type": "iso6346",
+        "occurrences": [
+          {
+            "offset": 215,
+            "label": "container/@eqid",
+            "before": "eqid=\"APLU9192812\"",
+            "after": "eqid=\"APLU9192819\""
+          },
+          {
+            "offset": 3195,
+            "label": "unit/@id",
+            "before": "id=\"APLU9192812\"",
+            "after": "id=\"APLU9192819\""
+          },
+          {
+            "offset": 3292,
+            "label": "unit/@unique-key",
+            "before": "unique-key=\"APLU9192812\"",
+            "after": "unique-key=\"APLU9192819\""
+          },
+          {
+            "offset": 3384,
+            "label": "equipment/@eqid",
+            "before": "eqid=\"APLU9192812\"",
+            "after": "eqid=\"APLU9192819\""
+          }
+        ],
+        "reason": "ISO6346 check digit 2 -> 9."
+      },
+      {
+        "old": "APLU7979534",
+        "new": "APLU7979533",
+        "printed_check": "4",
+        "computed_check": "3",
+        "id_type": "iso6346",
+        "occurrences": [
+          {
+            "offset": 907,
+            "label": "container/@eqid",
+            "before": "eqid=\"APLU7979534\"",
+            "after": "eqid=\"APLU7979533\""
+          },
+          {
+            "offset": 7105,
+            "label": "unit/@id",
+            "before": "id=\"APLU7979534\"",
+            "after": "id=\"APLU7979533\""
+          },
+          {
+            "offset": 7202,
+            "label": "unit/@unique-key",
+            "before": "unique-key=\"APLU7979534\"",
+            "after": "unique-key=\"APLU7979533\""
+          },
+          {
+            "offset": 7294,
+            "label": "equipment/@eqid",
+            "before": "eqid=\"APLU7979534\"",
+            "after": "eqid=\"APLU7979533\""
+          }
+        ],
+        "reason": "ISO6346 check digit 4 -> 3."
+      },
+      {
+        "old": "APLU2127329",
+        "new": "APLU2127323",
+        "printed_check": "9",
+        "computed_check": "3",
+        "id_type": "iso6346",
+        "occurrences": [
+          {
+            "offset": 2437,
+            "label": "container/@eqid",
+            "before": "eqid=\"APLU2127329\"",
+            "after": "eqid=\"APLU2127323\""
+          },
+          {
+            "offset": 4846,
+            "label": "unit/@id",
+            "before": "id=\"APLU2127329\"",
+            "after": "id=\"APLU2127323\""
+          },
+          {
+            "offset": 4943,
+            "label": "unit/@unique-key",
+            "before": "unique-key=\"APLU2127329\"",
+            "after": "unique-key=\"APLU2127323\""
+          },
+          {
+            "offset": 5035,
+            "label": "equipment/@eqid",
+            "before": "eqid=\"APLU2127329\"",
+            "after": "eqid=\"APLU2127323\""
+          }
+        ],
+        "reason": "ISO6346 check digit 9 -> 3."
+      }
+    ],
+    "flagged": [],
+    "valid": 1,
+    "empty_id": 0,
+    "invalid": 0,
+    "corrected_text": null,
+    "containers": [
+      {
+        "as_found": "APLU9192812",
+        "canonical": "APLU9192819",
+        "owner": "APL",
+        "category": "U",
+        "id_type": "iso6346",
+        "status": "corrected",
+        "printed_check": "2",
+        "computed_check": "9",
+        "occurrences": 1
+      },
+      {
+        "as_found": "APLU7979534",
+        "canonical": "APLU7979533",
+        "owner": "APL",
+        "category": "U",
+        "id_type": "iso6346",
+        "status": "corrected",
+        "printed_check": "4",
+        "computed_check": "3",
+        "occurrences": 1
+      },
+      {
+        "as_found": "CBHU2426018",
+        "canonical": "CBHU2426018",
+        "owner": "CBH",
+        "category": "U",
+        "id_type": "iso6346",
+        "status": "valid",
+        "printed_check": "8",
+        "computed_check": "8",
+        "occurrences": 1
+      },
+      {
+        "as_found": "APLU2127329",
+        "canonical": "APLU2127323",
+        "owner": "APL",
+        "category": "U",
+        "id_type": "iso6346",
+        "status": "corrected",
+        "printed_check": "9",
+        "computed_check": "3",
+        "occurrences": 1
+      }
+    ],
+    "detected_format": "snx",
+    "filename": "4Containers_snx_Example.xml"
+  },
+  "x12": {
+    "owner_policy": "strict",
+    "total_containers": 4,
+    "corrected": [
+      {
+        "old": "MSCU1234560",
+        "new": "MSCU1234566",
+        "printed_check": "0",
+        "computed_check": "6",
+        "id_type": "iso6346",
+        "occurrences": [
+          {
+            "offset": 43,
+            "label": "N7/N7-18(761)",
+            "before": "N7*MSCU*123456****************0****22G1",
+            "after": "N7*MSCU*123456****************6****22G1"
+          }
+        ],
+        "reason": "ISO6346 check digit (N7-18) 0 -> 6."
+      },
+      {
+        "old": "TCLU456789_",
+        "new": "TCLU4567897",
+        "printed_check": "",
+        "computed_check": "7",
+        "id_type": "iso6346",
+        "occurrences": [
+          {
+            "offset": 84,
+            "label": "N7/N7-18(761)",
+            "before": "N7*TCLU*456789********************45G1",
+            "after": "N7*TCLU*456789****************7****45G1"
+          }
+        ],
+        "reason": "X12 N7-18 (check digit) not transmitted; computed 7. Write it to N7-18."
+      },
+      {
+        "old": "MSCU1234560",
+        "new": "MSCU1234566",
+        "printed_check": "0",
+        "computed_check": "6",
+        "id_type": "iso6346",
+        "occurrences": [
+          {
+            "offset": 116,
+            "label": "N9*EQ",
+            "before": "N9*EQ*MSCU1234560",
+            "after": "N9*EQ*MSCU1234566"
+          }
+        ],
+        "reason": "ISO6346 check digit 0 -> 6."
+      }
+    ],
+    "flagged": [
+      {
+        "offset": 94,
+        "eqid": "HLBU112233",
+        "suggested_check": "2",
+        "reason": "N7-18 (element 761) is absent; populating it would require inserting elements. Suggested check 2; not auto-applied.",
+        "occurrences": 1
+      }
+    ],
+    "valid": 0,
+    "empty_id": 0,
+    "invalid": 0,
+    "corrected_text": null,
+    "containers": [
+      {
+        "as_found": "MSCU1234560",
+        "canonical": "MSCU1234566",
+        "owner": "MSC",
+        "category": "U",
+        "id_type": "iso6346",
+        "status": "corrected",
+        "printed_check": "0",
+        "computed_check": "6",
+        "occurrences": 2
+      },
+      {
+        "as_found": "TCLU456789",
+        "canonical": "TCLU4567897",
+        "owner": "TCL",
+        "category": "U",
+        "id_type": "iso6346",
+        "status": "corrected",
+        "printed_check": "",
+        "computed_check": "7",
+        "occurrences": 1
+      },
+      {
+        "as_found": "HLBU112233",
+        "canonical": "HLBU1122332",
+        "owner": "HLB",
+        "category": "U",
+        "id_type": "iso6346",
+        "status": "flagged",
+        "printed_check": "",
+        "computed_check": "2",
+        "occurrences": 1
+      }
+    ],
+    "detected_format": "x12",
+    "filename": "terminal_322.edi"
+  }
+}

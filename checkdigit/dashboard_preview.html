@@ -1,0 +1,519 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>CHECKDIGIT — Dashboard preview</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+<style>
+:root{--bg:#0f1115;--panel:#171a21;--raised:#1e222b;--line:#262b36;--text:#e6e9ef;--muted:#8b93a3;--brand:#f3a93b;--sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;padding:24px}
+h1.preview{font-size:15px;font-weight:600;color:var(--muted);margin:0 0 18px}
+
+:root{
+  --bg:#0E1418; --panel:#141C23; --raised:#1A242E; --line:#293743; --line-soft:#1F2B35;
+  --text:#E7EEF4; --muted:#90A0B0; --faint:#5E6F7E;
+  --brand:#F3A93B; --corrected:#F3A93B; --valid:#52B98A; --flagged:#5B9DF0; --invalid:#E5604F;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+.root{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:14px;line-height:1.45}
+.mono{font-family:var(--mono)}
+code{font-family:var(--mono);background:var(--raised);padding:1px 5px;border-radius:4px;font-size:.85em;color:var(--muted)}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 28px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.mark{width:15px;height:15px;background:var(--brand);border-radius:3px;box-shadow:0 0 0 3px rgba(243,169,59,.16)}
+.word{font-family:var(--mono);font-weight:700;letter-spacing:.34em;font-size:15px}
+.tag{color:var(--faint);font-size:12px;letter-spacing:.02em}
+
+.wrap{max-width:1060px;margin:0 auto;padding:28px 24px 12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;
+  border:1.5px dashed var(--line);border-radius:11px;padding:26px 18px;cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop:focus-visible{border-color:var(--brand);background:rgba(243,169,59,.04);outline:none}
+.drop.drag{border-color:var(--brand);background:rgba(243,169,59,.07)}
+.drop.has{border-style:solid;border-color:var(--valid)}
+.drop-ic{color:var(--brand)}
+.drop-main{font-weight:600}
+.drop-sub{color:var(--faint);font-size:12px}
+
+.controls{display:flex;flex-wrap:wrap;gap:18px 22px;align-items:flex-end;margin-top:18px}
+.ctl{display:flex;flex-direction:column;gap:6px;min-width:150px}
+.ctl.grow{flex:1;min-width:200px}
+.ctl-label{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.ctl-hint{font-size:11px;color:var(--faint);max-width:240px;line-height:1.35}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:fit-content}
+.seg-b{background:transparent;color:var(--muted);border:0;padding:7px 15px;font:inherit;font-size:13px;cursor:pointer;text-transform:capitalize}
+.seg-b.on{background:var(--brand);color:#1a1205;font-weight:600}
+.toggle{display:inline-flex;align-items:center;gap:9px;background:var(--raised);border:1px solid var(--line);border-radius:20px;padding:5px 12px 5px 6px;cursor:pointer;color:var(--muted);font:inherit;font-size:13px;width:fit-content}
+.toggle .knob{width:15px;height:15px;border-radius:50%;background:var(--faint);transition:background .15s,transform .15s}
+.toggle.on{border-color:var(--flagged);color:var(--text)}
+.toggle.on .knob{background:var(--flagged);transform:translateX(2px)}
+.api{background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:8px 11px;color:var(--text);font-family:var(--mono);font-size:13px;width:100%}
+.api:focus{outline:none;border-color:var(--brand)}
+.or{display:flex;align-items:center;gap:12px;margin:13px 0 10px;color:var(--faint);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+.paste{display:block;width:100%;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:12.5px;line-height:1.5;resize:vertical;min-height:74px;margin-bottom:15px}
+.paste::placeholder{color:var(--faint)}
+.paste:focus{outline:none;border-color:var(--brand)}
+.paste.has{border-color:var(--brand);box-shadow:0 0 0 3px rgba(243,169,59,.10)}
+.go{display:inline-flex;align-items:center;gap:8px;background:var(--brand);color:#1a1205;border:0;border-radius:9px;padding:11px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;margin-left:auto;transition:filter .15s}
+.go:hover{filter:brightness(1.06)}
+.go:disabled{opacity:.6;cursor:default}
+
+.samples{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap;padding-top:15px;border-top:1px solid var(--line-soft)}
+.samples-l{color:var(--faint);font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--raised);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:6px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+.chip:hover{border-color:var(--brand)}
+.err{display:flex;align-items:flex-start;gap:8px;margin-top:14px;color:var(--invalid);background:rgba(229,96,79,.08);border:1px solid rgba(229,96,79,.25);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.4}
+
+.calcp{margin-top:14px}
+.calc-row{display:flex;align-items:center;gap:10px}
+.calc-ic{color:var(--brand);flex:none}
+.calc-in{flex:1;background:var(--raised);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:13.5px;letter-spacing:.05em;min-width:0}
+.calc-in:focus{outline:none;border-color:var(--brand)}
+.calc-out{margin-top:14px;display:flex;flex-direction:column;gap:11px}
+.calc-chip{font-size:16px}
+.calc-tablewrap{overflow-x:auto}
+.calc-table{border-collapse:collapse;font-size:12px}
+.calc-table th{color:var(--faint);font-weight:500;text-align:left;padding:3px 10px 3px 0;font-size:11px;white-space:nowrap}
+.calc-table td{font-family:var(--mono);text-align:center;padding:3px 8px;border-left:1px solid var(--line-soft);color:var(--muted);min-width:30px}
+.calc-table tr:first-child td{color:var(--text);font-weight:600}
+.calc-math{font-size:13px;color:var(--muted)}
+.calc-cd{color:var(--brand);font-size:15px}
+.calc-note{color:var(--faint);font-size:12px}
+.calc-verdict{font-size:13px;line-height:1.5}
+.calc-verdict .vok{color:var(--valid)}
+.calc-verdict .vbad{color:var(--corrected)}
+.calc-caveat{font-size:12px;color:var(--faint);border-left:2px solid var(--line);padding-left:10px;line-height:1.5}
+.calc-err{display:flex;align-items:center;gap:7px;margin-top:10px;color:var(--faint);font-size:12.5px}
+.calc-blurb{margin:13px 2px 0;color:var(--muted);font-size:13px;line-height:1.6;max-width:680px}
+.res-actions{display:flex;gap:9px;flex-wrap:wrap}
+
+.nav{display:flex;gap:4px;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:3px}
+.nav-b{background:transparent;border:0;color:var(--muted);font:inherit;font-size:12.5px;padding:6px 13px;border-radius:7px;cursor:pointer}
+.nav-b.on{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--line)}
+.nav-b:hover:not(.on){color:var(--text)}
+
+/* ---- Pass 22 dashboard ---- */
+.dash{display:flex;flex-direction:column;gap:16px}
+.dash-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.dash-head h2{font-size:18px;margin:0;font-weight:600}
+.dash-sub{font-size:12px;color:var(--muted);font-weight:400;margin-left:8px}
+.dash-h3{font-size:14px;margin:0 0 4px;font-weight:600}
+.dash-note{font-size:11px;color:var(--muted);font-weight:400;margin-left:6px}
+.dash-cap{font-size:11.5px;color:var(--muted);margin:0 0 12px}
+.dash-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.dash-2col{grid-template-columns:1fr}}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+@media (max-width:820px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi-v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi-l{font-size:11.5px;color:var(--text);margin-top:4px}
+.kpi-s{font-size:10.5px;color:var(--muted);margin-top:2px}
+.chart{width:100%;height:auto;display:block}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:grid;grid-template-columns:130px 1fr 140px;align-items:center;gap:10px}
+@media (max-width:820px){.bar-row{grid-template-columns:90px 1fr 96px}}
+.bar-lab{font-size:12px;display:flex;flex-direction:column;line-height:1.2;overflow:hidden}
+.bar-lab b{font-variant-numeric:tabular-nums}
+.bar-sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{display:flex;height:16px;background:var(--raised);border-radius:5px;overflow:hidden}
+.bar-fill{height:100%}
+.bar-val{font-size:11px;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.bar-counts{font-variant-numeric:tabular-nums;font-size:10.5px}
+.pill{background:var(--raised);border-radius:20px;padding:1px 8px;font-size:10px;color:var(--muted)}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:left;color:var(--muted);font-weight:500;font-size:11px;padding:5px 8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:6px 8px;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:0}
+.empty{color:var(--muted);font-size:12px;padding:16px;text-align:center;background:var(--raised);border-radius:8px}
+.muted-row{color:var(--muted);font-size:13px;padding:8px}
+.err-box{color:#c44;font-size:13px;padding:12px;background:rgba(204,68,68,.06);border:1px solid rgba(204,68,68,.2);border-radius:8px}
+
+.list-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:13px}
+.lh-title{font-weight:600;font-size:14px}
+.lh-meta{color:var(--faint);font-size:12px;margin-right:auto}
+.regq{max-width:260px;flex:1}
+.tablewrap{overflow-x:auto}
+.dtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.dtable th{text-align:left;color:var(--faint);font-weight:500;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:7px 10px;border-bottom:1px solid var(--line)}
+.dtable td{padding:7px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.dtable .num{text-align:right}
+.dtable .dim{color:var(--faint)}
+.dtable .nowrap{white-space:nowrap}
+.cell-name{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rej{color:var(--invalid)}
+.c-corr{color:var(--corrected)}.c-flag{color:var(--flagged)}.c-val{color:var(--valid)}.c-inv{color:var(--invalid)}
+.csvlink{color:var(--brand);text-decoration:none;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:3px 8px;white-space:nowrap}
+.csvlink:hover{border-color:var(--brand)}
+.more{margin-top:12px}
+.rowlink{cursor:pointer}
+.rowlink:hover td{background:rgba(243,169,59,.05)}
+.linklike{background:none;border:0;padding:0;color:var(--text);font:inherit;font-family:var(--mono);font-weight:inherit;cursor:pointer;text-decoration:underline dotted var(--faint);text-underline-offset:3px}
+.linklike:hover{color:var(--brand)}
+.none-blurb{color:var(--faint);font-size:13px;padding:8px 2px;line-height:1.5}
+.back{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;padding:0;margin-bottom:13px}
+.back:hover{color:var(--brand)}
+.dos-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.dos-id{font-size:19px;font-weight:700;letter-spacing:.05em}
+.dos-meta{color:var(--muted);font-size:13px}
+.dos-seen{color:var(--faint);font-size:12.5px;margin-top:6px}
+.dos-sec{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:18px 0 9px;padding-top:14px;border-top:1px solid var(--line-soft)}
+.kv{display:flex;flex-direction:column;gap:5px;max-width:560px}
+.kv-row{display:flex;gap:14px;font-size:13px}
+.kv-row span{color:var(--faint);min-width:118px;flex:none}
+.kv-row b{font-weight:600;word-break:break-word}
+.foot-meta{margin-top:10px;margin-right:0}
+
+.calc-nm{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nm-set{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nm-row td{background:rgba(91,157,240,.05);border-bottom:1px solid var(--line-soft);padding:6px 10px 8px}
+.nm-l{color:var(--flagged);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-right:9px}
+.nm-chip{display:inline-flex;align-items:baseline;gap:7px;background:var(--raised);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:4px 10px;font-family:var(--mono);font-size:12.5px;cursor:pointer;margin-right:7px}
+.nm-chip:hover{border-color:var(--flagged)}
+.nm-chip i{font-style:normal;color:var(--faint);font-size:11px;font-family:var(--sans)}
+
+.empty{text-align:center;padding:46px 22px 26px;color:var(--muted);max-width:560px;margin:0 auto}
+.empty-cd{font-size:22px;margin-bottom:20px}
+.empty p{line-height:1.6}
+
+.results{margin-top:20px;animation:fade .3s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.res-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.res-id{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.fmt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;padding:4px 9px;border-radius:6px;background:var(--raised);border:1px solid var(--line);color:var(--text)}
+.fmt.snx{color:#9ad0ff;border-color:rgba(91,157,240,.4)}
+.fmt.x12{color:#ffd28a;border-color:rgba(243,169,59,.4)}
+.fmt.edifact{color:#9af0c4;border-color:rgba(82,185,138,.4)}
+.fmt.txt{color:var(--muted)}
+.fname{font-family:var(--mono);font-size:13px}
+.pol{color:var(--faint);font-size:12px}
+.dl{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 13px;font:inherit;font-size:13px;cursor:pointer}
+.dl:hover:not(:disabled){border-color:var(--brand)}
+.dl:disabled{opacity:.45;cursor:default}
+
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px 15px}
+.stat-n{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1}
+.stat-l{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:7px}
+.stat.corrected{border-color:rgba(243,169,59,.45)} .stat.corrected .stat-n{color:var(--corrected)}
+.stat.flagged .stat-n{color:var(--flagged)}
+.stat.valid .stat-n{color:var(--valid)}
+.stat.invalid .stat-n{color:var(--invalid)}
+
+.block{margin-bottom:24px}
+.eyebrow{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.eyebrow svg{color:var(--corrected)} .eyebrow.flag svg{color:var(--flagged)} .eyebrow.inv svg{color:var(--muted)}
+
+/* signature: the check-digit slot */
+.cd{font-family:var(--mono);font-size:17px;letter-spacing:.04em;display:inline-flex;align-items:center}
+.cd-body{color:var(--muted)}
+.cd-slot{display:inline-flex;align-items:center;gap:3px;margin-left:3px;padding:1px 7px;border-radius:6px;background:var(--raised);border:1px solid var(--line)}
+.cd-slot.corrected{border-color:rgba(243,169,59,.5);background:rgba(243,169,59,.1)}
+.cd-slot.valid{border-color:rgba(82,185,138,.45);background:rgba(82,185,138,.1)}
+.cd-slot.flagged{border-color:rgba(91,157,240,.45);background:rgba(91,157,240,.1)}
+.cd-old{color:var(--invalid);text-decoration-thickness:1.5px;opacity:.85}
+.cd-new{color:var(--brand)} .cd-ok{color:var(--valid)} .cd-empty{color:var(--faint)}
+.cd-warn{color:var(--muted)} .cd-sugg{color:var(--flagged);font-style:normal}
+.cd-arrow{color:var(--faint);font-size:13px}
+.cd-bad{color:var(--invalid)}
+
+.changes{display:flex;flex-direction:column;gap:10px}
+.change{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px 15px}
+.change-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:11px}
+.reason{color:var(--faint);font-size:12.5px}
+.occs{border-top:1px solid var(--line-soft);padding-top:10px}
+.occs-l{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:7px}
+.occ{display:flex;gap:14px;align-items:baseline;padding:2px 0;flex-wrap:wrap}
+.occ-loc{font-family:var(--mono);font-size:12px;color:var(--flagged);min-width:150px}
+.snip{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.snip-pre{color:var(--faint)}
+.snip-old{color:var(--invalid);opacity:.8;text-decoration-thickness:1.5px}
+.snip-new{color:var(--brand)}
+
+.flags{display:flex;flex-direction:column;gap:8px}
+.flag-row{display:flex;align-items:center;gap:13px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-left:2.5px solid var(--flagged);border-radius:9px;padding:11px 14px}
+.fid{font-size:14px;font-weight:600}
+.sugg-pill{font-family:var(--mono);font-size:12px;color:var(--flagged);background:rgba(91,157,240,.1);border:1px solid rgba(91,157,240,.3);padding:2px 9px;border-radius:20px}
+.flag-why{color:var(--faint);font-size:12.5px;flex:1;min-width:200px}
+
+.filters,.filters .fbtn{display:inline-flex}
+.filters{margin-left:auto;gap:4px}
+.fbtn{background:transparent;border:1px solid transparent;color:var(--faint);border-radius:6px;padding:3px 9px;font:inherit;font-size:11px;cursor:pointer;text-transform:capitalize;letter-spacing:.02em}
+.fbtn:hover{color:var(--text)} .fbtn.on{color:var(--text);border-color:var(--line);background:var(--raised)}
+
+.tablewrap{border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead th{text-align:left;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:10px 14px;background:var(--raised);border-bottom:1px solid var(--line)}
+.tbl th.num,.tbl td.num{text-align:right}
+.tbl td{padding:9px 14px;border-bottom:1px solid var(--line-soft)}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover{background:rgba(255,255,255,.015)}
+.tbl td.strong{color:var(--text);font-weight:600}
+.tbl td.mono{font-family:var(--mono)}
+.tbl td.small{font-size:12px;color:var(--muted)}
+.none{color:var(--faint);text-align:center;padding:18px}
+.badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;letter-spacing:.02em}
+.badge.corrected{color:var(--corrected);background:rgba(243,169,59,.12)}
+.badge.flagged{color:var(--flagged);background:rgba(91,157,240,.12)}
+.badge.valid{color:var(--valid);background:rgba(82,185,138,.12)}
+.badge.invalid_structure{color:var(--invalid);background:rgba(229,96,79,.12)}
+
+.foot{text-align:center;color:var(--faint);font-size:11.5px;padding:26px 20px 30px;border-top:1px solid var(--line-soft);margin-top:18px}
+
+@media (max-width:680px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .go{margin-left:0;width:100%;justify-content:center}
+  .occ-loc{min-width:0}
+}
+@media (prefers-reduced-motion:reduce){.results{animation:none}.toggle .knob{transition:none}}
+
+</style></head>
+<body>
+<h1 class="preview">CHECKDIGIT · Dashboard view (Pass 22) — rendered with sample analytics data</h1>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const SAMPLE = {
+  "totals": {"files": 142, "processed": 138, "rejected": 4, "containers": 2870,
+             "corrected": 401, "flagged": 96, "invalid": 12, "distinct_containers": 1633,
+             "overall_fix_rate": 0.807},
+  "owner_quality": [
+    {"prefix":"MSC","owner_name":"MSC Mediterranean","boxes":210,"sightings":540,"fixes":120,"flags":38,"fix_rate":0.759},
+    {"prefix":"MAE","owner_name":"Maersk","boxes":188,"sightings":470,"fixes":96,"flags":18,"fix_rate":0.842},
+    {"prefix":"CMA","owner_name":"CMA CGM","boxes":140,"sightings":300,"fixes":74,"flags":22,"fix_rate":0.771},
+    {"prefix":"HLB","owner_name":"Hapag-Lloyd","boxes":96,"sightings":210,"fixes":48,"flags":9,"fix_rate":0.842},
+    {"prefix":"OOL","owner_name":"OOCL","boxes":70,"sightings":150,"fixes":33,"flags":6,"fix_rate":0.846},
+    {"prefix":"APL","owner_name":"APL","boxes":54,"sightings":120,"fixes":18,"flags":3,"fix_rate":0.857}
+  ],
+  "by_format": [
+    {"format":"edifact","files":58,"containers":1400,"corrected":210,"flagged":40,"invalid":4,"rejected":1,"fix_rate":0.84},
+    {"format":"x12","files":36,"containers":720,"corrected":98,"flagged":34,"invalid":3,"rejected":0,"fix_rate":0.742},
+    {"format":"snx","files":22,"containers":440,"corrected":64,"flagged":12,"invalid":2,"rejected":0,"fix_rate":0.842},
+    {"format":"xlsx","files":14,"containers":210,"corrected":21,"flagged":7,"invalid":2,"rejected":2,"fix_rate":0.75},
+    {"format":"txt","files":12,"containers":100,"corrected":8,"flagged":3,"invalid":1,"rejected":1,"fix_rate":0.727}
+  ],
+  "error_trend": [
+    {"day":"2026-05-28","files":4,"containers":80,"corrected":11,"flagged":3,"invalid":0,"rejected":0},
+    {"day":"2026-05-30","files":6,"containers":120,"corrected":18,"flagged":5,"invalid":1,"rejected":0},
+    {"day":"2026-06-01","files":9,"containers":210,"corrected":31,"flagged":8,"invalid":1,"rejected":1},
+    {"day":"2026-06-03","files":7,"containers":160,"corrected":22,"flagged":4,"invalid":0,"rejected":0},
+    {"day":"2026-06-05","files":12,"containers":290,"corrected":44,"flagged":12,"invalid":2,"rejected":1},
+    {"day":"2026-06-07","files":8,"containers":180,"corrected":26,"flagged":6,"invalid":1,"rejected":0},
+    {"day":"2026-06-09","files":14,"containers":320,"corrected":48,"flagged":9,"invalid":1,"rejected":0},
+    {"day":"2026-06-10","files":11,"containers":240,"corrected":35,"flagged":14,"invalid":2,"rejected":1}
+  ],
+  "top_locations": [
+    {"unlocode":"NLRTM","name":"Rotterdam","containers":210,"events":540},
+    {"unlocode":"SGSIN","name":"Singapore","containers":188,"events":470},
+    {"unlocode":"USLAX","name":"Los Angeles","containers":140,"events":300},
+    {"unlocode":"CNSHA","name":"Shanghai","containers":120,"events":260}
+  ],
+  "top_vessels": [
+    {"name":"MAERSK ALABAMA","imo":"9164263","containers":96,"events":210},
+    {"name":"EVER GIVEN","imo":"9811000","containers":74,"events":180},
+    {"name":"MSC GULSUN","imo":"9839430","containers":52,"events":120}
+  ],
+  "lanes": [
+    {"origin":"SGSIN","destination":"NLRTM","containers":64,"legs":72},
+    {"origin":"USLAX","destination":"CNSHA","containers":48,"legs":53},
+    {"origin":"NLRTM","destination":"USNYC","containers":31,"legs":34}
+  ]
+};
+/* ===========================================================================
+   Pass 22 — Analytics Dashboard. Dependency-free inline SVG charts over the
+   /insights warehouse payload. No chart library (keeps the no-deps ethos);
+   small, legible, prints clean. All panels degrade to an empty-state when the
+   relevant warehouse table has no rows yet (e.g. lanes/vessels before any
+   carrier enrichment events exist).
+=========================================================================== */
+function fmtPct(x) { return x == null ? "\u2014" : (Math.round(x * 1000) / 10).toFixed(1) + "%"; }
+function fmtInt(x) { return (x == null ? 0 : x).toLocaleString(); }
+
+function Kpi({ label, value, sub, tone }) {
+  return (
+    <div className="kpi">
+      <div className="kpi-v" style={tone ? { color: tone } : null}>{value}</div>
+      <div className="kpi-l">{label}</div>
+      {sub != null && <div className="kpi-s">{sub}</div>}
+    </div>
+  );
+}
+
+/* Grouped time-series: corrected vs flagged per day, as an overlaid line chart. */
+function TrendChart({ rows }) {
+  if (!rows || !rows.length) return <Empty msg="No ingestion history in this window." />;
+  const W = 720, H = 200, P = 34;
+  const xs = rows.map((_, i) => i);
+  const maxY = Math.max(1, ...rows.map(r => Math.max(r.corrected || 0, r.flagged || 0, r.files || 0)));
+  const xAt = i => P + (xs.length === 1 ? (W - 2 * P) / 2 : (i * (W - 2 * P)) / (xs.length - 1));
+  const yAt = v => H - P - (v / maxY) * (H - 2 * P);
+  const line = (key) => rows.map((r, i) => `${i === 0 ? "M" : "L"}${xAt(i).toFixed(1)},${yAt(r[key] || 0).toFixed(1)}`).join(" ");
+  const series = [["files", "#7a8a9a"], ["corrected", "#46a758"], ["flagged", "#e0a13a"]];
+  const ticks = 4;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Error trend over time">
+      {Array.from({ length: ticks + 1 }, (_, t) => {
+        const y = P + (t * (H - 2 * P)) / ticks;
+        const val = Math.round(maxY * (1 - t / ticks));
+        return (<g key={t}>
+          <line x1={P} y1={y} x2={W - P} y2={y} stroke="var(--line)" strokeWidth="1" />
+          <text x={P - 6} y={y + 3} textAnchor="end" fontSize="9" fill="var(--muted)">{val}</text>
+        </g>);
+      })}
+      {series.map(([k, c]) => <path key={k} d={line(k)} fill="none" stroke={c} strokeWidth="2" />)}
+      {series.map(([k, c]) => rows.map((r, i) => (
+        <circle key={k + i} cx={xAt(i)} cy={yAt(r[k] || 0)} r="2.4" fill={c}>
+          <title>{`${r.day}\n${k}: ${r[k] || 0}`}</title>
+        </circle>
+      )))}
+      {rows.map((r, i) => (i % Math.ceil(rows.length / 8) === 0 || i === rows.length - 1) && (
+        <text key={"x" + i} x={xAt(i)} y={H - P + 14} textAnchor="middle" fontSize="8.5" fill="var(--muted)">
+          {r.day.slice(5)}
+        </text>
+      ))}
+      <g transform={`translate(${P},14)`} fontSize="10">
+        {series.map(([k, c], i) => (<g key={k} transform={`translate(${i * 96},0)`}>
+          <rect width="10" height="10" rx="2" fill={c} /><text x="14" y="9" fill="var(--text)" style={{ textTransform: "capitalize" }}>{k}</text>
+        </g>))}
+      </g>
+    </svg>
+  );
+}
+
+/* Horizontal bars with a fix-rate label — used for owner league + by-format. */
+function BarRows({ rows, labelKey, labelName, max, bars, footer }) {
+  if (!rows || !rows.length) return <Empty msg={`No ${footer || "data"} yet.`} />;
+  const cap = max || Math.max(1, ...rows.map(r => bars.reduce((s, b) => Math.max(s, r[b.key] || 0), 0)));
+  return (
+    <div className="bars">
+      {rows.map((r, i) => (
+        <div className="bar-row" key={i}>
+          <div className="bar-lab" title={labelName ? r[labelName] : ""}>
+            <b>{r[labelKey] || "\u2014"}</b>{labelName && r[labelName] ? <span className="bar-sub">{r[labelName]}</span> : null}
+          </div>
+          <div className="bar-track">
+            {bars.map((b) => {
+              const v = r[b.key] || 0;
+              return <div key={b.key} className="bar-fill" title={`${b.key}: ${v}`}
+                style={{ width: `${(v / cap) * 100}%`, background: b.color }} />;
+            })}
+          </div>
+          <div className="bar-val">
+            {r.fix_rate != null ? <span className="pill">{fmtPct(r.fix_rate)} fixed</span> : null}
+            <span className="bar-counts">
+              {bars.map((b, j) => <span key={b.key} style={{ color: b.color }}>{j > 0 ? " / " : ""}{fmtInt(r[b.key] || 0)}</span>)}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SimpleTable({ rows, cols, empty }) {
+  if (!rows || !rows.length) return <Empty msg={empty} />;
+  return (
+    <table className="tbl">
+      <thead><tr>{cols.map(c => <th key={c.key} style={c.num ? { textAlign: "right" } : null}>{c.label}</th>)}</tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>{cols.map(c => (
+            <td key={c.key} style={c.num ? { textAlign: "right", fontVariantNumeric: "tabular-nums" } : null}>
+              {c.fmt ? c.fmt(r[c.key], r) : (r[c.key] != null ? r[c.key] : "\u2014")}
+            </td>
+          ))}</tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function Empty({ msg }) { return <div className="empty">{msg}</div>; }
+
+function Dashboard({ data, loading, err, onReload, apiBase }) {
+  if (err) return (
+    <section className="panel">
+      <div className="dash-head"><h2>Analytics</h2><button className="btn ghost" onClick={onReload}>Retry</button></div>
+      <div className="err-box">Could not load analytics: {err}{!apiBase && " \u2014 the dashboard reads the live audit DB; point the app at a running API (it is empty in the static demo)."}</div>
+    </section>
+  );
+  if (loading || !data) return (
+    <section className="panel"><div className="dash-head"><h2>Analytics</h2></div>
+      <div className="muted-row">{loading ? "Loading analytics\u2026" : "No data."}</div></section>
+  );
+  const t = data.totals || {};
+  return (
+    <div className="dash">
+      <div className="dash-head">
+        <h2>Analytics <span className="dash-sub">data-quality across everything this system has ingested</span></h2>
+        <button className="btn ghost" onClick={onReload}>Refresh</button>
+      </div>
+
+      <div className="kpis">
+        <Kpi label="Files processed" value={fmtInt(t.processed)} sub={`${fmtInt(t.rejected)} rejected`} />
+        <Kpi label="Distinct containers" value={fmtInt(t.distinct_containers)} sub={`${fmtInt(t.containers)} sightings`} />
+        <Kpi label="Check digits corrected" value={fmtInt(t.corrected)} tone="#46a758" />
+        <Kpi label="Flagged for review" value={fmtInt(t.flagged)} tone="#e0a13a" sub={`${fmtInt(t.invalid)} malformed`} />
+        <Kpi label="Overall fix rate" value={fmtPct(t.overall_fix_rate)} sub="corrected / (corrected+flagged)" />
+      </div>
+
+      <section className="panel">
+        <h3 className="dash-h3">Error &amp; volume trend <span className="dash-note">last 30 days</span></h3>
+        <TrendChart rows={data.error_trend} />
+      </section>
+
+      <div className="dash-2col">
+        <section className="panel">
+          <h3 className="dash-h3">Dirtiest partners <span className="dash-note">by owner prefix</span></h3>
+          <p className="dash-cap">Who ships the most broken numbers. Bars: corrected vs flagged sightings.</p>
+          <BarRows rows={data.owner_quality} labelKey="prefix" labelName="owner_name"
+            bars={[{ key: "fixes", color: "#46a758" }, { key: "flags", color: "#e0a13a" }]}
+            footer="owner activity" />
+        </section>
+        <section className="panel">
+          <h3 className="dash-h3">Fix rate by file format</h3>
+          <p className="dash-cap">Which formats arrive dirtiest. Bars: corrected vs flagged.</p>
+          <BarRows rows={data.by_format} labelKey="format"
+            bars={[{ key: "corrected", color: "#46a758" }, { key: "flagged", color: "#e0a13a" }]}
+            footer="format data" />
+        </section>
+      </div>
+
+      <div className="dash-2col">
+        <section className="panel">
+          <h3 className="dash-h3">Busiest locations <span className="dash-note">from carrier events</span></h3>
+          <SimpleTable rows={data.top_locations}
+            cols={[{ key: "unlocode", label: "UN/LOCODE" }, { key: "name", label: "Name" },
+                   { key: "containers", label: "Containers", num: true, fmt: fmtInt },
+                   { key: "events", label: "Events", num: true, fmt: fmtInt }]}
+            empty="No carrier events yet — enrichment is opt-in; this fills once container events are fetched." />
+        </section>
+        <section className="panel">
+          <h3 className="dash-h3">Top vessels <span className="dash-note">from carrier events</span></h3>
+          <SimpleTable rows={data.top_vessels}
+            cols={[{ key: "name", label: "Vessel" }, { key: "imo", label: "IMO" },
+                   { key: "containers", label: "Containers", num: true, fmt: fmtInt },
+                   { key: "events", label: "Events", num: true, fmt: fmtInt }]}
+            empty="No vessel events yet." />
+        </section>
+      </div>
+
+      <section className="panel">
+        <h3 className="dash-h3">Busiest lanes <span className="dash-note">origin → destination, from event sequences</span></h3>
+        <SimpleTable rows={data.lanes}
+          cols={[{ key: "origin", label: "Origin" }, { key: "destination", label: "Destination" },
+                 { key: "containers", label: "Containers", num: true, fmt: fmtInt },
+                 { key: "legs", label: "Legs", num: true, fmt: fmtInt }]}
+          empty="No multi-stop container histories yet — lanes derive from consecutive located events per container." />
+      </section>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<Dashboard data={SAMPLE} loading={false} err="" onReload={()=>location.reload()} apiBase="preview" />);
+</script>
+</body></html>

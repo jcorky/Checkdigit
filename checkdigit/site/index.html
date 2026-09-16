@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CHECKDIGIT — fix container check digits, in place</title>
+<meta name="description" content="CHECKDIGIT finds every container and equipment ID in your EDI, XML, or spreadsheet files, recomputes the ISO 6346 check digit, and rewrites only that one character — never re-serializing the file. Self-hosted." />
+<meta property="og:title" content="CHECKDIGIT — fix the check digit, leave everything else alone" />
+<meta property="og:description" content="Self-hosted ISO 6346 check-digit correction for EDIFACT, X12, SNX XML, CSV, XLSX, and plain text." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230E1418'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23F3A93B' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23F3A93B' fill-opacity='0.18' stroke='%23F3A93B' stroke-width='2'/%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#0E1418; --panel:#141C23; --raised:#1A242E; --line:#293743; --line-soft:#1F2B35;
+    --text:#E7EEF4; --muted:#90A0B0; --faint:#5E6F7E;
+    --amber:#F3A93B; --valid:#52B98A; --flagged:#5B9DF0; --invalid:#E5604F;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --maxw: 1080px;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto } }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); font-size:16px; line-height:1.55;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  a{ color:inherit }
+  .wrap{ max-width:var(--maxw); margin:0 auto; padding:0 24px }
+  .mono{ font-family:var(--mono) }
+  .eyebrow{
+    font-family:var(--mono); font-size:11.5px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--faint); margin:0 0 18px;
+  }
+
+  /* ---- top bar ---- */
+  header.bar{ position:sticky; top:0; z-index:50;
+    background:rgba(14,20,24,.82); backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .bar .row{ display:flex; align-items:center; gap:18px; height:60px }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; font-family:var(--mono);
+    font-weight:600; letter-spacing:.02em; color:var(--text); font-size:15px }
+  .brand .glyph{ width:22px; height:16px; flex:0 0 auto }
+  .bar nav{ margin-left:auto; display:flex; align-items:center; gap:8px }
+  .navlink{ font-family:var(--mono); font-size:12.5px; color:var(--muted); text-decoration:none;
+    padding:8px 10px; border-radius:7px }
+  .navlink:hover{ color:var(--text); background:var(--raised) }
+  @media (max-width:680px){ .navlink.hide-sm{ display:none } }
+
+  .btn{ display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:13px;
+    font-weight:600; text-decoration:none; border-radius:9px; padding:9px 15px; cursor:pointer;
+    border:1px solid transparent; transition:transform .08s ease, filter .15s ease, background .15s ease }
+  .btn:active{ transform:translateY(1px) }
+  .btn-amber{ background:var(--amber); color:#1A1205 }
+  .btn-amber:hover{ filter:brightness(1.06) }
+  .btn-ghost{ background:transparent; color:var(--text); border-color:var(--line) }
+  .btn-ghost:hover{ background:var(--raised); border-color:#37495a }
+  .btn .arr{ transition:transform .15s ease }
+  .btn:hover .arr{ transform:translateX(3px) }
+
+  /* ---- hero ---- */
+  .hero{ padding:72px 0 36px; border-bottom:1px solid var(--line-soft);
+    background:
+      radial-gradient(720px 360px at 78% -8%, rgba(243,169,59,.06), transparent 70%);
+  }
+  .hero h1{ font-size:clamp(30px, 5vw, 50px); line-height:1.05; letter-spacing:-.018em;
+    margin:0 0 18px; font-weight:680; max-width:18ch }
+  .hero h1 em{ font-style:normal; color:var(--amber) }
+  .lede{ font-size:clamp(15px,1.7vw,18px); color:var(--muted); max-width:60ch; margin:0 0 30px }
+  .lede b{ color:var(--text); font-weight:600 }
+
+  /* ---- the validator (signature) ---- */
+  .validator{ background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:22px 22px 18px; max-width:680px }
+  .vtop{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px }
+  .vlabel{ font-family:var(--mono); font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--faint) }
+  .vhint{ font-family:var(--mono); font-size:11.5px; color:var(--faint) }
+  .field{ position:relative; }
+  .cells{ display:flex; gap:7px; align-items:stretch; user-select:none }
+  .cells .gap{ width:14px; flex:0 0 auto }
+  .cell{ position:relative; flex:1 1 0; min-width:0; aspect-ratio:7/9;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--raised); border:1.5px solid var(--line); border-radius:9px;
+    font-family:var(--mono); font-size:clamp(18px,3.4vw,26px); font-weight:600; color:var(--text);
+    transition:border-color .14s ease, background .14s ease, color .14s ease, box-shadow .14s ease }
+  .cell.empty{ color:var(--faint) }
+  .cell.check{ border-style:dashed; border-color:#3a4b5a }
+  .cell.active{ border-color:var(--amber); box-shadow:0 0 0 3px rgba(243,169,59,.16) }
+  .field.focused .cell.active::after{ content:""; position:absolute; bottom:7px; height:2px; width:42%;
+    background:var(--amber); border-radius:2px; animation:blink 1.05s steps(1) infinite }
+  @keyframes blink{ 50%{ opacity:0 } }
+  /* state colors on the check cell */
+  .cell.check.ok{ border-style:solid; border-color:var(--valid); color:var(--valid); background:rgba(82,185,138,.10) }
+  .cell.check.fix{ border-style:solid; border-color:var(--amber); color:var(--amber); background:rgba(243,169,59,.12) }
+  .cell.check.computed{ border-style:dashed; border-color:var(--amber); color:var(--amber) }
+  /* transparent capture input sits over the cells */
+  .capture{ position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0; border:0;
+    background:transparent; color:transparent; caret-color:transparent; font:inherit;
+    letter-spacing:0; cursor:text; outline:none; -webkit-appearance:none; appearance:none }
+  .capture::selection{ background:transparent }
+
+  .status{ margin:14px 2px 0; font-family:var(--mono); font-size:13.5px; line-height:1.5; min-height:1.5em; color:var(--muted) }
+  .status .t-ok{ color:var(--valid) } .status .t-fix{ color:var(--amber) } .status .t-flag{ color:var(--flagged) }
+  .status .num{ color:var(--text) } .status .swap{ color:var(--amber); font-weight:600 }
+
+  .cta-row{ display:flex; flex-wrap:wrap; gap:12px; margin-top:26px }
+
+  /* ---- anatomy strip ---- */
+  .anat{ padding:30px 0; border-bottom:1px solid var(--line-soft) }
+  .anat .grid{ display:flex; flex-wrap:wrap; gap:10px; align-items:stretch }
+  .seg{ flex:1 1 120px; background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:14px 16px }
+  .seg .k{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint) }
+  .seg .v{ font-family:var(--mono); font-size:22px; font-weight:600; margin-top:6px; letter-spacing:.04em }
+  .seg.s-check .v{ color:var(--amber) }
+  .seg .d{ font-size:12.5px; color:var(--muted); margin-top:4px }
+
+  /* ---- generic section ---- */
+  section.band{ padding:64px 0; border-bottom:1px solid var(--line-soft) }
+  .h2{ font-size:clamp(22px,3vw,30px); letter-spacing:-.01em; margin:0 0 8px; font-weight:660 }
+  .sub{ color:var(--muted); max-width:62ch; margin:0 0 34px }
+
+  /* steps */
+  .steps{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px }
+  @media (max-width:860px){ .steps{ grid-template-columns:repeat(2,1fr) } }
+  @media (max-width:520px){ .steps{ grid-template-columns:1fr } }
+  .step{ background:var(--panel); border:1px solid var(--line-soft); border-radius:14px; padding:20px 18px }
+  .step .no{ font-family:var(--mono); font-size:12px; color:var(--amber); letter-spacing:.1em }
+  .step h3{ font-size:16px; margin:12px 0 7px; font-weight:620 }
+  .step p{ margin:0; font-size:13.5px; color:var(--muted); line-height:1.5 }
+
+  /* two-col lists */
+  .cols{ display:grid; grid-template-columns:1fr 1fr; gap:18px }
+  @media (max-width:760px){ .cols{ grid-template-columns:1fr } }
+  .card{ background:var(--panel); border:1px solid var(--line-soft); border-radius:14px; padding:22px }
+  .card h3{ font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); margin:0 0 14px; font-weight:600 }
+  .tags{ display:flex; flex-wrap:wrap; gap:8px }
+  .tag{ font-family:var(--mono); font-size:12.5px; color:var(--text); background:var(--raised);
+    border:1px solid var(--line-soft); border-radius:8px; padding:6px 10px }
+  .tag.muted{ color:var(--muted) }
+  .deflist{ margin:0; padding:0; list-style:none }
+  .deflist li{ padding:11px 0; border-top:1px solid var(--line-soft); display:flex; gap:12px }
+  .deflist li:first-child{ border-top:0 }
+  .deflist .term{ font-family:var(--mono); font-size:13px; color:var(--text); flex:0 0 124px }
+  .deflist .desc{ font-size:13.5px; color:var(--muted) }
+
+  /* trust */
+  .trust{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px }
+  @media (max-width:680px){ .trust{ grid-template-columns:1fr } }
+  .tr{ display:flex; gap:14px; align-items:flex-start; background:var(--panel); border:1px solid var(--line-soft);
+    border-radius:14px; padding:18px 20px }
+  .tr .ic{ flex:0 0 auto; margin-top:2px; color:var(--amber) }
+  .tr h3{ margin:0 0 4px; font-size:15px; font-weight:620 }
+  .tr p{ margin:0; font-size:13px; color:var(--muted); line-height:1.5 }
+
+  /* closing cta */
+  .close{ padding:74px 0 }
+  .close .box{ background:linear-gradient(180deg, var(--raised), var(--panel));
+    border:1px solid var(--line); border-radius:18px; padding:44px 32px; text-align:center }
+  .close h2{ font-size:clamp(22px,3.2vw,30px); margin:0 0 22px; letter-spacing:-.01em }
+
+  footer{ border-top:1px solid var(--line-soft); padding:30px 0 46px; color:var(--faint) }
+  footer .row{ display:flex; flex-wrap:wrap; gap:14px 26px; align-items:center; justify-content:space-between }
+  footer .mono-sm{ font-family:var(--mono); font-size:12px }
+  footer a{ color:var(--muted); text-decoration:none } footer a:hover{ color:var(--text) }
+
+  .vmore{ margin:10px 2px 0; font-family:var(--mono); font-size:12px }
+  .vmore a{ color:var(--faint); text-decoration:none; border-bottom:1px dashed var(--line) }
+  .vmore a:hover{ color:var(--amber); border-color:var(--amber) }
+  .callout{ display:flex; gap:12px; align-items:flex-start; border:1px solid var(--line-soft);
+    border-left:3px solid var(--flagged); background:var(--panel); border-radius:12px;
+    padding:14px 16px; margin:22px 0 0 }
+  .callout .ic{ flex:0 0 auto; margin-top:2px; color:var(--flagged) }
+  .callout p{ margin:0; font-size:13.5px; color:var(--muted); line-height:1.55 }
+  .callout p b{ color:var(--text) }
+
+  :focus-visible{ outline:2px solid var(--amber); outline-offset:2px; border-radius:6px }
+
+  /* on-load reveal */
+  .reveal{ opacity:0; transform:translateY(8px); animation:rise .5s ease forwards }
+  .cell{ animation:cellin .42s ease both }
+  @media (prefers-reduced-motion: reduce){
+    .reveal,.cell{ animation:none !important; opacity:1; transform:none }
+  }
+  @keyframes rise{ to{ opacity:1; transform:none } }
+  @keyframes cellin{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1; transform:none } }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="#F3A93B" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="#F3A93B" fill-opacity="0.18" stroke="#F3A93B" stroke-width="2"/>
+      </svg>
+      CHECKDIGIT
+    </a>
+    <nav>
+      <a class="navlink hide-sm" href="#how">How it works</a>
+      <a class="navlink hide-sm" href="#formats">Formats</a>
+      <a class="navlink hide-sm" href="check-digit.html">The math</a>
+      <a class="navlink" href="help.html">Help</a>
+      <a class="btn btn-amber" href="https://app.thecheckdigit.com">Open the app <span class="arr">→</span></a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow reveal">ISO&nbsp;6346 · EDIFACT · X12 · XML · XLSX</p>
+      <h1 class="reveal" style="animation-delay:.04s">Fix the check digit.<br><em>Leave everything else alone.</em></h1>
+      <p class="lede reveal" style="animation-delay:.08s">CHECKDIGIT finds every container and equipment ID in your shipping files, recomputes the ISO&nbsp;6346 check digit, and rewrites <b>only that one character</b> — it never re-serializes the file or touches the data around it.</p>
+
+      <div class="validator reveal" style="animation-delay:.12s">
+        <div class="vtop">
+          <label class="vlabel" for="cn">Try it — type a container number</label>
+          <span class="vhint" id="vhint">4 letters · 6 digits · 1 check</span>
+        </div>
+        <div class="field" id="field">
+          <div class="cells" id="cells" aria-hidden="true"></div>
+          <input id="cn" class="capture" type="text" inputmode="text" autocomplete="off"
+                 autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="11"
+                 aria-label="Container number" value="CSQU3054383" />
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <p class="vmore"><a href="check-digit.html">See exactly how this digit is computed →</a></p>
+      </div>
+
+      <div class="cta-row reveal" style="animation-delay:.16s">
+        <a class="btn btn-amber" href="https://app.thecheckdigit.com">Open the app <span class="arr">→</span></a>
+        <a class="btn btn-ghost" href="#how">See what it does</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANATOMY (structurally true: 3 + 1 + 6 + 1) -->
+  <section class="anat">
+    <div class="wrap">
+      <p class="eyebrow">Anatomy of the number you just typed</p>
+      <div class="grid">
+        <div class="seg"><div class="k">Owner · 3</div><div class="v" id="a-owner">CSQ</div><div class="d">BIC owner prefix</div></div>
+        <div class="seg"><div class="k">Category · 1</div><div class="v" id="a-cat">U</div><div class="d">Equipment category</div></div>
+        <div class="seg" style="flex:2 1 200px"><div class="k">Serial · 6</div><div class="v" id="a-serial">305438</div><div class="d">Registration number</div></div>
+        <div class="seg s-check"><div class="k">Check · 1</div><div class="v" id="a-check">3</div><div class="d">mod-11 over the first ten</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section class="band" id="how">
+    <div class="wrap">
+      <p class="eyebrow">What it does</p>
+      <h2 class="h2">Four steps, nothing guessed</h2>
+      <p class="sub">Each identifier is validated against the standard it actually uses. When the type is ambiguous or a local override might apply, CHECKDIGIT flags it instead of silently rewriting it.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="no">01</div><h3>Detect</h3>
+          <p>Reads EDIFACT, X12, SNX XML, CSV, fixed-width, XLSX, or plain text by content — and finds every equipment ID inside.</p>
+        </div>
+        <div class="step">
+          <div class="no">02</div><h3>Route</h3>
+          <p>Sends each ID to the right algorithm: ISO&nbsp;6346 mod-11 for containers, the matching scheme for ILU and UIC. Never the wrong one.</p>
+        </div>
+        <div class="step">
+          <div class="no">03</div><h3>Correct</h3>
+          <p>Recomputes the check digit and splices the correct character in by byte offset. Every other byte in the file is left exactly as it was.</p>
+        </div>
+        <div class="step">
+          <div class="no">04</div><h3>Review</h3>
+          <p>Shows a before/after diff of precisely what changed, and records each run so you can see what came through.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORMATS + IDENTIFIERS -->
+  <section class="band" id="formats">
+    <div class="wrap">
+      <p class="eyebrow">Coverage</p>
+      <h2 class="h2">It reads your files as they are</h2>
+      <p class="sub">Corrected output comes back in the original format, byte-for-byte identical except at the digits that were wrong.</p>
+      <div class="cols">
+        <div class="card">
+          <h3>Formats in &amp; back out</h3>
+          <div class="tags">
+            <span class="tag">EDIFACT</span><span class="tag">ANSI X12</span><span class="tag">SNX XML</span>
+            <span class="tag">CSV / TSV</span><span class="tag">Fixed-width</span><span class="tag">XLSX</span>
+            <span class="tag">Plain text</span>
+          </div>
+          <p style="color:var(--muted);font-size:13px;margin:16px 0 0">COPRAR, BAPLIE, CODECO and friends are detected from their structure — not from the file name.</p>
+        </div>
+        <div class="card">
+          <h3>Identifiers it knows</h3>
+          <ul class="deflist">
+            <li><span class="term">ISO 6346</span><span class="desc">Maritime containers — mod-11 check digit, recomputed and corrected.</span></li>
+            <li><span class="term">ILU · EN 13044</span><span class="desc">Intermodal loading units, routed to their own category set.</span></li>
+            <li><span class="term">UIC wagon</span><span class="desc">Rail wagon numbers — Luhn mod-10, never cross-applied.</span></li>
+            <li><span class="term">Size / type</span><span class="desc">Decoded for context, and deliberately never altered.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">
+        <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
+        <p><b>Flagged, not guessed.</b> When a number fails its check but the context doesn't justify a silent fix — free text, an ambiguous identifier type, an owner-prefix policy — CHECKDIGIT flags it for review instead of rewriting it. <a href="help.html#verdicts">What each verdict means →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SELF-HOST / TRUST -->
+  <section class="band" id="selfhost">
+    <div class="wrap">
+      <p class="eyebrow">On your terms</p>
+      <h2 class="h2">Self-hosted, and quiet about your data</h2>
+      <p class="sub">CHECKDIGIT runs on your own hardware. There is no account, and your files are not sent to anyone else.</p>
+      <div class="trust">
+        <div class="tr">
+          <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg>
+          <div><h3>Runs on your hardware</h3><p>Docker or a single script. No sign-up, no third-party upload — the file never leaves the box you run it on.</p></div>
+        </div>
+        <div class="tr">
+          <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/></svg>
+          <div><h3>Stores no client IP</h3><p>The audit log keeps file name, type, size, time, and verdict counts. It never records an IP address.</p></div>
+        </div>
+        <div class="tr">
+          <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
+          <div><h3>Enrichment is opt-in</h3><p>Owner and box lookups stay switched off until you configure them. Nothing phones out on its own.</p></div>
+        </div>
+        <div class="tr">
+          <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7l4-3 4 3 4-3 4 3M4 7v10l4 3 4-3 4 3 4-3V7"/></svg>
+          <div><h3>Byte-exact correction</h3><p>The output differs from your input only at the check-digit characters that were wrong. Everything else is preserved.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLOSING CTA -->
+  <section class="close">
+    <div class="wrap">
+      <div class="box">
+        <h2>Stop hand-fixing check digits.</h2>
+        <a class="btn btn-amber" href="https://app.thecheckdigit.com" style="font-size:14px;padding:11px 20px">Open the app <span class="arr">→</span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">CHECKDIGIT — self-hosted ISO&nbsp;6346 correction</span>
+    <span class="mono-sm"><a href="https://app.thecheckdigit.com">app.thecheckdigit.com</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  /* CALC-PURE-BEGIN -- mirror of equipment_checkdigit.iso6346_check_digit. The
+     landing widget must never drift from the kernel; run_acceptance.py (A14)
+     verifies this block vector-for-vector against the Python implementation. */
+  var T = {}; (function(){ var v=10; for(var i=0;i<26;i++){ while(v%11===0) v++; T[String.fromCharCode(65+i)]=v; v++; } })();
+  function isDigit(c){ return c>="0" && c<="9"; }
+  function checkOf(first10){
+    var s=0;
+    for(var i=0;i<10;i++){ var c=first10[i]; var val = isDigit(c) ? (c.charCodeAt(0)-48) : T[c]; s += val * (1<<i); }
+    var r = s % 11; return r===10 ? 0 : r;
+  }
+  /* CALC-PURE-END */
+  function isLetter(c){ return c>="A" && c<="Z"; }
+  function shapeOK(v){ return /^[A-Z]{4}[0-9]{6}/.test(v); }      // first 10 well-formed
+
+  var input  = document.getElementById("cn");
+  var field  = document.getElementById("field");
+  var cellsEl= document.getElementById("cells");
+  var statusEl=document.getElementById("status");
+  var hintEl = document.getElementById("vhint");
+  var aOwner=document.getElementById("a-owner"), aCat=document.getElementById("a-cat"),
+      aSerial=document.getElementById("a-serial"), aCheck=document.getElementById("a-check");
+
+  // Build 11 cells with a visual gap before the check cell.
+  var cellNodes=[];
+  for(var i=0;i<11;i++){
+    if(i===10){ var g=document.createElement("div"); g.className="gap"; cellsEl.appendChild(g); }
+    var d=document.createElement("div");
+    d.className = "cell" + (i===10 ? " check" : "");
+    d.style.animationDelay = (0.12 + i*0.03) + "s";
+    cellsEl.appendChild(d); cellNodes.push(d);
+  }
+
+  function sanitize(raw){
+    var out=""; raw=(raw||"").toUpperCase();
+    for(var i=0;i<raw.length && out.length<11;i++){ var c=raw[i]; if(isLetter(c)||isDigit(c)) out+=c; }
+    return out;
+  }
+
+  function render(){
+    var v = input.value;
+    var active = (document.activeElement===input) ? Math.min(v.length,10) : -1;
+
+    for(var i=0;i<11;i++){
+      var cell=cellNodes[i], ch=v[i];
+      cell.className = "cell" + (i===10 ? " check" : "");
+      cell.textContent = ch || "";
+      if(!ch) cell.classList.add("empty");
+      if(i===active) cell.classList.add("active");
+    }
+
+    // anatomy mirror
+    aOwner.textContent  = v.slice(0,3) || "—";
+    aCat.textContent    = v[3] || "—";
+    aSerial.textContent = v.slice(4,10) || "—";
+
+    var checkCell = cellNodes[10];
+    // status + check-cell state
+    if(v.length < 10){
+      hintEl.textContent = "4 letters · 6 digits · 1 check";
+      aCheck.textContent = "—";
+      statusEl.innerHTML = v.length===0
+        ? '<span style="color:var(--faint)">e.g. CSQU3054383, MSKU0000000…</span>'
+        : '<span class="t-flag">Keep going</span> — ' + (10 - v.length) + ' more character' + ((10-v.length)===1?'':'s') + ' to reach the check digit.';
+      return;
+    }
+    if(!shapeOK(v)){
+      aCheck.textContent = "—";
+      statusEl.innerHTML = '<span class="t-flag">Not an ISO 6346 number.</span> Expect 4 letters, then 6 digits, then 1 check digit.';
+      return;
+    }
+
+    var first10 = v.slice(0,10);
+    var want = checkOf(first10);
+    aCheck.textContent = String(want);
+
+    if(v.length === 10){
+      checkCell.textContent = String(want);
+      checkCell.classList.remove("empty"); checkCell.classList.add("computed");
+      hintEl.textContent = "check digit computed";
+      statusEl.innerHTML = 'Check digit is <span class="swap">' + want + '</span>. Full number: <span class="num">' + first10 + want + '</span>.';
+      return;
+    }
+
+    // 11 characters present
+    var have = v[10];
+    if(String(have) === String(want)){
+      checkCell.classList.add("ok");
+      hintEl.textContent = "valid";
+      statusEl.innerHTML = '<span class="t-ok">Valid.</span> The check digit is correct.';
+    } else {
+      checkCell.classList.add("fix");
+      hintEl.textContent = "needs correction";
+      statusEl.innerHTML = '<span class="t-fix">Check digit should be ' + want + '.</span> CHECKDIGIT would correct <span class="num">' + first10 + have + '</span> → <span class="swap">' + first10 + want + '</span>.';
+    }
+  }
+
+  input.addEventListener("input", function(){
+    var clean = sanitize(input.value);
+    if(clean !== input.value){ input.value = clean; }
+    render();
+  });
+  input.addEventListener("focus", render);
+  input.addEventListener("blur", render);
+  // keep the active-cell caret tracking arrow keys / clicks
+  input.addEventListener("keyup", render);
+  input.addEventListener("click", render);
+
+  render();
+})();
+</script>
+</body>
+</html>

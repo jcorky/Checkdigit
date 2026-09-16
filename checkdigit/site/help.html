@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Help — CHECKDIGIT</title>
+<meta name="description" content="How to use CHECKDIGIT: uploading files, what each verdict means, supported formats and identifiers, the admin area, privacy, and self-hosting." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230E1418'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23F3A93B' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23F3A93B' fill-opacity='0.18' stroke='%23F3A93B' stroke-width='2'/%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#0E1418; --panel:#141C23; --raised:#1A242E; --line:#293743; --line-soft:#1F2B35;
+    --text:#E7EEF4; --muted:#90A0B0; --faint:#5E6F7E;
+    --amber:#F3A93B; --valid:#52B98A; --flagged:#5B9DF0; --invalid:#E5604F;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --maxw: 880px;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-text-size-adjust:100% }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased }
+  a{ color:inherit }
+  .wrap{ max-width:var(--maxw); margin:0 auto; padding:0 24px }
+  .mono{ font-family:var(--mono) }
+  .eyebrow{ font-family:var(--mono); font-size:11.5px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--faint); margin:0 0 14px }
+
+  header.bar{ position:sticky; top:0; z-index:50; background:rgba(14,20,24,.82);
+    backdrop-filter:saturate(140%) blur(10px); border-bottom:1px solid var(--line-soft) }
+  .bar .row{ display:flex; align-items:center; gap:18px; height:60px }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; font-family:var(--mono);
+    font-weight:600; color:var(--text); font-size:15px }
+  .brand .glyph{ width:22px; height:16px; flex:0 0 auto }
+  .bar nav{ margin-left:auto; display:flex; align-items:center; gap:8px }
+  .navlink{ font-family:var(--mono); font-size:12.5px; color:var(--muted); text-decoration:none;
+    padding:8px 10px; border-radius:7px }
+  .navlink:hover{ color:var(--text); background:var(--raised) }
+  .navlink.on{ color:var(--text) }
+  @media (max-width:680px){ .navlink.hide-sm{ display:none } }
+  .btn{ display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:13px;
+    font-weight:600; text-decoration:none; border-radius:9px; padding:9px 15px; cursor:pointer;
+    border:1px solid transparent }
+  .btn-amber{ background:var(--amber); color:#1A1205 } .btn-amber:hover{ filter:brightness(1.06) }
+  .btn .arr{ transition:transform .15s ease } .btn:hover .arr{ transform:translateX(3px) }
+
+  .hero{ padding:56px 0 8px }
+  .hero h1{ font-size:clamp(26px,4.4vw,38px); letter-spacing:-.015em; margin:0 0 12px; font-weight:670 }
+  .hero p{ color:var(--muted); max-width:62ch; margin:0 }
+
+  section.band{ padding:40px 0; border-bottom:1px solid var(--line-soft) }
+  section.band:last-of-type{ border-bottom:0 }
+  .h2{ font-size:clamp(19px,2.6vw,24px); letter-spacing:-.01em; margin:0 0 6px; font-weight:650 }
+  .sub{ color:var(--muted); max-width:62ch; margin:0 0 22px; font-size:14.5px }
+  p{ color:var(--muted); font-size:14.5px }
+  p b, li b{ color:var(--text); font-weight:600 }
+  code{ font-family:var(--mono); font-size:.92em; background:var(--raised);
+    border:1px solid var(--line-soft); border-radius:6px; padding:1px 6px; color:var(--text) }
+
+  /* info callouts */
+  .callout{ display:flex; gap:12px; align-items:flex-start; border:1px solid var(--line-soft);
+    border-left:3px solid var(--flagged); background:var(--panel); border-radius:12px;
+    padding:14px 16px; margin:18px 0 }
+  .callout .ic{ flex:0 0 auto; margin-top:2px; color:var(--flagged) }
+  .callout p{ margin:0; font-size:13.5px; line-height:1.55 }
+  .callout.tip{ border-left-color:var(--valid) }  .callout.tip .ic{ color:var(--valid) }
+  .callout.warn{ border-left-color:var(--amber) } .callout.warn .ic{ color:var(--amber) }
+
+  /* quick-start steps (a real sequence, so numbering is earned) */
+  .qs{ counter-reset:qs; margin:0; padding:0; list-style:none }
+  .qs li{ counter-increment:qs; position:relative; padding:0 0 18px 46px }
+  .qs li::before{ content:counter(qs,decimal-leading-zero); position:absolute; left:0; top:1px;
+    font-family:var(--mono); font-size:12px; color:var(--amber); letter-spacing:.08em }
+  .qs li::after{ content:""; position:absolute; left:11px; top:22px; bottom:2px; width:1px; background:var(--line-soft) }
+  .qs li:last-child::after{ display:none }
+  .qs h3{ margin:0 0 4px; font-size:15px; font-weight:620; color:var(--text) }
+  .qs p{ margin:0; font-size:13.5px }
+
+  /* verdict rows */
+  .verdicts{ display:grid; gap:10px }
+  .verdict{ display:grid; grid-template-columns:118px 1fr; gap:14px; align-items:start;
+    background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:14px 16px }
+  @media (max-width:560px){ .verdict{ grid-template-columns:1fr } }
+  .chip{ font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.1em;
+    padding:5px 9px; border-radius:7px; border:1px solid; text-align:center; align-self:start }
+  .chip.valid{ color:var(--valid); border-color:rgba(82,185,138,.45); background:rgba(82,185,138,.08) }
+  .chip.corrected{ color:var(--amber); border-color:rgba(243,169,59,.5); background:rgba(243,169,59,.10) }
+  .chip.flagged{ color:var(--flagged); border-color:rgba(91,157,240,.45); background:rgba(91,157,240,.08) }
+  .chip.invalid{ color:var(--invalid); border-color:rgba(229,96,79,.45); background:rgba(229,96,79,.08) }
+  .verdict p{ margin:0; font-size:13.5px }
+
+  /* format tags + identifier list (mirrors the landing) */
+  .tags{ display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 0 }
+  .tag{ font-family:var(--mono); font-size:12.5px; color:var(--text); background:var(--raised);
+    border:1px solid var(--line-soft); border-radius:8px; padding:6px 10px }
+  .deflist{ margin:14px 0 0; padding:0; list-style:none }
+  .deflist li{ padding:11px 0; border-top:1px solid var(--line-soft); display:flex; gap:12px }
+  .deflist li:first-child{ border-top:0 }
+  .deflist .term{ font-family:var(--mono); font-size:13px; color:var(--text); flex:0 0 130px }
+  .deflist .desc{ font-size:13.5px; color:var(--muted) }
+
+  /* FAQ */
+  details{ border:1px solid var(--line-soft); border-radius:12px; background:var(--panel);
+    margin:0 0 10px; overflow:hidden }
+  summary{ cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;
+    padding:14px 16px; font-size:14px; font-weight:600; color:var(--text) }
+  summary::-webkit-details-marker{ display:none }
+  summary::before{ content:"+"; font-family:var(--mono); color:var(--amber); width:14px }
+  details[open] summary::before{ content:"–" }
+  details .a{ padding:0 16px 14px 40px }
+  details .a p{ margin:0 0 8px; font-size:13.5px }
+
+  footer{ border-top:1px solid var(--line-soft); padding:28px 0 44px; color:var(--faint) }
+  footer .row{ display:flex; flex-wrap:wrap; gap:14px 26px; align-items:center; justify-content:space-between }
+  footer .mono-sm{ font-family:var(--mono); font-size:12px }
+  footer a{ color:var(--muted); text-decoration:none } footer a:hover{ color:var(--text) }
+  :focus-visible{ outline:2px solid var(--amber); outline-offset:2px; border-radius:6px }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="index.html">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="#F3A93B" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="#F3A93B" fill-opacity="0.18" stroke="#F3A93B" stroke-width="2"/>
+      </svg>
+      CHECKDIGIT
+    </a>
+    <nav>
+      <a class="navlink on" href="help.html">Help</a>
+      <a class="navlink hide-sm" href="check-digit.html">The math</a>
+      <a class="btn btn-amber" href="https://app.thecheckdigit.com">Open the app <span class="arr">→</span></a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero wrap">
+    <p class="eyebrow">Help</p>
+    <h1>Using CHECKDIGIT</h1>
+    <p>Everything on this page applies to the app at <a href="https://app.thecheckdigit.com">app.thecheckdigit.com</a> — and to any self-hosted copy.</p>
+  </div>
+
+  <section class="band">
+    <div class="wrap">
+      <h2 class="h2">Quick start</h2>
+      <ol class="qs" style="margin-top:20px">
+        <li>
+          <h3>Open the app and add your file</h3>
+          <p>Drop a file on the Correct tab, or paste raw text straight into the box. Files up to <b>5&nbsp;MB</b> are accepted; the format is detected from the <em>content</em>, never the file name.</p>
+        </li>
+        <li>
+          <h3>Review what was found</h3>
+          <p>Every equipment identifier is listed with a verdict (see below) and, where a check digit was wrong, the exact before → after change.</p>
+        </li>
+        <li>
+          <h3>Download the corrected file</h3>
+          <p>You get the file back in its <b>original format</b>. It differs from your input only at the check-digit characters that were wrong — nothing else is rewritten, re-encoded, or reflowed.</p>
+        </li>
+      </ol>
+      <div class="callout tip">
+        <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        <p><b>Just checking one number?</b> The box on the <a href="index.html">front page</a> validates a single container number instantly, and <a href="check-digit.html">The math</a> shows the full calculation step by step.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="verdicts">
+    <div class="wrap">
+      <h2 class="h2">What the verdicts mean</h2>
+      <p class="sub">CHECKDIGIT only corrects when the context justifies it. Anything ambiguous is surfaced for you instead of silently rewritten.</p>
+      <div class="verdicts">
+        <div class="verdict"><span class="chip valid">VALID</span>
+          <p>The check digit is already correct. Nothing to do.</p></div>
+        <div class="verdict"><span class="chip corrected">CORRECTED</span>
+          <p>The check digit was wrong <b>and</b> the number sat in a field that is declared to carry an equipment ID (EDIFACT <code>EQD</code>, X12 <code>N7</code>, an SNX equipment attribute, a recognised column…). The correct digit was computed and spliced in.</p></div>
+        <div class="verdict"><span class="chip flagged">FLAGGED</span>
+          <p>The number fails its check, but the context doesn't justify a silent fix — it appeared in free text, its identifier type is ambiguous, or an owner-prefix policy applies. It's listed for your review with the suggested digit.</p></div>
+        <div class="verdict"><span class="chip invalid">INVALID</span>
+          <p>The token doesn't have the shape of any supported identifier (for a container: 4 letters, 6 digits, 1 check digit). It can't be validated, so it's reported as-is.</p></div>
+      </div>
+      <div class="callout">
+        <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
+        <p><b>Why was my number flagged instead of corrected?</b> Usually because it was found in free text rather than a declared equipment field. Correcting a "number" that might be a booking reference or a phone digit run would corrupt your data — so CHECKDIGIT asks instead of guessing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="formats">
+    <div class="wrap">
+      <h2 class="h2">Formats &amp; identifiers</h2>
+      <p class="sub">Detection is structural — a BAPLIE renamed to <code>.txt</code> is still recognised as a BAPLIE.</p>
+      <div class="tags">
+        <span class="tag">EDIFACT</span><span class="tag">ANSI X12</span><span class="tag">SNX XML</span>
+        <span class="tag">CSV / TSV</span><span class="tag">Fixed-width</span><span class="tag">XLSX</span>
+        <span class="tag">Plain text</span>
+      </div>
+      <ul class="deflist">
+        <li><span class="term">ISO 6346</span><span class="desc">Maritime containers — mod-11 check digit, recomputed and corrected. <a href="check-digit.html">See the calculation.</a></span></li>
+        <li><span class="term">ILU · EN 13044</span><span class="desc">Intermodal loading units (categories A/B/D/E/K), routed to their own category set.</span></li>
+        <li><span class="term">UIC wagon</span><span class="desc">12-digit rail wagon numbers — a different scheme (Luhn mod-10), never cross-applied.</span></li>
+        <li><span class="term">Size / type</span><span class="desc">Codes like <code>22G1</code> or <code>45R1</code> are decoded for context and deliberately never altered.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band" id="admin">
+    <div class="wrap">
+      <h2 class="h2">Public vs. admin</h2>
+      <p><b>Uploading and correcting is open to everyone</b> — no account, no sign-in. The <b>Dashboard, History, Containers and Policy</b> tabs read the audit warehouse and are restricted to the administrator: they appear after a Google sign-in, and the server rejects any account that isn't on the allow-list. Hiding the tabs is cosmetic; the server-side check is the actual boundary.</p>
+    </div>
+  </section>
+
+  <section class="band" id="privacy">
+    <div class="wrap">
+      <h2 class="h2">Privacy</h2>
+      <p>Every processing run is logged so the operator can audit throughput: file name, detected format, size, timestamp, browser user-agent, and the verdict counts. <b>Your IP address is never stored</b> — the audit schema has no column for it.</p>
+      <div class="callout warn">
+        <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l9 18H3L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <p><b>On the hosted instance</b>, traffic passes through a CDN edge that terminates TLS, so operational data in your files transits that provider. If your manifests are sensitive, <b>self-host</b> — the whole point of CHECKDIGIT is that you can run it entirely on your own hardware.</p>
+      </div>
+      <p>Owner/box <b>enrichment lookups are opt-in</b> and switched off by default; nothing calls out to an external source until the operator configures one.</p>
+    </div>
+  </section>
+
+  <section class="band" id="selfhost">
+    <div class="wrap">
+      <h2 class="h2">Self-hosting</h2>
+      <p>CHECKDIGIT ships as a small FastAPI + SQLite service with a stdlib-only correction core. From the distribution folder:</p>
+      <ul class="deflist">
+        <li><span class="term">One command</span><span class="desc"><code>./bootstrap.sh</code> — installs system packages on Debian/Ubuntu/Mint and builds everything. Add <code>--run</code> to start on <code>127.0.0.1:8000</code>, or <code>--verify</code> to run the full test suite.</span></li>
+        <li><span class="term">Docker</span><span class="desc"><code>docker compose -f docker-compose.public.yml up -d --build</code> — the public stack: app, Caddy, Cloudflare Tunnel, Litestream backups. See <code>DEPLOY_PUBLIC.md</code> in the distribution.</span></li>
+        <li><span class="term">Verify it</span><span class="desc"><code>./smoke-test.sh</code> checks a running deployment from the outside: public surface answering, admin locked, Swagger off.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="band" id="faq">
+    <div class="wrap">
+      <h2 class="h2">FAQ</h2>
+      <details>
+        <summary>Will it change anything else in my file?</summary>
+        <div class="a"><p>No. Corrections are applied by <b>byte splice</b>: the file is parsed to find each identifier's exact byte offset, and only the check-digit character is replaced. Delimiters, encoding, padding, line endings and every untouched field stay byte-for-byte identical — and each splice is verified before the file is returned.</p></div>
+      </details>
+      <details>
+        <summary>What's the maximum file size?</summary>
+        <div class="a"><p>5&nbsp;MB per upload. Larger files are rejected with a clear error (and the rejection is logged, like every run).</p></div>
+      </details>
+      <details>
+        <summary>Can it fix a wagon number with the container algorithm?</summary>
+        <div class="a"><p>Never. Each identifier type is routed to its own scheme — ISO&nbsp;6346 mod-11 for containers and ILU units, Luhn mod-10 for UIC wagons. If the type is ambiguous, the number is flagged rather than guessed at.</p></div>
+      </details>
+      <details>
+        <summary>Why does the corrected XLSX open identically in Excel?</summary>
+        <div class="a"><p>The workbook is rebuilt preserving the original member bytes wherever they weren't touched, so styles, formulas and layout survive. Only cells containing a wrong check digit change.</p></div>
+      </details>
+      <details>
+        <summary>Where does the "owner" information come from?</summary>
+        <div class="a"><p>The BIC register is the authoritative source for owner prefixes. Enrichment is off until the operator loads it; note that a leasing company's prefix on a box says who <em>owns</em> it, not who is operating the shipment.</p></div>
+      </details>
+      <details>
+        <summary>Something looks wrong — how do I dig in?</summary>
+        <div class="a"><p>Use the <a href="index.html">front-page checker</a> or <a href="check-digit.html">the step-by-step calculation</a> to verify a single number by hand. Self-hosters can run <code>./smoke-test.sh</code> against their instance and <code>python3 run_acceptance.py</code> against the code.</p></div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">CHECKDIGIT — self-hosted ISO&nbsp;6346 correction</span>
+    <span class="mono-sm"><a href="index.html">Home</a> · <a href="check-digit.html">The math</a> · <a href="https://app.thecheckdigit.com">Open the app</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

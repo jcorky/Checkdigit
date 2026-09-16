@@ -1,0 +1,25 @@
+# Litestream configuration. Replicates the WAL of the single SQLite file so the
+# DB can be restored after a crash or disk loss. WAL mode is set by db.connect().
+#
+# This example uses a local FILE replica (simplest for a homelab; put /backups on
+# a SEPARATE disk from /data so a single-disk failure doesn't lose both). For
+# offsite durability, replace it with an S3-compatible replica (Backblaze B2,
+# AWS S3, MinIO) -- commented below.
+
+dbs:
+  - path: /data/checkdigit.db
+    replicas:
+      - type: file
+        path: /backups/checkdigit
+
+      # Offsite alternative (Backblaze B2 / S3-compatible):
+      # - type: s3
+      #   bucket: my-checkdigit-backups
+      #   path: checkdigit
+      #   endpoint: s3.us-west-002.backblazeb2.com
+      #   region: us-west-002
+      #   access-key-id:     ${LITESTREAM_ACCESS_KEY_ID}
+      #   secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+
+# Restore (run once, into an empty /data) with:
+#   litestream restore -config /etc/litestream.yml /data/checkdigit.db

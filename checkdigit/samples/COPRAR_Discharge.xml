@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tos:snx xmlns:tos="urn:tos:container-xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:tos:container-xml snx.xsd">
+<line-discharge-list action="ORIGINAL" line-id="L15" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000006" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L15">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV15" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L15" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000011" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L15">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV15" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L01" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000027" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L01">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV01" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L01" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000032" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L01">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV01" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L02" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000048" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L02">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV02" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L02" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000053" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L02">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV02" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L03" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000069" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L03">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV03" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L03" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000074" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L03">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV03" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L04" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000080" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L04">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV04" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L04" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000095" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L04">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV04" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L05" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000109" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L05">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV05" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L05" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000114" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L05">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV05" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L06" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000120" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L06">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV06" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L06" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000135" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L06">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV06" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L07" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000140" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L07">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV07" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L07" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000156" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L07">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV07" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L08" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000161" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L08">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV08" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L08" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000177" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L08">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV08" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L09" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000182" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L09">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV09" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L09" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000198" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L09">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV09" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L10" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000201" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L10">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV10" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L10" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000217" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L10">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV10" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L11" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000222" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L11">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV11" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L11" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000238" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L11">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV11" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L12" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000243" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L12">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV12" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L12" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000259" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L12">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV12" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L13" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000264" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L13">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV13" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L13" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000270" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L13">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV13" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L14" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000285" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L14">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV14" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+<line-discharge-list action="ORIGINAL" line-id="L14" sender-id="GEN EDI" complex-id="GENCX" unit-id="JKCU2000290" eq-type-id="2200" category="IMPORT" freight-kind="FCL" ctr-operator-id="L14">
+  <routing pol="HAM" pod="RTM">
+    <carrier direction="IB" id="GENV14" mode="VESSEL" facility="GENT1" />
+  </routing>
+  <contents commodity-id="GEN" gross-weight-kg="22000.0" />
+  <seals />
+  <reefer />
+  <oog />
+  <unit-flex />
+  <ufv-flex />
+</line-discharge-list>
+</tos:snx>
+

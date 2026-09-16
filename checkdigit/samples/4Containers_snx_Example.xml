@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tos:snx xmlns:tos="urn:tos:container-xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:tos:container-xml snx.xsd">
+<container eqid="APLU9192812" type="L5G1" created-by="admin" created-date="2026-05-31T00:00:00" modified-by="admin" modified-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT">
+  <physical has-wheels="N" height-mm="2896" is-insulated="N" is-permanently-out-of-service="N" iso-group="GP" length-mm="13716" material="UNKNOWN" strength-code="FB" tare-weight-kg="3800.0" width-mm="2438" />
+  <ownership owner="COS" operator="COS" />
+  <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+  <transponder />
+</container>
+<container eqid="APLU7979534" type="42R1" created-by="admin" created-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT">
+  <physical has-wheels="N" height-mm="2591" is-insulated="N" is-permanently-out-of-service="N" iso-group="RT" length-mm="12192" material="UNKNOWN" strength-code="FB" tare-weight-kg="3950.0" width-mm="2438" />
+  <ownership owner="COS" operator="COS" />
+  <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+  <transponder />
+  <reefer is-controlled-atmosphere="N" is-starvent="N" is-super-freeze="N" is-temperature-controlled="Y" rfr-type="INTEG_AIR" />
+</container>
+<container eqid="CBHU2426018" type="42R1" created-by="admin" created-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT">
+  <physical has-wheels="N" height-mm="2591" is-insulated="N" is-permanently-out-of-service="N" iso-group="RT" length-mm="12192" material="UNKNOWN" strength-code="FB" tare-weight-kg="3950.0" width-mm="2438" />
+  <ownership owner="MSK" operator="MSK" />
+  <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+  <transponder />
+  <reefer is-controlled-atmosphere="N" is-starvent="N" is-super-freeze="N" is-temperature-controlled="Y" rfr-type="INTEG_AIR" />
+</container>
+<container eqid="APLU2127329" type="42R1" created-by="admin" created-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT">
+  <physical has-wheels="N" height-mm="2591" is-insulated="N" is-permanently-out-of-service="N" iso-group="RT" length-mm="12192" material="UNKNOWN" strength-code="FB" tare-weight-kg="3950.0" width-mm="2438" />
+  <ownership owner="APL" operator="APL" />
+  <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+  <transponder />
+  <reefer is-controlled-atmosphere="N" is-starvent="N" is-super-freeze="N" is-temperature-controlled="Y" rfr-type="INTEG_AIR" />
+</container>
+<unit id="APLU9192812" category="EXPORT" restow="NONE" transit-state="YARD" freight-kind="FCL" unique-key="APLU9192812" line="COS" is-verified-yard-pos="N" is-stowplan-posted="N">
+  <equipment eqid="APLU9192812" type="L5G1" created-by="admin" created-date="2026-05-31T00:00:00" modified-by="admin" modified-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT" role="PRIMARY">
+    <physical has-wheels="N" height-mm="2896" is-insulated="N" is-permanently-out-of-service="N" iso-group="GP" length-mm="13716" material="UNKNOWN" strength-code="FB" tare-weight-kg="3800.0" width-mm="2438" />
+    <ownership owner="COS" operator="COS" />
+    <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+    <transponder />
+    <damages />
+  </equipment>
+  <position loc-type="YARD" location="OAK" slot="7H30E.1" orientation="Y" />
+  <routing pol="OAK" pol-name="United States" pod-1="TYO" pod-1-name="Japan">
+    <carrier direction="IB" qualifier="DECLARED" mode="TRUCK" facility="EBAY" />
+    <carrier direction="IB" qualifier="ACTUAL" mode="TRUCK" facility="EBAY" />
+    <carrier direction="OB" qualifier="DECLARED" mode="VESSEL" facility="EBAY" id="SMV02" />
+    <carrier direction="OB" qualifier="ACTUAL" mode="VESSEL" facility="EBAY" id="SMV02" />
+  </routing>
+  <contents weight-kg="29844.0" />
+  <seals seal-1="12345" seal-2="235" seal-3="456" />
+  <unit-etc category="EXPORT" line="COS" />
+  <timestamps time-in="2026-05-31T00:00:00" time-last-move="2026-05-31T00:00:00" />
+</unit>
+<unit id="APLU2127329" category="EXPORT" restow="NONE" transit-state="YARD" freight-kind="FCL" unique-key="APLU2127329" line="APL" is-verified-yard-pos="N" is-stowplan-posted="N">
+  <equipment eqid="APLU2127329" type="42R1" created-by="admin" created-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT" role="PRIMARY">
+    <physical has-wheels="N" height-mm="2591" is-insulated="N" is-permanently-out-of-service="N" iso-group="RT" length-mm="12192" material="UNKNOWN" strength-code="FB" tare-weight-kg="3950.0" width-mm="2438" />
+    <ownership owner="APL" operator="APL" />
+    <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+    <transponder />
+    <reefer is-controlled-atmosphere="N" is-starvent="N" is-super-freeze="N" is-temperature-controlled="Y" rfr-type="INTEG_AIR" />
+    <damages />
+  </equipment>
+  <position loc-type="YARD" location="OAK" slot="6K06D.1" orientation="Y" />
+  <routing pol="OAK" pol-name="United States" pod-1="SIN" pod-1-name="Singapore">
+    <carrier direction="IB" qualifier="DECLARED" mode="TRUCK" facility="EBAY" />
+    <carrier direction="IB" qualifier="ACTUAL" mode="TRUCK" facility="EBAY" />
+    <carrier direction="OB" qualifier="DECLARED" mode="VESSEL" facility="EBAY" id="BSV10" />
+    <carrier direction="OB" qualifier="ACTUAL" mode="VESSEL" facility="EBAY" id="BSV10" />
+  </routing>
+  <contents weight-kg="27235.0" commodity-id="CHMT" commodity-description="Chilled Meat" />
+  <seals seal-1="12345" seal-2="235" seal-3="456" />
+  <reefer temp-reqd-c="-1.0" temp-display-unit="C" time-monitor-1="2026-05-31T00:00:00" time-monitor-2="2026-05-31T00:00:00" time-monitor-3="2026-05-31T00:00:00" extended-time-monitors="N" time-requested="2026-05-31T00:00:00" unplug-warn-min="2" is-power="Y" wanted-is-power="Y" />
+  <reefer-recording-histories>
+    <reefer-recording-history time-of-recording="2026-05-31T00:00:00" malfunc="N" drains="N" is-bulb-on="N" is-alarm-on="N" />
+  </reefer-recording-histories>
+  <unit-etc category="EXPORT" line="APL" />
+  <timestamps time-in="2026-05-31T00:00:00" time-last-move="2026-05-31T00:00:00" />
+</unit>
+<unit id="APLU7979534" category="EXPORT" restow="NONE" transit-state="YARD" freight-kind="FCL" unique-key="APLU7979534" line="COS" is-verified-yard-pos="N" is-stowplan-posted="N">
+  <equipment eqid="APLU7979534" type="42R1" created-by="admin" created-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT" role="PRIMARY">
+    <physical has-wheels="N" height-mm="2591" is-insulated="N" is-permanently-out-of-service="N" iso-group="RT" length-mm="12192" material="UNKNOWN" strength-code="FB" tare-weight-kg="3950.0" width-mm="2438" />
+    <ownership owner="COS" operator="COS" />
+    <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+    <transponder />
+    <reefer is-controlled-atmosphere="N" is-starvent="N" is-super-freeze="N" is-temperature-controlled="Y" rfr-type="INTEG_AIR" />
+    <damages />
+  </equipment>
+  <position loc-type="YARD" location="OAK" slot="RC46B.3" orientation="Y" />
+  <routing pol="OAK" pol-name="United States" pod-1="SIN" pod-1-name="Singapore">
+    <carrier direction="IB" qualifier="DECLARED" mode="TRUCK" facility="EBAY" />
+    <carrier direction="IB" qualifier="ACTUAL" mode="TRUCK" facility="EBAY" />
+    <carrier direction="OB" qualifier="DECLARED" mode="VESSEL" facility="EBAY" id="BSV04" />
+    <carrier direction="OB" qualifier="ACTUAL" mode="VESSEL" facility="EBAY" id="BSV04" />
+  </routing>
+  <contents weight-kg="10773.0" commodity-id="FZMT" commodity-description="Hard Frozen Meat" />
+  <seals seal-1="12345" seal-2="235" seal-3="456" />
+  <reefer temp-reqd-c="-18.0" temp-display-unit="C" time-monitor-1="2026-05-31T00:00:00" time-monitor-2="2026-05-31T00:00:00" time-monitor-3="2026-05-31T00:00:00" extended-time-monitors="N" time-requested="2026-05-31T00:00:00" unplug-warn-min="2" is-power="Y" wanted-is-power="Y" />
+  <reefer-recording-histories>
+    <reefer-recording-history time-of-recording="2026-05-31T00:00:00" malfunc="N" drains="N" is-bulb-on="N" is-alarm-on="N" />
+  </reefer-recording-histories>
+  <unit-etc category="EXPORT" line="COS" />
+  <timestamps time-in="2026-05-31T00:00:00" time-last-move="2026-05-31T00:00:00" />
+</unit>
+<unit id="CBHU2426018" category="EXPORT" restow="NONE" transit-state="YARD" freight-kind="FCL" unique-key="CBHU2426018" line="MSK" is-verified-yard-pos="N" is-stowplan-posted="N">
+  <equipment eqid="CBHU2426018" type="42R1" created-by="admin" created-date="2026-05-31T00:00:00" class="CTR" tank-rails="UNKNOWN" life-cycle-state="ACT" role="PRIMARY">
+    <physical has-wheels="N" height-mm="2591" is-insulated="N" is-permanently-out-of-service="N" iso-group="RT" length-mm="12192" material="UNKNOWN" strength-code="FB" tare-weight-kg="3950.0" width-mm="2438" />
+    <ownership owner="MSK" operator="MSK" />
+    <restrictions is-open="N" is-unsealable="N" no-top_stow-if-empty="N" no-top-stow-if-full="N" out-of-gauge-ok="N" safe-weight-kg="0.0" stow-above-deck="N" stow-below-deck="N" uses-accessories="N" />
+    <transponder />
+    <reefer is-controlled-atmosphere="N" is-starvent="N" is-super-freeze="N" is-temperature-controlled="Y" rfr-type="INTEG_AIR" />
+    <damages />
+  </equipment>
+  <position loc-type="YARD" location="OAK" slot="RA14A.3" orientation="Y" />
+  <routing pol="OAK" pol-name="United States" pod-1="SIN" pod-1-name="Singapore">
+    <carrier direction="IB" qualifier="DECLARED" mode="TRUCK" facility="EBAY" />
+    <carrier direction="IB" qualifier="ACTUAL" mode="TRUCK" facility="EBAY" />
+    <carrier direction="OB" qualifier="DECLARED" mode="VESSEL" facility="EBAY" id="BSV05" />
+    <carrier direction="OB" qualifier="ACTUAL" mode="VESSEL" facility="EBAY" id="BSV05" />
+  </routing>
+  <contents weight-kg="11029.0" commodity-id="FZMT" commodity-description="Hard Frozen Meat" />
+  <seals seal-1="12345" seal-2="235" seal-3="456" />
+  <reefer temp-reqd-c="-18.0" temp-display-unit="C" time-monitor-1="2026-05-31T00:00:00" time-monitor-2="2026-05-31T00:00:00" time-monitor-3="2026-05-31T00:00:00" extended-time-monitors="N" time-requested="2026-05-31T00:00:00" unplug-warn-min="30" is-power="Y" wanted-is-power="Y" />
+  <reefer-recording-histories>
+    <reefer-recording-history time-of-recording="2026-05-31T00:00:00" malfunc="N" drains="N" is-bulb-on="N" is-alarm-on="N" />
+  </reefer-recording-histories>
+  <unit-etc category="EXPORT" line="MSK" />
+  <timestamps time-in="2026-05-31T00:00:00" time-last-move="2026-05-31T00:00:00" />
+</unit>
+</tos:snx>
+

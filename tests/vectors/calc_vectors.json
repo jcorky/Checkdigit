@@ -1,0 +1,119 @@
+[
+ {
+  "input": "CSQU3054383",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 3,
+  "verdict": "valid",
+  "sum": 6185,
+  "full": "CSQU3054383",
+  "mod": 3,
+  "category_set": "iso6346"
+ },
+ {
+  "input": "csqu 305438",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 3,
+  "verdict": "computed",
+  "sum": 6185,
+  "full": "CSQU3054383",
+  "mod": 3,
+  "category_set": "iso6346"
+ },
+ {
+  "input": "APLU1000000",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 0,
+  "verdict": "valid",
+  "sum": 428,
+  "full": "APLU1000000",
+  "mod": 10,
+  "category_set": "iso6346"
+ },
+ {
+  "input": "MSKU000008",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 0,
+  "verdict": "computed",
+  "sum": 4520,
+  "full": "MSKU0000080",
+  "mod": 10,
+  "category_set": "iso6346"
+ },
+ {
+  "input": "APLU9192812",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 9,
+  "verdict": "mismatch",
+  "sum": 3980,
+  "full": "APLU9192819",
+  "mod": 9,
+  "category_set": "iso6346"
+ },
+ {
+  "input": "CBHU6818017",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 7,
+  "verdict": "valid",
+  "sum": 2317,
+  "full": "CBHU6818017",
+  "mod": 7,
+  "category_set": "iso6346"
+ },
+ {
+  "input": "MSCK1234560",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 6,
+  "verdict": "mismatch",
+  "sum": 5440,
+  "full": "MSCK1234566",
+  "mod": 6,
+  "category_set": "ilu"
+ },
+ {
+  "input": "CONT1234565",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 5,
+  "verdict": "valid",
+  "sum": 5549,
+  "full": "CONT1234565",
+  "mod": 5,
+  "category_set": "unknown"
+ },
+ {
+  "input": "TCLU456789",
+  "ok": true,
+  "kind": "iso6346_ilu",
+  "computed": 7,
+  "verdict": "computed",
+  "sum": 8565,
+  "full": "TCLU4567897",
+  "mod": 7,
+  "category_set": "iso6346"
+ },
+ {
+  "input": "218124712173",
+  "ok": true,
+  "kind": "uic",
+  "computed": 3,
+  "verdict": "valid",
+  "sum": 37,
+  "full": "218124712173"
+ },
+ {
+  "input": "21812471217",
+  "ok": true,
+  "kind": "uic",
+  "computed": 3,
+  "verdict": "computed",
+  "sum": 37,
+  "full": "218124712173"
+ }
+]

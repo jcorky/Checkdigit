@@ -1,0 +1,74 @@
+services:
+  app:
+    build: .
+    environment:
+      CHECKDIGIT_DB: /data/checkdigit.db
+      # Restrict to your SPA's real origin in production, e.g. https://checkdigit.example.com
+      CHECKDIGIT_CORS_ORIGINS: "*"
+    volumes:
+      - data:/data
+    # Behind a reverse proxy (Caddy) or Cloudflare Tunnel, prefer `expose` over
+    # `ports` so the app is not directly reachable. PROXY_IP must be the proxy
+    # container's address on this network -- never "*".
+    expose:
+      - "8000"
+    # For local testing WITHOUT a proxy, comment `expose` out and use:
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: >
+      uvicorn api:app --host 0.0.0.0 --port 8000
+      --proxy-headers --forwarded-allow-ips=${PROXY_IP:-127.0.0.1}
+    restart: unless-stopped
+
+  # Headless SFTP ingestion: same image, same pipeline, same audit DB (WAL makes
+  # the multi-process share safe). Watches /data/sftp/inbox; writes corrected
+  # files + verdict CSVs to /data/sftp/outbox. Stdlib only -- no paramiko.
+  worker:
+    build: .
+    environment:
+      CHECKDIGIT_DB: /data/checkdigit.db
+      CHECKDIGIT_WATCH_ROOT: /data/sftp
+      # CHECKDIGIT_WATCH_TRUST: "1"            # treat dropped text/cells as declared ids
+      # CHECKDIGIT_OWNER_REGISTRY: /data/owner_registry.csv   # corroboration, same as app
+    volumes:
+      - data:/data
+      - sftp:/data/sftp
+    command: python watch_folder.py
+    restart: unless-stopped
+
+  # Transport by delegation: atmoz/sftp wraps OpenSSH and chroots the partner
+  # user into its home. We do NOT write SFTP code. PIN the image tag.
+  #   - inbox/outbox inside the user's home == the worker's watch root subdirs.
+  #   - The password form below is for LAN testing ONLY; for anything real,
+  #     mount an authorized_keys file instead (see DEPLOY.md) and remove it.
+  #   - uid 1001 must be able to write where the worker reads; atmoz creates the
+  #     subdirs owned by that uid on the shared volume.
+  sftp:
+    image: atmoz/sftp:alpine
+    volumes:
+      - sftp:/home/edi
+      - sftp-hostkeys:/etc/ssh/keys     # persist host keys across recreates
+    ports:
+      - "127.0.0.1:2222:22"             # LAN/local only by default; see DEPLOY.md
+    command: "edi:CHANGE_ME_BEFORE_USE:1001::inbox,outbox,processed,failed"
+    restart: unless-stopped
+
+  # Continuous SQLite backup. Reads the WAL on the shared volume and replicates
+  # per litestream.yml. Pin to a current release tag from the Litestream
+  # releases page rather than `latest`.
+  litestream:
+    image: litestream/litestream:latest
+    depends_on:
+      - app
+    volumes:
+      - data:/data
+      - backups:/backups            # swap for an S3/B2 replica in litestream.yml for offsite
+      - ./litestream.yml:/etc/litestream.yml:ro
+    command: replicate -config /etc/litestream.yml
+    restart: unless-stopped
+
+volumes:
+  data:
+  backups:
+  sftp:               # SFTP landing root: inbox/outbox/processed/failed
+  sftp-hostkeys:      # OpenSSH host keys, persisted so partners don't see key changes
