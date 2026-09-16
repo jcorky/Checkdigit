@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Files — Checkdigit</title>
+<meta name="description" content="Inspect a container data file in your browser: detect its format, review every proposed check-digit correction with its evidence, and export a corrected file with a ledger and manifest. Nothing is uploaded.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172229'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23BCE962' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23BCE962' fill-opacity='0.25' stroke='%23BCE962' stroke-width='2'/%3E%3C/svg%3E">
+<script type="module" src="/pages/files.ts"></script>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit
+    </a>
+    <nav aria-label="Site">
+      <a class="navlink" href="/check">Check</a>
+      <a class="navlink" href="/files" aria-current="page">Files</a>
+      <a class="navlink" href="/compare">Compare</a>
+      <a class="navlink" href="/reference">Reference</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page app">
+  <div class="wrap">
+    <p class="eyebrow">Local file inspector</p>
+    <h1>Files</h1>
+    <div class="stripes" aria-hidden="true" style="margin-bottom:12px"></div>
+    <p class="intro">Inspect one file in this browser tab. The file is read here, the format is detected from its content, every proposed correction is shown with its evidence, and the corrected file is built from the edits you approve. Nothing is uploaded and nothing is kept after you close the tab. Files up to 5 MB; larger files need the private workspace.</p>
+
+    <section class="panel step" aria-labelledby="s1">
+      <h2 class="step-title" id="s1"><span class="section-no">1</span> Choose the input</h2>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Drop a file here or press Enter to choose one">
+        <p><b>Drop a file here</b> or <label class="linklike" for="file">choose a file</label>. Text, CSV/TSV, fixed-width, EDIFACT, X12 and container XML are inspected locally.</p>
+        <input id="file" type="file" class="sr-only">
+      </div>
+      <details class="explain">
+        <summary>Or paste text</summary>
+        <textarea id="paste" class="text-area" rows="6" spellcheck="false" placeholder="Paste a list, an EDIFACT message, X12, container XML or CSV"></textarea>
+        <div class="row-actions"><button type="button" class="btn btn-ghost btn-small" id="use-paste">Use pasted text</button></div>
+      </details>
+      <p class="muted small" id="source-line" hidden></p>
+    </section>
+
+    <section class="panel step" aria-labelledby="s2">
+      <h2 class="step-title" id="s2"><span class="section-no blue">2</span> Declare the import intent</h2>
+      <div class="form-grid">
+        <label>Import mode
+          <select id="mode" class="select-in">
+            <option value="comparison_only">Comparison only (findings and proposals; nothing applied)</option>
+            <option value="full_snapshot">Full snapshot (needs a workspace baseline)</option>
+            <option value="incremental">Incremental add/update (needs a workspace baseline)</option>
+            <option value="explicit_removal">Explicit removal (needs a workspace baseline)</option>
+          </select>
+        </label>
+        <label>Coverage scope
+          <span class="inline"><select id="scope-kind" class="select-in">
+            <option value="source_fleet">Source fleet</option>
+            <option value="terminal">Terminal</option>
+            <option value="location">Location</option>
+            <option value="voyage">Voyage</option>
+            <option value="profile_population">Profile population</option>
+          </select>
+          <input id="scope-value" class="text-in plain" type="text" placeholder="e.g. DEMO-T1 loadlist" maxlength="80"></span>
+        </label>
+        <label>Format
+          <select id="format-hint" class="select-in">
+            <option value="auto">Detect from content (text, EDIFACT, X12, container XML)</option>
+            <option value="csv">Delimited (CSV/TSV) with a column mapping</option>
+            <option value="fixed">Fixed-width with column ranges</option>
+          </select>
+        </label>
+        <label>Owner prefix policy
+          <select id="owner-policy" class="select-in">
+            <option value="strict">Strict: non-standard owner prefixes are flagged</option>
+            <option value="lenient">Lenient: pseudo-prefixes corrected with standard mod-11</option>
+          </select>
+        </label>
+        <label class="check"><input id="trust" type="checkbox"> Treat matches as declared equipment IDs (free text and mapped columns become correctable; otherwise they are flagged for review)</label>
+      </div>
+      <div id="mapping" hidden>
+        <h3 class="sub-title">Column mapping</h3>
+        <p class="muted small">Proposed from the header; review it. Named columns map by identity, so reordering is harmless. Positional columns block when the column count changes.</p>
+        <div class="tablewrap"><table class="grid" id="mapping-table"><thead><tr><th>Column</th><th>Identity</th><th>Field type</th><th>Required</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div id="fixed" hidden>
+        <h3 class="sub-title">Column ranges</h3>
+        <label class="inline-label">Ranges, 1-based inclusive <input id="ranges" class="text-in plain" type="text" placeholder="e.g. 5-15,20-30"></label>
+        <label class="inline-label">Header lines to skip <input id="header-lines" class="text-in plain" type="number" min="0" value="0" style="width:6em"></label>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="btn btn-primary" id="inspect" disabled>Inspect file</button>
+        <span class="muted small" id="inspect-note">Runs in a Web Worker in this tab.</span>
+      </div>
+    </section>
+
+    <section class="panel step" id="results" aria-labelledby="s3" hidden>
+      <h2 class="step-title" id="s3"><span class="section-no orange">3</span> Review findings</h2>
+      <div id="job-state" class="job-state"></div>
+      <div id="totals" class="totals"></div>
+      <div id="findings"></div>
+      <div class="workbench">
+        <aside class="facets" aria-label="Filters">
+          <h3 class="sub-title">Filter</h3>
+          <div id="facets"></div>
+          <h3 class="sub-title">Bulk actions</h3>
+          <p class="muted small" id="bulk-scope">Selection applies to the filtered rows.</p>
+          <div class="row-actions">
+            <button type="button" class="btn btn-ghost btn-small" id="bulk-approve">Approve filtered</button>
+            <button type="button" class="btn btn-ghost btn-small" id="bulk-reject">Reject filtered</button>
+            <button type="button" class="btn btn-ghost btn-small" id="bulk-undo">Undo filtered</button>
+          </div>
+        </aside>
+        <div class="grid-wrap">
+          <div class="tablewrap"><table class="grid" id="proposals"><thead><tr><th>ID</th><th>Original</th><th>Proposed</th><th>Issue</th><th>Location</th><th>State</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+          <p class="empty-state" id="proposals-empty" hidden><span class="stripes" aria-hidden="true"></span><span>Nothing to review.</span></p>
+        </div>
+        <aside class="evidence" aria-label="Evidence" id="evidence">
+          <h3 class="sub-title">Evidence</h3>
+          <p class="muted small">Select a row to see its occurrences, rule and reason.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="panel step" id="export" aria-labelledby="s4" hidden>
+      <h2 class="step-title" id="s4"><span class="section-no">4</span> Export reviewed file</h2>
+      <p class="muted small" id="export-state"></p>
+      <div class="row-actions">
+        <button type="button" class="btn btn-primary" id="build">Build export</button>
+        <a class="btn btn-ghost" id="dl-corrected" hidden download>Download corrected file</a>
+        <a class="btn btn-ghost" id="dl-exceptions" hidden download>Exceptions CSV</a>
+        <a class="btn btn-ghost" id="dl-ledger" hidden download>Change ledger CSV</a>
+        <a class="btn btn-ghost" id="dl-manifest" hidden download>Manifest JSON</a>
+      </div>
+      <pre class="code" id="manifest-preview" hidden></pre>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">Checkdigit — local inspection; nothing leaves this tab</span>
+    <span class="mono-sm"><a href="/reference#limits">Limits of local mode</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

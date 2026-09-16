@@ -2,13 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect } from "vitest";
 
-import type {
-  CorrectionResult,
-  FieldContext,
-  OwnerPolicy,
-  PolicyLike,
-  ResolvedTreatment,
-} from "../../src/lib/checkdigit";
+import type { CorrectionResult, FieldContext, OwnerPolicy, PolicyLike } from "../../src/lib/checkdigit";
+import { Policy } from "../../src/lib/policy";
 
 export const vectorsDir = resolve(import.meta.dirname, "..", "vectors");
 
@@ -61,41 +56,9 @@ export interface DecisionVectors {
   policies: Record<string, PolicyDict | null>;
 }
 
-/**
- * Minimal stand-in for policy.Policy.resolve (policy.py:80-106), enough to
- * drive the kernel's policy hooks. The full policy module is ported in Phase 2.
- */
+/** The ported operator policy (src/lib/policy.ts) drives the kernel's policy hooks. */
 export function policyFromDict(d: PolicyDict): PolicyLike {
-  const norm = (p: string) => p.trim().toUpperCase();
-  const match = (prefix: string, keys: string[]): string | null => {
-    const table = new Map(keys.map((k) => [norm(k), k]));
-    if (table.has(prefix)) return table.get(prefix) as string;
-    const wild = [...table.keys()]
-      .filter((k) => k.endsWith("*"))
-      .sort((a, b) => b.length - a.length);
-    for (const w of wild) if (prefix.startsWith(w.slice(0, -1))) return table.get(w) as string;
-    return null;
-  };
-  return {
-    resolve(prefix: string): ResolvedTreatment {
-      const p = (prefix || "").toUpperCase().slice(0, 3);
-      if (match(p, d.deny) !== null) {
-        return { owner_policy: d.default_policy, force_flag: true, corroborated: false };
-      }
-      if (match(p, d.allow) !== null) {
-        return { owner_policy: d.default_policy, force_flag: false, corroborated: true };
-      }
-      const hit = match(p, Object.keys(d.per_prefix));
-      if (hit !== null) {
-        return {
-          owner_policy: d.per_prefix[hit] as OwnerPolicy,
-          force_flag: false,
-          corroborated: false,
-        };
-      }
-      return { owner_policy: d.default_policy, force_flag: false, corroborated: false };
-    },
-  };
+  return new Policy(d);
 }
 
 /** The subset of the kernel module a vector run needs; satisfied by the source and by the built chunk. */

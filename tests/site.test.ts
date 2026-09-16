@@ -73,8 +73,14 @@ describe("built output", () => {
         }
       }
       if (f.rel.endsWith(".js")) {
-        for (const m of text.matchAll(/["'`](https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}[^"'`]*["'`]/gi)) {
-          offenders.push(`${f.rel}: ${m[0]}`);
+        // URL-like strings in scripts are resource loads unless they are the href of
+        // a plain anchor in rendered markup (reference links the user chooses to follow).
+        for (const m of text.matchAll(/(https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}[^"'`\s<>]*/gi)) {
+          const before = text.slice(Math.max(0, m.index - 24), m.index);
+          if (/<a\s[^>]*href=["']$/i.test(before)) continue;
+          if (/^["'`]/.test(text.slice(m.index - 1, m.index)) || /["'`]/.test(text.slice(m.index + m[0].length, m.index + m[0].length + 1))) {
+            offenders.push(`${f.rel}: ${m[0]}`);
+          }
         }
       }
     }
@@ -121,10 +127,15 @@ describe("one kernel, no drift", () => {
 
   it("ships the letter table exactly once in the build", () => {
     const literal = /10,\s*12,\s*13,\s*14,\s*15,\s*16,\s*17,\s*18,\s*19,\s*20,\s*21,\s*23/;
-    const js = walk(dist).filter((p) => p.endsWith(".js"));
+    // A Web Worker is a separate compilation unit, so its bundle carries its own
+    // copy built from the same source module; every page chunk shares one copy.
+    const js = walk(dist).filter((p) => p.endsWith(".js") && !/inspect\.worker-/.test(p));
     const holders = js.filter((p) => literal.test(read(p)));
     expect(holders.length, holders.join(", ")).toBe(1);
     expect(relative(dist, holders[0] as string)).toMatch(/^assets[\\/]checkdigit-[\w-]+\.js$/);
+    const workers = walk(dist).filter((p) => /inspect\.worker-/.test(p));
+    expect(workers.length).toBe(1);
+    expect(literal.test(read(workers[0] as string))).toBe(true);
   });
 
   it("built kernel chunk reproduces every kernel vector", async () => {

@@ -129,6 +129,25 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   Populated, error, empty, mobile and light states were verified through the DOM and
   computed styles instead. Capture the screenshot set when the pane is visible.
 
+## Phase B notes
+
+- Offsets in the TypeScript ports are UTF-16 string indices (`offset_kind: utf16_unit`);
+  Python reports code-point indices. The parity test translates expected offsets and
+  `line L:C` labels through the fixture text before comparing.
+- The worker bundle carries its own copy of the kernel because a Web Worker is a
+  separate compilation unit; page chunks share one copy. `tests/site.test.ts` checks both.
+- OPEN: the local inspector does not open Excel workbooks; users are told to export CSV.
+  Porting the workbook reader needs a DEFLATE implementation in the browser.
+- OPEN: the container XML port checks tag balance and depth but is not a full XML
+  parser; documents that ElementTree would reject for other reasons (bad entities,
+  invalid characters) may pass the scanner. Both sides still refuse DOCTYPE/ENTITY and
+  refuse to edit on an integrity mismatch.
+- OPEN: same-file near-miss suggestions in the inspector use the file's own check-valid
+  bodies; there is no workspace history in the browser, by design.
+- OPEN: screenshots of the Files, Compare and Reference pages could not be captured
+  through the Browser pane in this session (timeouts while hidden); states were verified
+  through the DOM.
+
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 
 - (Superseded) Digit matching was ASCII-only in TypeScript while Python accepted other

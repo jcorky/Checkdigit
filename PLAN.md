@@ -42,13 +42,16 @@ tested and deployed; this file records intent and order.
 5. Define the Electric Yard design tokens and core components and apply them to the
    existing public pages.
 
-### Phase B: local file inspector, review/export, public reference tools
+### Phase B: local file inspector, review/export, public reference tools (delivered 2026-09-16)
 
 Depends on: A (contracts, tokens, capability map).
-Local inspector over the existing parsers in a Web Worker, import intent and
-mapping-contract checks, context-aware proposals, change-set-bound review, exports
-with lineage, public reference library, initial comparison. Unsupported application
-semantics stay comparison-only.
+Delivered: browser ports of the parsers proven against the golden files, a Web Worker
+inspector with declared import intent, mapping-contract checks, proposals with evidence,
+change-set-bound approvals that go stale on re-analysis, surgical export with an
+exceptions file, ledger and manifest, the list checker, the initial comparison and the
+reference library. Application semantics other than comparison stay comparison-only
+(recorded as `IMPORT_INTENT_UNRESOLVED`). Not yet: Excel in the browser, saved mapping
+recipes, offline shell.
 
 ### Phase C: private durable-job workspace and the three-million-record path
 

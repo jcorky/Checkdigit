@@ -107,33 +107,34 @@ Enum member names and string values are the Python ones (`Status.CORRECTED === "
 | `txt_locator._RE_BIC` (`[A-Z]{4}[0-9]{7}`, global, non-overlapping) | `src/lib/bulk.ts` token extraction | `tests/bulk.test.ts` | OPEN. Planned INTENTIONAL-DIFF: `/bulk` normalizes lowercase and hyphen/space-separated tokens before matching; the Phase 2 file corrector keeps the Python behaviour unchanged |
 | SPA `exportCsv` columns (UTF-8 BOM, CRLF) | `src/lib/export.ts` | `tests/bulk.test.ts` | OPEN |
 
-## Phase 2: writer, detection, locators, correctors
+## Browser ports of the writer, detection, locators and correctors (Phase B)
 
 | Python symbol | TypeScript symbol | Proven by | Status |
 |---|---|---|---|
-| `substitution.Edit`, `apply_edits`, `SubstitutionError`, `changed_indices` (7 tests in `test_substitution.py`) | `src/lib/substitution.ts` | `tests/substitution.test.ts` | OPEN |
-| `dispatcher.detect_format` | `detectFormat` | `tests/detect.test.ts` | OPEN |
-| `dispatcher.detect_bytes` (ZIP, PDF, docx, pptx, corrupt ZIP reasons) | `detectBytes` | `tests/detect.test.ts` | OPEN |
-| `dispatcher.correct`, `correct_with_hint` | `correct`, `correctWithHint` | `tests/splice.parity.test.ts` | OPEN |
-| `txt_locator.locate_equipment`, `evaluate_text`; `txt_corrector.correct_txt` | `src/lib/formats/txt.ts` | `tests/splice.parity.test.ts` (`samples/txtcontainers.txt`: 41 distinct, 3 valid, 38 flagged) | OPEN |
-| `edifact_locator.detect_separators`, `_split_segments`, `_split_on`, `parse_segment`, `iter_segments`, `locate_equipment`, `evaluate_text`; `edifact_corrector.correct_edifact` | `src/lib/formats/edifact.ts` | `tests/splice.parity.test.ts` (`USER01_baplie_edi.txt` to `USER01_baplie_edi.CORRECTED.txt`; `L02LOADLIST.txt` to `L02LOADLIST.CORRECTED_lenient.txt` under lenient) | OPEN |
-| `x12_locator.detect_delims`, `iter_segments`, `locate_equipment`, `evaluate_text`; `x12_corrector._body10`, `correct_x12` | `src/lib/formats/x12.ts` | `tests/splice.parity.test.ts` (`run_pass6.SYNTH` to `X12_synthetic.CORRECTED.edi`) | OPEN |
-| `snx_locator.harden_and_parse`, `XmlSecurityError`, `IntegrityError`, `_parsed_counts`, `_locate_occurrences`, `locate_equipment`, `size_type_codes`, `evaluate_text`; `snx_corrector.correct_snx` | `src/lib/formats/snx.ts` | `tests/splice.parity.test.ts` (`4Containers_snx_Example.xml` to `4Containers_snx_Example.CORRECTED.xml`; `COPRAR_Discharge.xml` 30 units) | OPEN |
-| `csv_locator.sniff_delimiter`, `parse_records`, `resolve_columns`, `locate_csv`, `evaluate_csv`, `CsvError`; `csv_corrector.correct_csv` | `src/lib/formats/csv.ts` | `tests/splice.parity.test.ts` | OPEN |
-| `fixedwidth_locator._validate_ranges`, `_line_spans`, `locate_fixedwidth`, `evaluate_fixedwidth`, `FixedWidthError`; `fixedwidth_corrector.correct_fixedwidth` | `src/lib/formats/fixedwidth.ts` | `tests/splice.parity.test.ts` | OPEN |
-| `xlsx_locator.load_workbook`, `_t_spans`, `_shared_cell_refs`, `_locate_shared`, `_locate_sheets`, `locate`, `XlsxError`; `xlsx_corrector.correct_workbook` | `src/lib/formats/xlsx.ts` | `tests/splice.parity.test.ts` | OPEN |
-| `correction_report.Occurrence`, `Change`, `Flag`, `ContainerRecord`, `CorrectionReport`, `inventory_from_results` | `src/lib/report.ts` | `tests/splice.parity.test.ts` | OPEN |
-| `nearmiss.osa_distance`, `suggest` | `src/lib/nearmiss.ts` | `tests/nearmiss.test.ts` | OPEN |
-| `policy.Policy`, `ResolvedTreatment`, `plan_for_tokens` (per-session only, never persisted) | `src/lib/policy.ts` | `tests/policy.test.ts` | OPEN |
-| `batch.process_batch` output layout (`corrected/<name>`, `report.csv`, `manifest.json` with `totals` and `members`) | `src/lib/batch.ts` | `tests/batch.test.ts` | OPEN |
+| `substitution.Edit`, `apply_edits`, `SubstitutionError`, `changed_indices` | `src/lib/substitution.ts` | golden pairs and format vectors in `tests/splice.parity.test.ts` | PARITY (offsets are UTF-16 indices; `offset_kind: utf16_unit`) |
+| `dispatcher.detect_format` | `detectFormat` | `tests/detect.test.ts`, format vectors | PARITY |
+| `dispatcher.detect_bytes` (ZIP, PDF, docx, pptx, corrupt ZIP reasons) | `detectBytes` with `zipMemberNames` | `tests/detect.test.ts` | PARITY (central directory read; no decompression) |
+| `dispatcher.correct`, `correct_with_hint` | `correct`, `correctWithHint` | format vectors (36 fixtures) | PARITY |
+| `txt_locator.locate_equipment`, `evaluate_text`; `txt_corrector.correct_txt` | `src/lib/formats/txt.ts` | `samples/txtcontainers.txt` (41 distinct, 3 valid, 38 flagged), format vectors | PARITY |
+| `edifact_locator.*`; `edifact_corrector.correct_edifact` | `src/lib/formats/edifact.ts` | `USER01_baplie_edi.CORRECTED.txt`, `L02LOADLIST.CORRECTED_lenient.txt` byte-identical; format vectors | PARITY |
+| `x12_locator.*`; `x12_corrector._body10`, `correct_x12` | `src/lib/formats/x12.ts` | `run_pass6.SYNTH` to `X12_synthetic.CORRECTED.edi`; format vectors | PARITY |
+| `snx_locator.harden_and_parse`, `_parsed_counts`, `_locate_occurrences`, `locate_equipment`, `size_type_codes`, `evaluate_text`; `snx_corrector.correct_snx` | `src/lib/formats/snx.ts` | `4Containers_snx_Example.CORRECTED.xml` byte-identical; `COPRAR_Discharge.xml` 30 units; format vectors including DOCTYPE refusal, malformed document and the carrier/@id integrity refusal | PARITY; INTENTIONAL-DIFF: a start-tag scanner with balance and depth checks replaces ElementTree (no DOM in a worker); Python `ParseError` maps to `XmlParseError` |
+| `csv_locator.*`; `csv_corrector.correct_csv` | `src/lib/formats/csv.ts` | format vectors (quotes, CRLF, embedded newline, semicolon, positional, missing column, embedded scan) | PARITY; INTENTIONAL-DIFF: delimiter sniffing splits lines on CR, LF and CRLF only (Python `splitlines` also splits on other Unicode line separators) |
+| `fixedwidth_locator.*`; `fixedwidth_corrector.correct_fixedwidth` | `src/lib/formats/fixedwidth.ts` | format vectors (ranges, header lines, short lines, bad range) | PARITY (same line-separator note as CSV) |
+| `correction_report.*` | `src/lib/report.ts` | format vectors compare every report field | PARITY |
+| `nearmiss.osa_distance`, `suggest` | `src/lib/nearmiss.ts` | used by the worker for same-file suggestions; `tests/localjob.test.ts` | PARITY by construction (line-for-line port); no dedicated vectors yet |
+| `policy.Policy`, `ResolvedTreatment` | `src/lib/policy.ts` | 743 decision vectors run through the port | PARITY |
+| `iso6346_sizetype.decode`, tables, `GROUP_COLOR` | `src/lib/sizetype.ts` | `tests/sizetype.test.ts` (46 Python-generated codes) | PARITY |
+| `xlsx_locator`, `xlsx_corrector` | not ported | | OPEN (service only) |
+| `batch.process_batch` | not ported | | OPEN (service only) |
 
 ## Idempotence and non-corruption (every golden pair)
 
 | Property | Proven by | Status |
 |---|---|---|
-| Output length equals input length | `tests/splice.parity.test.ts` | OPEN |
-| Output bytes equal the `*.CORRECTED*` golden file | `tests/splice.parity.test.ts` | OPEN |
-| Running the corrector on its own output changes nothing | `tests/splice.parity.test.ts` | OPEN |
+| Output length equals input length | `tests/splice.parity.test.ts` | PARITY for SNX and EDIFACT pairs; the X12 pair grows by one byte because an empty N7-18 slot receives an inserted digit (same as Python) |
+| Output bytes equal the `*.CORRECTED*` golden file | `tests/splice.parity.test.ts` | PARITY |
+| Running the corrector on its own output changes nothing | `tests/splice.parity.test.ts` | PARITY |
 
 ## Site-level checks
 

@@ -7,7 +7,12 @@ a server. The Python service under `checkdigit/` is the reference implementation
 private processing path; it is not exposed by the static site.
 
 Design direction: Electric Yard (charcoal/teal surfaces, electric lime navigation,
-cornflower and warm-orange accents). Tokens live in `src/styles/site.css`.
+cornflower and warm-orange accents). Tokens live in `src/styles/site.css`; the
+application shell styles in `src/styles/app.css`.
+
+Pages: `/` (segmented validator), `/check` (one number with every validation layer),
+`/bulk` (a list), `/files` (local file inspector with review and export), `/compare`
+(two lists or files), `/reference` (library with the size/type decoder).
 
 Documents:
 

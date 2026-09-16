@@ -1,0 +1,485 @@
+/* Application shell: compact working surfaces for Files, Bulk, Compare and the
+   reference library. Decorative motifs stay in headers; tables and evidence
+   panels use quiet, opaque backgrounds. */
+.page.app .panel.step {
+  margin-top: 16px;
+}
+
+.step-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--display);
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+.sub-title {
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 14px 0 8px;
+  font-weight: 700;
+}
+
+.small {
+  font-size: 12.5px;
+}
+
+.linklike {
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.drop {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  text-align: center;
+  background: var(--raised);
+  cursor: pointer;
+}
+
+.drop.over {
+  border-color: var(--lime);
+}
+
+.drop p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.drop b {
+  color: var(--text);
+}
+
+.text-area {
+  width: 100%;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.text-area:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(188, 233, 98, 0.25);
+}
+
+.row-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 18px;
+}
+
+@media (max-width: 760px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-grid > label,
+.inline-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.form-grid .inline {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.form-grid .select-in,
+.form-grid .text-in.plain,
+.inline-label .text-in.plain,
+.text-in.plain {
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 400;
+  flex: 1 1 auto;
+}
+
+.select-in.small {
+  font-size: 13px;
+  padding: 4px 6px;
+  flex: 0 1 auto;
+}
+
+label.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  font-size: 13.5px;
+  color: var(--text);
+  grid-column: 1 / -1;
+}
+
+.job-state {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+.tile {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tile .k {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tile .v {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+ul.findings {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+ul.findings li {
+  border-left: 3px solid var(--line);
+  padding: 6px 10px;
+  font-size: 13.5px;
+  background: var(--raised);
+  border-radius: 4px;
+}
+
+.workbench {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 300px;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .workbench {
+    grid-template-columns: 1fr;
+  }
+}
+
+.facets .facet {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.facet-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.facet-item {
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.facet-item:hover {
+  background: var(--raised);
+}
+
+.facet-item.on {
+  border-color: var(--lime);
+  background: var(--raised);
+}
+
+table.grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  background: var(--panel);
+}
+
+table.grid th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+table.grid td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+table.grid tr.selected td {
+  background: var(--raised);
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+table.grid tr[tabindex]:focus-visible td {
+  outline: 2px solid var(--focus);
+}
+
+table.grid td.actions {
+  white-space: nowrap;
+}
+
+table.grid td.actions .btn {
+  margin-right: 4px;
+  padding: 3px 9px;
+  font-size: 12px;
+}
+
+.evidence {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.kv dt {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kv dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+ul.occ {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+ul.occ code {
+  display: block;
+  font-size: 12px;
+  word-break: break-all;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+ul.occ code.before {
+  background: var(--err-bg);
+}
+
+ul.occ code.after {
+  background: var(--ok-bg);
+}
+
+pre.code {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  font-size: 12px;
+  overflow-x: auto;
+  max-height: 320px;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 760px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- reference library ---- */
+.ref-grid {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 860px) {
+  .ref-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ref-nav {
+  position: sticky;
+  top: 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ref-nav a {
+  text-decoration: none;
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ref-nav a:hover {
+  background: var(--raised);
+}
+
+.ref-nav .n {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  background: var(--lime);
+  color: var(--on-decor);
+  font-family: var(--display);
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+
+article.ref {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  max-width: 78ch;
+}
+
+article.ref h2 {
+  font-family: var(--display);
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+
+article.ref .meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+article.ref p,
+article.ref li {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+article.ref table {
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+article.ref th,
+article.ref td {
+  border-bottom: 1px solid var(--line);
+  padding: 5px 10px 5px 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+article.ref th {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+article.ref[hidden] {
+  display: none;
+}
+
+.blind-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.blind-grid .cell-pair {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+}
+
+.blind-grid .cell-pair.hit {
+  border-color: var(--orange);
+}
