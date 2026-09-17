@@ -1,0 +1,11 @@
+{
+  "containers": 1000000,
+  "expected_corrected_edits": 132620,
+  "expected_corrected_sha256": "877a80661376bfc5672d5d848e64823bfced2ef914e6a5e9840704eb66351962",
+  "format": "xml",
+  "identifier_occurrences": 1666668,
+  "records": 1333334,
+  "seed": 20260916,
+  "size_bytes": 166091150,
+  "source_sha256": "28d30aedb32ae90d135b53eaf2a200cd1a7460a8c6468d5b07a9281f0264e72e"
+}

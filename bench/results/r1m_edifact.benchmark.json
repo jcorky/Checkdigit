@@ -1,0 +1,81 @@
+{
+  "all_checks_pass": true,
+  "artifact": {
+    "edits_applied": 79781,
+    "id": "art_1a0b0e754d2ab2c883ae894",
+    "sha256": "3bc2e57a830b86cb0788472a4fe91901936ac769c487ca27f28b81c545cb007d",
+    "size_bytes": 47345446
+  },
+  "checks": {
+    "artifact_sha256_matches_truth": [
+      "3bc2e57a830b86cb0788472a4fe91901936ac769c487ca27f28b81c545cb007d",
+      "3bc2e57a830b86cb0788472a4fe91901936ac769c487ca27f28b81c545cb007d"
+    ],
+    "corrected": [
+      79781,
+      79781
+    ],
+    "edits_match_truth": [
+      79781,
+      79781
+    ],
+    "records": [
+      1000000,
+      1000000
+    ],
+    "state": [
+      "awaiting_review",
+      "awaiting_review"
+    ]
+  },
+  "dataset": {
+    "expected_corrected_edits": 79781,
+    "expected_corrected_sha256": "3bc2e57a830b86cb0788472a4fe91901936ac769c487ca27f28b81c545cb007d",
+    "format": "edifact",
+    "messages": 100,
+    "path": "../bench/fleet_1m.edi",
+    "records": 1000000,
+    "seed": 20260916,
+    "size_bytes": 47345446,
+    "source_sha256": "f515b7488e5c9a35a67e134e2bc0bd514f53d7340b9c422d748a14ad2cc6a727"
+  },
+  "hardware": {
+    "cpu_count": 28,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "python": "3.13.14",
+    "ram_bytes": 68375748608,
+    "sqlite": "3.50.4"
+  },
+  "job": {
+    "counters": {
+      "identifiers_total": 1000000,
+      "records_total": 1000000,
+      "status_corrected": 79781,
+      "status_valid": 920219
+    },
+    "findings": {
+      "IMPORT_INTENT_UNRESOLVED": 1
+    },
+    "format": "edifact",
+    "state": "awaiting_review"
+  },
+  "peak_working_set_bytes": 579444736,
+  "steps": {
+    "approve_selection_s": 4.129,
+    "export_s": 0.9,
+    "ingest_validate_s": 58.563,
+    "register_source_s": 0.055
+  },
+  "storage_bytes": {
+    "artifacts": 55246583,
+    "database": 376119296,
+    "sources": 47345446
+  },
+  "throughput": {
+    "mib_per_s": 0.77,
+    "records_per_s": 17075.6
+  },
+  "total_s": 64.226
+}

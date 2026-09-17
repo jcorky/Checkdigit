@@ -57,17 +57,19 @@ recipes, offline shell.
 
 Depends on: B (review model), A (contracts).
 Delivered in `checkdigit/workspace/`: SQLite-backed workspace with an immutable source
-store, import intents, a durable job queue (leases, heartbeats, checkpoints, retries,
-cancellation, crash recovery with idempotent batches), streaming readers for CSV, plain
-text and EDIFACT that keep decoder and parser state across chunk boundaries, staged
-generations with completeness gates and atomic publication onto a materialized fleet
-table, storage-backed selection manifests with expected-count and version checks,
-streamed export with verified splices and atomic artifact publication, a versioned API
-with resumable uploads and cursor pagination, and a reproducible benchmark with an
-independent verifier (`BENCHMARK.md`). SQLite stays: the measured run fits one host.
-Not in this phase: X12 and container XML on the streaming path (whole-file only, behind
-the upload limit), a workspace user interface, roles beyond the admin gate, disk-pressure
-simulation.
+store, import intents with coverage scopes, a durable job queue (leases, heartbeats,
+checkpoints, retries, cancellation, crash recovery with idempotent batches, budget
+failures without retry), streaming readers for CSV, plain text, EDIFACT, X12 and
+container XML that keep decoder and parser state across chunk boundaries, staged
+generations with completeness gates and scope-confined retirement published atomically
+onto a materialized fleet table, storage-backed selection manifests with expected-count,
+job-scoped operation id and version checks, re-analysis under the current operator
+policy, streamed export with verified splices, artifact supersession and free-disk checks,
+roles per workspace, retention purge and storage budgets, a versioned API returning
+contract-shaped documents with resumable uploads and cursor pagination, and a
+reproducible benchmark with an independent verifier (`BENCHMARK.md`). SQLite stays: the
+measured runs fit one host. Not in this phase: a workspace user interface, splitting one
+file across several workers, an actual out-of-space recording.
 
 ### Phase D: multi-terminal profiles, EDI/XML validation, lifecycle, visits, feedback
 

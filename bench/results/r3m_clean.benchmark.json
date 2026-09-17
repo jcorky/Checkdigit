@@ -1,0 +1,256 @@
+{
+  "all_checks_pass": true,
+  "approval": {
+    "digest": "8944ced7b5d2ad0511ec1886f46b0ed816668be6b605fa13eb14f3c4f0a21159",
+    "id": "apr_1a0b0f011d7e402e2786d32",
+    "selection_count": 345170
+  },
+  "artifact": {
+    "edits_applied": 345170,
+    "exceptions": 60062,
+    "id": "art_1a0b0f04fda7fd3993c14eb",
+    "sha256": "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+    "size_bytes": 149937153,
+    "state": "ready"
+  },
+  "cancellation": {
+    "records_committed": 90000,
+    "state": "cancelled",
+    "stop_latency_s": 0.214
+  },
+  "checks": {
+    "artifact_sha256_matches_truth": [
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36"
+    ],
+    "cancelled_state": [
+      "cancelled",
+      "cancelled"
+    ],
+    "delta_added": [
+      200,
+      200
+    ],
+    "delta_retired": [
+      0,
+      0
+    ],
+    "edits_match_truth": [
+      345170,
+      345170
+    ],
+    "fleet_after_delta": [
+      2738443,
+      2738443
+    ],
+    "fleet_after_race": [
+      2738493,
+      2738493
+    ],
+    "interrupted_export_not_ready": [
+      "failed",
+      "failed"
+    ],
+    "observations_equal_records": [
+      3000000,
+      3000000
+    ],
+    "one_publisher_wins": [
+      [
+        "BASELINE_CONFLICT",
+        "published"
+      ],
+      [
+        "BASELINE_CONFLICT",
+        "published"
+      ]
+    ],
+    "replay_is_noop": [
+      true,
+      true
+    ],
+    "retry_matches": [
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36"
+    ],
+    "untouched_after_delta": [
+      2738243,
+      2738243
+    ]
+  },
+  "concurrent_publish": {
+    "a": "published",
+    "b": "BASELINE_CONFLICT"
+  },
+  "dataset": {
+    "categories": {
+      "conflict": 14943,
+      "duplicate": 45065,
+      "junk": 30228,
+      "missing": 29834,
+      "valid": 2549703,
+      "wrong_body": 89882,
+      "wrong_check": 240345
+    },
+    "expected_corrected_edits": 345170,
+    "expected_corrected_sha256": "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+    "path": "../bench/fleet_3m.csv",
+    "records": 3000000,
+    "seed": 20260916,
+    "size_bytes": 149937153,
+    "source_sha256": "598039f9e5d5cedf93fb083a65b2c0d32d6d5cd695a68ca72c65699be320619b"
+  },
+  "delta": {
+    "effects": {
+      "added": 200,
+      "baseline": 2738243,
+      "baseline_in_scope": 2738243,
+      "blocked": [],
+      "candidate": 200,
+      "changed": 0,
+      "complete": true,
+      "mode": "incremental",
+      "removed": 2738243,
+      "retire": 0,
+      "retire_withheld": 0,
+      "scope": {
+        "kind": "source_fleet",
+        "value": "all"
+      },
+      "unchanged": 0
+    },
+    "publish": {
+      "applied": {
+        "retired": 0,
+        "upserted": 200
+      },
+      "fleet_count": 2738443,
+      "fleet_in_scope": 2738443,
+      "generation_id": "gen_1a0b0efdd8dbe7ae9717816",
+      "published_at": "2026-09-17T19:55:08Z",
+      "replayed": false,
+      "state": "published",
+      "superseded": "gen_1a0b0e9ebda9e7ad85aae5f"
+    },
+    "untouched_rows_from_main": 2738243
+  },
+  "generation": {
+    "effects": {
+      "added": 2738243,
+      "baseline": 0,
+      "baseline_in_scope": 0,
+      "blocked": [],
+      "candidate": 2738243,
+      "changed": 0,
+      "complete": false,
+      "mode": "incremental",
+      "removed": 0,
+      "retire": 0,
+      "retire_withheld": 0,
+      "scope": {
+        "kind": "source_fleet",
+        "value": "all"
+      },
+      "unchanged": 0
+    },
+    "id": "gen_1a0b0e9ebda9e7ad85aae5f",
+    "state": "publishable"
+  },
+  "hardware": {
+    "cpu_count": 28,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "python": "3.13.14",
+    "ram_bytes": 68375748608,
+    "sqlite": "3.50.4"
+  },
+  "interrupted_export": {
+    "error": "SIMULATED_INTERRUPTION",
+    "retry_sha256": "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+    "state_after_interruption": "failed",
+    "state_after_retry": "ready"
+  },
+  "job": {
+    "attempts": 1,
+    "blocking": [
+      "IDENTITY_COLLISION"
+    ],
+    "counters": {
+      "identifiers_missing": 29834,
+      "identifiers_total": 2970166,
+      "identity_collisions": 189208,
+      "records_quarantined": 60062,
+      "records_total": 3000000,
+      "status_corrected": 345170,
+      "status_invalid_structure": 30228,
+      "status_valid": 2594768
+    },
+    "findings": {
+      "IDENTITY_COLLISION": 1
+    },
+    "state": "awaiting_review"
+  },
+  "job_id": "job_1a0b0e9ebdac9fee70cbd8b",
+  "peak_working_set_bytes": 1081585664,
+  "publish_main": {
+    "applied": {
+      "retired": 0,
+      "upserted": 2738243
+    },
+    "fleet_count": 2738243,
+    "fleet_in_scope": 2738243,
+    "generation_id": "gen_1a0b0e9ebda9e7ad85aae5f",
+    "published_at": "2026-09-17T19:55:02Z",
+    "replayed": false,
+    "state": "published",
+    "superseded": null
+  },
+  "query_latency_ms": {
+    "count_corrected": {
+      "ms": 29.07,
+      "n": 345170
+    },
+    "invalid_structure": {
+      "p50": 2.54,
+      "p95": 3.2,
+      "pages": 25
+    },
+    "prefix_MSKU": {
+      "p50": 1.4,
+      "p95": 1.77,
+      "pages": 25
+    },
+    "status_corrected": {
+      "p50": 0.98,
+      "p95": 1.33,
+      "pages": 25
+    },
+    "unfiltered": {
+      "p50": 0.6,
+      "p95": 0.91,
+      "pages": 25
+    }
+  },
+  "steps": {
+    "approve_selection_s": 10.417,
+    "attempts": 1,
+    "delta_ingest_compare_s": 3.293,
+    "delta_publish_s": 0.158,
+    "export_s": 5.229,
+    "ingest_validate_s": 381.218,
+    "interrupted_export_and_retry_s": 5.775,
+    "publish_main_s": 5.923,
+    "register_source_s": 0.299
+  },
+  "storage_bytes": {
+    "artifacts": 369334287,
+    "database": 1867988992,
+    "sources": 149947146
+  },
+  "throughput": {
+    "mib_per_s": 0.38,
+    "records_per_s": 7869.5
+  },
+  "total_s": 423.744
+}

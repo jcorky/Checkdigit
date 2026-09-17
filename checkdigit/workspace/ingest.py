@@ -10,38 +10,68 @@ observation and membership rows carry natural keys and a replayed batch is a
 no-op, so a job interrupted at any point resumes from its checkpoint without
 double counting.
 
-Formats on the streaming path: CSV (mapped columns), plain text lines and
-EDIFACT (EQD equipment segments). Other formats are refused here with
-UNSUPPORTED_INPUT and remain on the whole-file service path, which has its
-own size limit.
+Formats on the streaming path: CSV (mapped columns), plain text lines,
+EDIFACT (EQD equipment segments), X12 (N7 split identifiers and N9*EQ
+references) and container XML (id-bearing attributes). Anything else is
+refused here with UNSUPPORTED_INPUT and remains on the whole-file service
+path, which has its own size limit.
 """
 from __future__ import annotations
 
+import codecs
 import hashlib
 import json
 import os
 import re
 import shutil
 import sqlite3
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Tuple
 
 import equipment_checkdigit as kernel
 from edifact_locator import Separators, parse_segment
+from x12_locator import Delims, detect_delims
 
 from . import jobs as jobq
-from .store import audit, new_id, now_iso, transaction
-from .stream import csv_records, edifact_segments, line_records, text_chunks
+from .store import BudgetExceeded, audit, check_free_space, check_store_budget, new_id, now_iso, transaction
+from .stream import XmlSecurityError, csv_records, delimited_segments, line_records, text_chunks, xml_start_tags
 
-PARSER_VERSION = "workspace-py/1"
+PARSER_VERSION = "workspace-py/2"
 RULESET_VERSION = "kernel/2"
 BATCH_RECORDS = 5000
 INSPECT_BYTES = 256 * 1024
+SCOPE_KINDS = ("terminal", "source_fleet", "location", "voyage", "profile_population")
+IMPORT_MODES = ("comparison_only", "full_snapshot", "incremental", "explicit_removal")
+FIELD_UPDATE_POLICIES = ("absent_means_no_update", "explicit_null_clears", "empty_string_declared", "unknown_blocks")
 
 RE_TOKEN = re.compile(r"(?<![A-Z0-9])[A-Z]{4} ?[0-9]{6} ?[0-9](?![A-Z0-9])")
+
+# Container XML: (element localname, attribute localname) pairs that carry the
+# container number; the same table as snx_locator.
+XML_EQID_ATTRS = {("container", "eqid"), ("equipment", "eqid"), ("unit", "id"), ("unit", "unique-key"),
+                  ("line-discharge-list", "unit-id")}
+XML_ELEMENTS = {e for e, _a in XML_EQID_ATTRS}
+RE_XML_NAME = re.compile(r"[A-Za-z_][\w.:-]*")
+RE_XML_ATTR = re.compile(r"""\s([A-Za-z_][\w.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 
 
 class IngestError(Exception):
     pass
+
+
+class Item(NamedTuple):
+    """One identifier occurrence inside a record.
+
+    token  : the identifier text handed to the kernel
+    raw    : the exact source span an approved correction replaces
+    offset : absolute character offset of `raw`
+    attrs  : the record's other attributes, hashed for identity comparison
+    x12    : (initial, number, printed_check or None) for an X12 N7 segment
+    """
+    token: str
+    raw: str
+    offset: int
+    attrs: str
+    x12: Optional[Tuple[str, str, Optional[str]]] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -55,7 +85,6 @@ def hash_file(path: str) -> Tuple[str, int]:
 
 def hash_and_sniff(path: str) -> Tuple[str, int, str]:
     """One sequential read: SHA-256, size and the codec (strict UTF-8 or ISO-8859-1)."""
-    import codecs
     h = hashlib.sha256()
     size = 0
     dec = codecs.getincrementaldecoder("utf-8")(errors="strict")
@@ -81,7 +110,8 @@ def hash_and_sniff(path: str) -> Tuple[str, int, str]:
 
 
 def register_source(conn: sqlite3.Connection, root: str, workspace_id: str, filename: str,
-                    src_path: str, declared_content_type: str = "", *, move: bool = False) -> str:
+                    src_path: str, declared_content_type: str = "", *, move: bool = False,
+                    max_bytes: Optional[int] = None) -> str:
     """Copy (or move) a file into the immutable source store and record it once per content."""
     sha, size, codec = hash_and_sniff(src_path)
     existing = conn.execute("SELECT id FROM source_files WHERE workspace_id = ? AND sha256 = ? AND size_bytes = ?",
@@ -94,6 +124,7 @@ def register_source(conn: sqlite3.Connection, root: str, workspace_id: str, file
     os.makedirs(store_dir, exist_ok=True)
     dest = os.path.join(store_dir, f"{sha}.bin")
     if not os.path.exists(dest):
+        check_store_budget(root, workspace_id, 0 if move else size, max_bytes)
         tmp = dest + ".part"
         if move:
             shutil.move(src_path, tmp)
@@ -117,7 +148,7 @@ def intent_fingerprint(fields: Dict[str, Any]) -> str:
 
 
 def create_intent(conn: sqlite3.Connection, workspace_id: str, source_file_id: str, *,
-                  mode: str, scope_kind: str = "fleet", scope_value: str = "all",
+                  mode: str, scope_kind: str = "source_fleet", scope_value: str = "all",
                   effective_time: str = "", baseline_generation_id: Optional[str] = None,
                   field_update_policy: str = "unknown_blocks", change_volume_limit: Optional[int] = None,
                   empty_scope_decision: Optional[str] = None, declared_record_count: Optional[int] = None
@@ -127,11 +158,14 @@ def create_intent(conn: sqlite3.Connection, workspace_id: str, source_file_id: s
     The fingerprint covers everything that decides the intent's effect, so a
     replayed request maps onto the existing intent instead of a second one.
     """
-    if mode not in ("comparison_only", "full_snapshot", "incremental", "explicit_removal"):
+    if mode not in IMPORT_MODES:
         raise IngestError(f"unknown import mode {mode!r}")
-    if field_update_policy not in ("absent_means_no_update", "explicit_null_clears",
-                                   "empty_string_declared", "unknown_blocks"):
+    if field_update_policy not in FIELD_UPDATE_POLICIES:
         raise IngestError(f"unknown field update policy {field_update_policy!r}")
+    if scope_kind not in SCOPE_KINDS:
+        raise IngestError(f"unknown coverage scope kind {scope_kind!r}; one of {SCOPE_KINDS}")
+    if not scope_value:
+        raise IngestError("coverage scope value is required")
     src = conn.execute("SELECT sha256 FROM source_files WHERE id = ?", (source_file_id,)).fetchone()
     if src is None:
         raise IngestError("unknown source file")
@@ -159,23 +193,27 @@ def create_intent(conn: sqlite3.Connection, workspace_id: str, source_file_id: s
 # Format inspection
 # --------------------------------------------------------------------------- #
 
+def _head_text(path: str, codec: str, nbytes: int = INSPECT_BYTES) -> str:
+    with open(path, "rb") as fh:
+        head = fh.read(nbytes)
+    return head.decode(codec, errors="replace")
+
+
 def inspect_source(path: str, options: Dict[str, Any], codec: Optional[str] = None) -> Dict[str, Any]:
     """Decide the streaming format from the first bytes and the job options."""
-    with open(path, "rb") as fh:
-        head = fh.read(INSPECT_BYTES)
     from .stream import sniff_codec
     codec = codec or sniff_codec(path)
-    text = head.decode(codec, errors="replace")
+    text = _head_text(path, codec)
     fmt = options.get("format")
+    stripped = text.lstrip("﻿ \r\n\t")
     if not fmt:
-        stripped = text.lstrip("﻿ \r\n\t")
-        if stripped.startswith("UNA") or stripped.startswith("UNB"):
+        if stripped[:3] in ("UNA", "UNB", "UNH"):
             fmt = "edifact"
-        elif stripped.startswith("ISA"):
+        elif re.match(r"(ISA|GS|ST)\*", stripped):
             fmt = "x12"
         elif stripped.startswith("<"):
             fmt = "xml"
-        elif head[:2] == b"PK":
+        elif text.startswith("PK"):
             fmt = "archive"
         elif options.get("columns"):
             fmt = "csv"
@@ -193,79 +231,100 @@ def inspect_source(path: str, options: Dict[str, Any], codec: Optional[str] = No
         out["has_header"] = bool(options.get("has_header", True))
     if fmt == "edifact":
         sep = Separators()
-        if text[:3] == "UNA" and len(text) >= 9:
-            s = text[3:9]
+        if stripped[:3] == "UNA" and len(stripped) >= 9:
+            s = stripped[3:9]
             sep = Separators(component=s[0], element=s[1], decimal=s[2], release=s[3], segment=s[5])
         out["separators"] = {"component": sep.component, "element": sep.element, "decimal": sep.decimal,
                              "release": sep.release, "segment": sep.segment}
+    if fmt == "x12":
+        d = detect_delims(stripped)
+        out["delims"] = {"element": d.element, "subelement": d.subelement, "segment": d.segment}
     return out
 
 
 # --------------------------------------------------------------------------- #
-# Record streams: yield (record_no, location, [(raw, char_offset, attrs_text)])
+# Record streams: yield (record_no, location, [Item])
 # --------------------------------------------------------------------------- #
 
-def _csv_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Tuple[str, int, str]]]]:
+def _resolve_columns(header: Dict[str, int], columns: List[Any], has_header: bool, what: str) -> List[int]:
     from csv_locator import CsvError
+    out: List[int] = []
+    for sel in columns:
+        if isinstance(sel, int) or (isinstance(sel, str) and sel.isdigit() and not has_header):
+            out.append(int(sel))
+        else:
+            key = str(sel).strip().lower()
+            if key not in header:
+                raise CsvError(f"{what} column {sel!r} not found in header row (have: {sorted(header)})")
+            out.append(header[key])
+    return out
+
+
+def _csv_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
     delim = info["delimiter"]
     has_header = info["has_header"]
     columns = options.get("columns") or []
+    attribute_columns = options.get("attribute_columns")
     if not columns:
         raise IngestError("csv jobs need a 'columns' option naming the identifier column(s)")
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     indices: Optional[List[int]] = None
+    attr_indices: Optional[List[int]] = None
     for rec in csv_records(chunks, delim):
         if indices is None:
+            header: Dict[str, int] = {}
             if has_header:
                 header = {f.value.strip().lstrip("﻿").lower(): f.col for f in rec.fields}
-                indices = []
-                for sel in columns:
-                    if isinstance(sel, int):
-                        indices.append(sel)
-                    else:
-                        key = sel.strip().lower()
-                        if key not in header:
-                            raise CsvError(f"column {sel!r} not found in header row (have: {sorted(header)})")
-                        indices.append(header[key])
+            indices = _resolve_columns(header, columns, has_header, "identifier")
+            if attribute_columns is not None:
+                attr_indices = _resolve_columns(header, attribute_columns, has_header, "attribute")
+            if has_header:
                 continue
-            indices = [int(c) for c in columns]
         if len(rec.fields) == 1 and rec.fields[0].value == "":
             continue
-        items: List[Tuple[str, int, str]] = []
-        others = [f.value for k, f in enumerate(rec.fields) if k not in indices]
+        if attr_indices is None:
+            others = [f.value for k, f in enumerate(rec.fields) if k not in indices]
+        else:
+            others = [rec.fields[k].value if k < len(rec.fields) else "" for k in attr_indices]
         attrs = "\x1f".join(others)
+        items: List[Item] = []
         for idx in indices:
             if idx >= len(rec.fields):
-                items.append(("", rec.end, attrs))
+                items.append(Item("", "", rec.end, attrs))
                 continue
             f = rec.fields[idx]
             offset = f.start + (1 if f.quoted else 0)
             raw = f.value.strip()
-            if raw == "" or f.quoted and '"' in raw:
+            if raw == "" or (f.quoted and '"' in raw):
                 # empty, or a quoted value containing escaped quotes: no single splice span
-                items.append(("", offset, attrs))
+                items.append(Item("", "", offset, attrs))
                 continue
             offset += len(f.value) - len(f.value.lstrip())
-            items.append((raw, offset, attrs))
+            items.append(Item(raw, raw, offset, attrs))
         yield rec.no, f"row {rec.no + 1}", items
 
 
-def _txt_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Tuple[str, int, str]]]]:
+def _txt_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     for line_no, start, line in line_records(chunks):
-        items = [(m.group(0), start + m.start(), "") for m in RE_TOKEN.finditer(line.upper())
-                 if line[m.start():m.end()].upper() == m.group(0)]
+        upper = line.upper()
+        items = [Item(m.group(0), m.group(0), start + m.start(), "")
+                 for m in RE_TOKEN.finditer(upper) if line[m.start():m.end()] == m.group(0)]
         yield line_no - 1, f"line {line_no}", items
 
 
-def _edifact_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Tuple[str, int, str]]]]:
+def _edifact_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
     s = info["separators"]
     sep = Separators(component=s["component"], element=s["element"], decimal=s["decimal"],
                      release=s["release"], segment=s["segment"])
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     seg_no = 0
-    for start, raw in edifact_segments(chunks, sep.release, sep.segment):
+    message = 0
+    for start, raw in delimited_segments(chunks, sep.segment, sep.release, skip_una=True):
         seg_no += 1
+        if raw.startswith("UNH"):
+            message += 1
+            continue
         if not raw.startswith("EQD"):
             continue
         seg = parse_segment(raw, start, sep)
@@ -274,15 +333,85 @@ def _edifact_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) ->
         if qualifier != "CN":
             continue
         eqid = els[2][0] if len(els) > 2 and els[2] else ""
+        location = f"message {message} segment {seg_no} EQD"
         if not eqid:
-            yield seg_no, f"segment {seg_no} EQD", [("", start, raw)]
+            yield seg_no, location, [Item("", "", start, raw)]
             continue
         off = raw.find(eqid)
-        attrs = raw.replace(eqid, "", 1)
-        yield seg_no, f"segment {seg_no} EQD", [(eqid, start + off, attrs)]
+        yield seg_no, location, [Item(eqid, eqid, start + off, raw.replace(eqid, "", 1))]
 
 
-STREAMS = {"csv": _csv_stream, "txt": _txt_stream, "edifact": _edifact_stream}
+def _x12_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
+    d = info["delims"]
+    ele, seg_term = d["element"], d["segment"]
+    chunks = (t for _c, t in text_chunks(path, info["codec"]))
+    seg_no = 0
+    transaction_set = 0
+    for start, raw in delimited_segments(chunks, seg_term, "", skip_una=False):
+        seg_no += 1
+        els = raw.split(ele)
+        tag = els[0]
+        if tag == "ST":
+            transaction_set += 1
+            continue
+        if tag == "N7":
+            initial = els[1] if len(els) > 1 else ""
+            number = els[2] if len(els) > 2 else ""
+            has18 = len(els) > 18
+            location = f"set {transaction_set} segment {seg_no} N7"
+            attrs = ele.join(e for k, e in enumerate(els) if k not in (1, 2, 18))
+            if not initial and not number:
+                yield seg_no, location, [Item("", "", start, attrs)]
+                continue
+            printed = els[18] if has18 else None
+            offset = start + sum(len(e) + 1 for e in els[:18]) if has18 else start + len(raw)
+            # The token keeps the X12 split visible: initial*number*check. Two
+            # parts mean the check digit element is absent from the segment.
+            token = f"{initial}*{number}*{printed}" if has18 else f"{initial}*{number}"
+            yield seg_no, location, [Item(token, printed or "", offset, attrs, (initial, number, printed))]
+        elif tag == "N9" and len(els) > 2 and els[1] == "EQ":
+            token = els[2]
+            offset = start + len(els[0]) + 1 + len(els[1]) + 1
+            location = f"set {transaction_set} segment {seg_no} N9*EQ"
+            yield seg_no, location, [Item(token, token, offset, ele.join(els[3:]))] if token else \
+                (seg_no, location, [Item("", "", offset, "")])
+
+
+def _localname(name: str) -> str:
+    return name.rsplit(":", 1)[-1]
+
+
+def _xml_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
+    chunks = (t for _c, t in text_chunks(path, info["codec"]))
+    record = 0
+    for tag_start, tag in xml_start_tags(chunks):
+        m = RE_XML_NAME.match(tag, 1)
+        if not m:
+            continue
+        element = _localname(m.group(0))
+        if element not in XML_ELEMENTS:
+            continue
+        items: List[Item] = []
+        attr_text = tag
+        for am in RE_XML_ATTR.finditer(tag, m.end()):
+            attr = _localname(am.group(1))
+            if (element, attr) not in XML_EQID_ATTRS:
+                continue
+            value = am.group(2) if am.group(2) is not None else am.group(3)
+            value_offset = tag_start + am.start(2 if am.group(2) is not None else 3)
+            attr_text = attr_text.replace(value, "", 1) if value else attr_text
+            if not value:
+                items.append(Item("", "", value_offset, ""))
+            else:
+                items.append(Item(value, value, value_offset, ""))
+        if not items:
+            continue
+        items = [Item(i.token, i.raw, i.offset, attr_text, i.x12) for i in items]
+        record += 1
+        yield record - 1, f"element {record} {element}", items
+
+
+STREAMS = {"csv": _csv_stream, "txt": _txt_stream, "edifact": _edifact_stream, "x12": _x12_stream, "xml": _xml_stream}
 
 
 # --------------------------------------------------------------------------- #
@@ -296,6 +425,16 @@ def _context(options: Dict[str, Any], fmt: str) -> kernel.FieldContext:
     return kernel.FieldContext.FREE_TEXT if fmt == "txt" else kernel.FieldContext.EQUIPMENT_ID
 
 
+def policy_fingerprint(policy) -> str:
+    if policy is None:
+        return ""
+    try:
+        canon = json.dumps(policy.to_dict(), sort_keys=True, separators=(",", ":"))
+    except Exception:  # noqa: BLE001 - a policy without to_dict is fingerprinted by repr
+        canon = repr(policy)
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()[:16]
+
+
 def add_finding(conn: sqlite3.Connection, job_id: str, code: str, detail: str = "", location: str = "") -> None:
     from contracts import finding
     base = finding(code)
@@ -304,9 +443,34 @@ def add_finding(conn: sqlite3.Connection, job_id: str, code: str, detail: str = 
                  (job_id, code, base["severity"], base["blocking_scope"], location or None, detail, now_iso()))
 
 
+def x12_parts(token: str) -> Optional[Tuple[str, str, Optional[str]]]:
+    """Decode an X12 N7 token written by _x12_stream; None for other tokens."""
+    parts = token.split("*")
+    if len(parts) == 2:
+        return parts[0], parts[1], None
+    if len(parts) == 3:
+        return parts[0], parts[1], parts[2]
+    return None
+
+
+def evaluate_item(item: Item, context: kernel.FieldContext, owner_policy: str, policy) -> Tuple[Any, Optional[str]]:
+    """Kernel evaluation of one item. Returns (CorrectionResult or None, candidate span)."""
+    if item.x12 is not None:
+        initial, number, printed = item.x12
+        if printed is None:
+            return None, None
+        res = kernel.correct_x12_equipment(initial, number, printed or None, policy=policy)
+        candidate = res.computed_check if res.status is kernel.Status.CORRECTED else None
+        return res, candidate
+    res = kernel.correct_identifier(item.token, context, owner_policy=owner_policy, policy=policy)
+    candidate = res.corrected if res.status is kernel.Status.CORRECTED else None
+    return res, candidate
+
+
 def run_job(conn: sqlite3.Connection, root: str, job: sqlite3.Row, worker_id: str, *,
             batch_records: int = BATCH_RECORDS, policy=None,
-            fail_after_records: Optional[int] = None, lease_seconds: float = jobq.LEASE_SECONDS) -> str:
+            fail_after_records: Optional[int] = None, lease_seconds: float = jobq.LEASE_SECONDS,
+            min_free_bytes: Optional[int] = None) -> str:
     """Execute one claimed job to awaiting_review. Returns the final state.
 
     `fail_after_records` is a test hook that aborts the worker after N records
@@ -318,6 +482,7 @@ def run_job(conn: sqlite3.Connection, root: str, job: sqlite3.Row, worker_id: st
     src = conn.execute("SELECT * FROM source_files WHERE id = ?", (job["source_file_id"],)).fetchone()
     ckpt = jobq.load_checkpoint(conn, job_id)
     try:
+        check_free_space(root, min_free_bytes)
         if "inspect" not in ckpt:
             jobq.set_step(conn, job_id, worker_id, "inspecting", "detect format")
             info = inspect_source(src["path"], options, src["encoding"])
@@ -329,6 +494,7 @@ def run_job(conn: sqlite3.Connection, root: str, job: sqlite3.Row, worker_id: st
                 return "failed"
             ckpt = {"inspect": info, "record_no": -1, "ordinal": -1, "done": False}
             with transaction(conn):
+                conn.execute("UPDATE jobs SET policy_fingerprint = ? WHERE id = ?", (policy_fingerprint(policy), job_id))
                 jobq.checkpoint(conn, job_id, worker_id, ckpt)
         info = ckpt["inspect"]
         if not ckpt.get("done"):
@@ -348,6 +514,16 @@ def run_job(conn: sqlite3.Connection, root: str, job: sqlite3.Row, worker_id: st
         return "lease_lost"
     except _SimulatedCrash:
         raise
+    except BudgetExceeded as exc:
+        with transaction(conn):
+            add_finding(conn, job_id, "RESOURCE_BUDGET_EXCEEDED", exc.detail)
+            jobq.complete(conn, job_id, worker_id, "failed")
+        return "failed"
+    except XmlSecurityError as exc:
+        with transaction(conn):
+            add_finding(conn, job_id, "UNSUPPORTED_INPUT", str(exc))
+            jobq.complete(conn, job_id, worker_id, "failed")
+        return "failed"
     except Exception as exc:  # noqa: BLE001 - any failure is recorded on the job
         with transaction(conn):
             jobq.fail(conn, job_id, worker_id, f"{type(exc).__name__}: {exc}")
@@ -361,6 +537,24 @@ class _SimulatedCrash(RuntimeError):
 
 def _attrs_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16] if text else ""
+
+
+def observation_row(job_id: str, ordinal: int, record_no: int, location: str, item: Item,
+                    context: kernel.FieldContext, owner_policy: str, policy) -> Tuple[tuple, str]:
+    """Build one observations row; returns (row, status)."""
+    ah = _attrs_hash(item.attrs)
+    if item.token == "" and item.x12 is None:
+        return ((job_id, ordinal, record_no, location, item.offset, "", "", "unknown", "invalid_structure",
+                 None, None, None, "identifier field is empty", ah, ""), "invalid_structure")
+    res, candidate = evaluate_item(item, context, owner_policy, policy)
+    if res is None:
+        initial, number, _p = item.x12  # type: ignore[misc]
+        return ((job_id, ordinal, record_no, location, item.offset, "", f"{initial}{number}", "iso6346", "flagged",
+                 None, None, None, "N7-18 check digit element absent; the segment is not restructured", ah,
+                 item.token), "flagged")
+    status = res.status.value
+    return ((job_id, ordinal, record_no, location, item.offset, item.raw, res.normalized, res.id_type.value, status,
+             res.printed_check, res.computed_check, candidate, res.reason, ah, item.token), status)
 
 
 def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_records, policy, fail_after,
@@ -382,6 +576,7 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
     counts: Dict[str, int] = {}
     pending_records = 0
     last_record_no = resume_after
+    records_since_check = 0
 
     def flush(final_record_no: int) -> None:
         nonlocal obs_rows, member_rows, counts, pending_records, committed_this_attempt
@@ -389,8 +584,8 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
             if obs_rows:
                 conn.executemany(
                     "INSERT OR IGNORE INTO observations (job_id, ordinal, record_no, location, char_offset, raw, "
-                    "normalized, scheme, status, printed_check, computed_check, candidate, reason, attrs_hash) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", obs_rows)
+                    "normalized, scheme, status, printed_check, computed_check, candidate, reason, attrs_hash, token) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", obs_rows)
             if member_rows:
                 conn.executemany("INSERT OR IGNORE INTO memberships (generation_id, key, attrs_hash) VALUES (?,?,?)",
                                  member_rows)
@@ -414,28 +609,26 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
         pending_records += 1
         counts["records_total"] = counts.get("records_total", 0) + 1
         last_record_no = record_no
-        for raw, offset, attrs in items:
+        for item in items:
             ordinal += 1
-            if raw == "":
+            row, status = observation_row(job_id, ordinal, record_no, location, item, context, owner_policy, policy)
+            obs_rows.append(row)
+            if item.token == "" and item.x12 is None:
                 counts["identifiers_missing"] = counts.get("identifiers_missing", 0) + 1
                 counts["records_quarantined"] = counts.get("records_quarantined", 0) + 1
-                obs_rows.append((job_id, ordinal, record_no, location, offset, "", "", "unknown",
-                                 "invalid_structure", None, None, None, "identifier field is empty", ""))
                 continue
-            res = kernel.correct_identifier(raw, context, owner_policy=owner_policy, policy=policy)
-            status = res.status.value
             counts["identifiers_total"] = counts.get("identifiers_total", 0) + 1
             counts[f"status_{status}"] = counts.get(f"status_{status}", 0) + 1
             if status == "invalid_structure":
                 counts["records_quarantined"] = counts.get("records_quarantined", 0) + 1
-            candidate = res.corrected if res.status is kernel.Status.CORRECTED else None
-            ah = _attrs_hash(attrs)
-            obs_rows.append((job_id, ordinal, record_no, location, offset, raw, res.normalized, res.id_type.value,
-                             status, res.printed_check, res.computed_check, candidate, res.reason, ah))
             if stage_members and status in ("valid", "corrected", "flagged"):
-                member_rows.append((gen_id, res.normalized, ah))
+                member_rows.append((gen_id, row[6], row[13]))
         if pending_records >= batch_records:
             flush(record_no)
+            records_since_check += batch_records
+            if records_since_check >= 200_000:
+                records_since_check = 0
+                check_free_space(root)
     if pending_records or not ckpt.get("done"):
         ckpt["done"] = True
         flush(last_record_no)

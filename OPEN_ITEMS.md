@@ -162,23 +162,31 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   per restart and keeps every batch idempotent.
 - Identity collisions (one identifier with differing attributes) are computed from
   storage after streaming, so a resumed job sees pairs that straddle the crash.
-- OPEN: X12 and container XML are not on the streaming path. They stay on the whole-file
-  service path behind the 5 MiB upload limit; a streaming XML scanner needs the element
-  boundary work described in the brief and fixtures larger than the ones held.
-- OPEN: Disk pressure is not simulated. Artifact builds write to a temporary file and
-  rename, so a failed write leaves the artifact `failed` and never `ready`; an actual
-  out-of-space run has not been recorded.
-- OPEN: The workspace has no user interface and no roles beyond the admin gate
-  (`user_roles` is stored but not enforced). The API is the surface; the Electric Yard
-  workspace pages are Phase D work alongside the profile and lifecycle features.
-- OPEN: The benchmark worker runs in the same process as the API when the
-  `.../jobs/{id}/run` route is used. Production use needs the separate worker process
-  (`python3 -m workspace.runner`), which the lease protocol already supports; a
-  multi-process run against one database is covered by the concurrent-publisher and
-  lease tests, not by a recorded multi-worker benchmark.
+- Resolved: X12 and container XML are on the streaming path; outputs match the whole-file
+  correctors on the held samples and the generated one-million-record files
+  (`BENCHMARK.md`). The streaming XML scanner does not verify well-formedness or
+  cross-check located counts against a parser the way the whole-file path does; a file
+  that is not well-formed is still refused on `/correct` and should be validated there
+  first when that matters.
+- Resolved: disk pressure is exercised through the free-space threshold
+  (`CHECKDIGIT_WORKSPACE_MIN_FREE_BYTES`): ingest and export stop with
+  `RESOURCE_BUDGET_EXCEEDED`, no artifact becomes ready. OPEN: an actual out-of-space
+  write (the operating system refusing the write) has not been recorded.
+- Resolved: roles are enforced per workspace and retention is applied by `purge`.
+  OPEN: the workspace has no user interface; the API is the surface until the Electric
+  Yard workspace pages arrive in Phase D with the profile and lifecycle features.
+- Resolved: a two-worker-process run against one database is recorded in `BENCHMARK.md`.
+  OPEN: one file is never split across workers; parallelism is per job. Splitting a CSV
+  by byte range is unsafe under quoted newlines without a pre-scan, and the pre-scan is
+  most of the parse.
+- OPEN: identity collisions treat every non-identifier column as an attribute unless the
+  job names `attribute_columns`; files with a row-number column should name their
+  attribute columns or the duplicate count is inflated.
 - On the mapped-column CSV path every non-empty cell of a declared identifier column is
   evaluated (kernel normalization of spaces and hyphens); the whole-file `/correct` CSV
   path locates bare `[A-Z]{4}[0-9]{7}` tokens only. Recorded in `CAPABILITIES.md`.
+- The workspace's X12 N7 handling mirrors the whole-file path: an empty N7-18 slot is
+  filled by insertion, an absent slot is flagged and the segment is not restructured.
 
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 

@@ -22,7 +22,7 @@ import sqlite3
 import time
 from typing import Any, Dict, Optional
 
-from .store import new_id, now_iso, transaction
+from .store import audit, new_id, now_iso, transaction
 
 LEASE_SECONDS = 60.0
 
@@ -103,8 +103,11 @@ def load_checkpoint(conn: sqlite3.Connection, job_id: str) -> Dict[str, Any]:
 
 
 def complete(conn: sqlite3.Connection, job_id: str, worker_id: str, state: str = "awaiting_review") -> None:
-    conn.execute("UPDATE jobs SET state = ?, step = '', lease_owner = NULL, lease_until = NULL, updated_at = ? "
-                 "WHERE id = ? AND lease_owner = ?", (state, now_iso(), job_id, worker_id))
+    cur = conn.execute("UPDATE jobs SET state = ?, step = '', lease_owner = NULL, lease_until = NULL, updated_at = ? "
+                       "WHERE id = ? AND lease_owner = ?", (state, now_iso(), job_id, worker_id))
+    if cur.rowcount == 1:
+        ws = conn.execute("SELECT workspace_id FROM jobs WHERE id = ?", (job_id,)).fetchone()[0]
+        audit(conn, ws, worker_id, "job.complete", job_id, f"state={state}")
 
 
 def fail(conn: sqlite3.Connection, job_id: str, worker_id: str, error: str) -> None:

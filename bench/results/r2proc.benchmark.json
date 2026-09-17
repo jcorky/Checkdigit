@@ -1,0 +1,80 @@
+{
+  "aggregate_records_per_s": 29018.0,
+  "all_checks_pass": true,
+  "checks": {
+    "job_1a0b0f24c60e9ad4ac26b96_corrected": [
+      79781,
+      79781
+    ],
+    "job_1a0b0f24c60e9ad4ac26b96_records": [
+      1000000,
+      1000000
+    ],
+    "job_1a0b0f24c60e9ad4ac26b96_state": [
+      "awaiting_review",
+      "awaiting_review"
+    ],
+    "job_1a0b0f24d08c330fcf174a4_corrected": [
+      132620,
+      132620
+    ],
+    "job_1a0b0f24d08c330fcf174a4_records": [
+      1333334,
+      1333334
+    ],
+    "job_1a0b0f24d08c330fcf174a4_state": [
+      "awaiting_review",
+      "awaiting_review"
+    ],
+    "two_processes_completed_work": [
+      true,
+      true
+    ]
+  },
+  "completions": [
+    {
+      "detail": "state=awaiting_review",
+      "job_id": "job_1a0b0f24c60e9ad4ac26b96",
+      "worker": "Turing2:37140:51624"
+    },
+    {
+      "detail": "state=awaiting_review",
+      "job_id": "job_1a0b0f24d08c330fcf174a4",
+      "worker": "Turing2:57244:53368"
+    }
+  ],
+  "distinct_worker_processes": 2,
+  "hardware": {
+    "cpu_count": 28,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "python": "3.13.14",
+    "ram_bytes": 68375748608,
+    "sqlite": "3.50.4"
+  },
+  "jobs": [
+    {
+      "attempts": 1,
+      "corrected": 79781,
+      "job_id": "job_1a0b0f24c60e9ad4ac26b96",
+      "lease_owner_final": null,
+      "records": 1000000,
+      "state": "awaiting_review"
+    },
+    {
+      "attempts": 1,
+      "corrected": 132620,
+      "job_id": "job_1a0b0f24d08c330fcf174a4",
+      "lease_owner_final": null,
+      "records": 1333334,
+      "state": "awaiting_review"
+    }
+  ],
+  "wall_s": 80.41,
+  "worker_exit_codes": [
+    0,
+    0
+  ],
+  "workers": 2
+}

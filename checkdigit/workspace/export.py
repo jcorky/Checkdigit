@@ -9,9 +9,11 @@ the text around each edit is copied through the same codec byte for byte.
 Every edit is verified against the recorded raw text before it is written.
 The artifact is written to a temporary path, renamed into place, and only
 then does its row switch from building to ready with the final hash and
-size. A retry under the same idempotency key returns the existing artifact.
-An artifact whose build fails or is interrupted stays building/failed and is
-never served.
+size; earlier ready artifacts of the same job become superseded. A retry
+under the same idempotency key returns the existing artifact. An artifact
+whose build fails or is interrupted stays failed and is never served. Free
+disk space is checked before the build and after every 64 MiB written; a
+shortfall fails the build with RESOURCE_BUDGET_EXCEEDED.
 """
 from __future__ import annotations
 
@@ -20,11 +22,13 @@ import hashlib
 import json
 import os
 import sqlite3
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from .review import ReviewError, check_approval
-from .store import audit, iter_rows, new_id, now_iso, transaction
+from .review import ReviewError, check_approval, ensure_change_set
+from .store import BudgetExceeded, audit, check_free_space, iter_rows, new_id, now_iso, transaction
 from .stream import CHUNK_BYTES, text_chunks
+
+FREE_SPACE_CHECK_BYTES = 64 * 1024 * 1024
 
 
 class ExportError(Exception):
@@ -44,7 +48,8 @@ def _edits(conn: sqlite3.Connection, job_id: str, approval_id: str):
 
 
 def build_artifact(conn: sqlite3.Connection, root: str, job_id: str, approval_id: Optional[str], actor: str, *,
-                   idempotency_key: str, fail_after_edits: Optional[int] = None) -> Dict[str, Any]:
+                   idempotency_key: str, fail_after_edits: Optional[int] = None,
+                   min_free_bytes: Optional[int] = None) -> Dict[str, Any]:
     """Build the corrected file plus exceptions, ledger and manifest for one approval."""
     existing = conn.execute("SELECT * FROM export_artifacts WHERE idempotency_key = ?", (idempotency_key,)).fetchone()
     if existing is not None and existing["state"] == "ready":
@@ -52,38 +57,53 @@ def build_artifact(conn: sqlite3.Connection, root: str, job_id: str, approval_id
     job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     if job is None:
         raise ExportError("UNKNOWN_JOB")
+    if job["state"] not in ("awaiting_review", "completed"):
+        raise ExportError("JOB_NOT_REVIEWABLE", f"job is {job['state']}")
     if approval_id is not None:
         chk = check_approval(conn, approval_id)
         if not chk["applicable"]:
             raise ExportError(chk["problems"][0], f"approval {approval_id}: {chk}")
+    cs = ensure_change_set(conn, job_id)
     src = conn.execute("SELECT * FROM source_files WHERE id = ?", (job["source_file_id"],)).fetchone()
     art_id = existing["id"] if existing is not None else new_id("art")
     out_dir = os.path.join(root, "artifacts", job["workspace_id"], art_id)
     os.makedirs(out_dir, exist_ok=True)
+    previous = conn.execute("SELECT id FROM export_artifacts WHERE job_id = ? AND state = 'ready' AND id <> ? "
+                            "ORDER BY built_at DESC LIMIT 1", (job_id, art_id)).fetchone()
     with transaction(conn):
         if existing is None:
-            conn.execute("INSERT INTO export_artifacts (id, job_id, approval_id, idempotency_key, state, created_at) "
-                         "VALUES (?,?,?,?,'building',?)", (art_id, job_id, approval_id, idempotency_key, now_iso()))
+            conn.execute("INSERT INTO export_artifacts (id, job_id, approval_id, change_set_id, previous_artifact_id, "
+                         "idempotency_key, state, created_at) VALUES (?,?,?,?,?,?,'building',?)",
+                         (art_id, job_id, approval_id, cs["id"], previous["id"] if previous else None, idempotency_key,
+                          now_iso()))
         else:
-            conn.execute("UPDATE export_artifacts SET state = 'building', error = NULL WHERE id = ?", (art_id,))
+            conn.execute("UPDATE export_artifacts SET state = 'building', error = NULL, change_set_id = ?, "
+                         "previous_artifact_id = ? WHERE id = ?", (cs["id"], previous["id"] if previous else None, art_id))
         conn.execute("UPDATE jobs SET state = 'exporting', updated_at = ? WHERE id = ?", (now_iso(), job_id))
     try:
-        result = _write_outputs(conn, job, src, approval_id, out_dir, fail_after_edits)
-    except Exception as exc:  # noqa: BLE001
+        check_free_space(root, min_free_bytes)
+        result = _write_outputs(conn, root, job, src, approval_id, out_dir, fail_after_edits, min_free_bytes)
+    except BudgetExceeded as exc:
+        _fail(conn, art_id, job_id, f"RESOURCE_BUDGET_EXCEEDED: {exc.detail}")
+        from .ingest import add_finding
         with transaction(conn):
-            conn.execute("UPDATE export_artifacts SET state = 'failed', error = ? WHERE id = ?",
-                         (f"{type(exc).__name__}: {exc}"[:2000], art_id))
-            conn.execute("UPDATE jobs SET state = 'awaiting_review', updated_at = ? WHERE id = ?", (now_iso(), job_id))
+            add_finding(conn, job_id, "RESOURCE_BUDGET_EXCEEDED", f"export {art_id}: {exc.detail}")
+        raise ExportError("RESOURCE_BUDGET_EXCEEDED", exc.detail)
+    except Exception as exc:  # noqa: BLE001
+        _fail(conn, art_id, job_id, f"{type(exc).__name__}: {exc}")
         raise
     manifest = {
-        "artifact_id": art_id, "job_id": job_id, "approval_id": approval_id,
-        "source": {"filename": src["filename"], "sha256": src["sha256"], "size_bytes": src["size_bytes"],
+        "artifact_id": art_id, "job_id": job_id, "approval_id": approval_id, "change_set_id": cs["id"],
+        "change_set_fingerprint": cs["fingerprint"],
+        "source": {"id": src["id"], "filename": src["filename"], "sha256": src["sha256"], "size_bytes": src["size_bytes"],
                    "encoding": result["codec"]},
         "parser_version": job["parser_version"], "ruleset_version": job["ruleset_version"],
+        "policy_fingerprint": job["policy_fingerprint"],
         "analysis_version": job["analysis_version"], "offset_kind": "text_codepoint",
         "output": {"filename": result["out_name"], "sha256": result["sha256"], "size_bytes": result["size"]},
         "edits_applied": result["edits"], "exceptions": result["exceptions"],
         "files": {"corrected": result["out_name"], "exceptions": "exceptions.csv", "ledger": "ledger.csv"},
+        "previous_artifact_id": previous["id"] if previous else None,
         "built_at": now_iso(),
     }
     mpath = os.path.join(out_dir, "manifest.json")
@@ -95,13 +115,21 @@ def build_artifact(conn: sqlite3.Connection, root: str, job_id: str, approval_id
                      "edits_applied = ?, manifest_json = ?, built_at = ? WHERE id = ?",
                      (out_dir, result["sha256"], result["size"], result["edits"], json.dumps(manifest, sort_keys=True),
                       manifest["built_at"], art_id))
+        conn.execute("UPDATE export_artifacts SET state = 'superseded' WHERE job_id = ? AND state = 'ready' AND id <> ?",
+                     (job_id, art_id))
         conn.execute("UPDATE jobs SET state = 'completed', updated_at = ? WHERE id = ?", (now_iso(), job_id))
         audit(conn, job["workspace_id"], actor, "artifact.publish", art_id,
               f"job={job_id} approval={approval_id or ''} sha256={result['sha256']} edits={result['edits']}")
     return artifact_view(conn, art_id)
 
 
-def _write_outputs(conn, job, src, approval_id, out_dir, fail_after_edits) -> Dict[str, Any]:
+def _fail(conn: sqlite3.Connection, art_id: str, job_id: str, error: str) -> None:
+    with transaction(conn):
+        conn.execute("UPDATE export_artifacts SET state = 'failed', error = ? WHERE id = ?", (error[:2000], art_id))
+        conn.execute("UPDATE jobs SET state = 'awaiting_review', updated_at = ? WHERE id = ?", (now_iso(), job_id))
+
+
+def _write_outputs(conn, root, job, src, approval_id, out_dir, fail_after_edits, min_free_bytes) -> Dict[str, Any]:
     job_id = job["id"]
     base, ext = os.path.splitext(src["filename"])
     out_name = f"{base}.CORRECTED{ext or '.txt'}"
@@ -116,15 +144,20 @@ def _write_outputs(conn, job, src, approval_id, out_dir, fail_after_edits) -> Di
     pos = 0
     codec = src["encoding"] or "utf-8"
     enc = codecs.getincrementalencoder(codec)()
+    since_check = 0
 
     def emit(fh, text: str) -> None:
-        nonlocal size
+        nonlocal size, since_check
         if not text:
             return
         data = enc.encode(text)
         h.update(data)
         size += len(data)
+        since_check += len(data)
         fh.write(data)
+        if since_check >= FREE_SPACE_CHECK_BYTES:
+            since_check = 0
+            check_free_space(root, min_free_bytes)
 
     with open(tmp, "wb") as fh:
         for chunk_codec, chunk in text_chunks(src["path"], codec, CHUNK_BYTES):
@@ -185,8 +218,8 @@ def _write_exceptions(conn, job_id: str, out_dir: str) -> int:
     path = os.path.join(out_dir, "exceptions.csv")
     n = 0
     with open(path + ".part", "w", encoding="utf-8", newline="") as fh:
-        fh.write("ordinal,location,raw,normalized,scheme,status,decision,computed_check,reason\r\n")
-        for r in iter_rows(conn, "SELECT ordinal, location, raw, normalized, scheme, status, decision, computed_check, reason "
+        fh.write("ordinal,location,token,raw,normalized,scheme,status,decision,computed_check,reason\r\n")
+        for r in iter_rows(conn, "SELECT ordinal, location, token, raw, normalized, scheme, status, decision, computed_check, reason "
                                  "FROM observations WHERE job_id = ? AND (status IN ('flagged','invalid_structure') "
                                  "OR (candidate IS NOT NULL AND decision <> 'approved')) ORDER BY ordinal", (job_id,)):
             fh.write(",".join(_csv_cell(r[k]) for k in r.keys()) + "\r\n")
@@ -217,13 +250,23 @@ def artifact_view(conn: sqlite3.Connection, artifact_id: str, replayed: bool = F
     return out
 
 
+def artifacts_page(conn: sqlite3.Connection, job_id: str, after: str = "", limit: int = 100):
+    rows = conn.execute("SELECT id, job_id, approval_id, change_set_id, previous_artifact_id, state, output_mode, sha256, "
+                        "size_bytes, edits_applied, error, created_at, built_at FROM export_artifacts "
+                        "WHERE job_id = ? AND id > ? ORDER BY id LIMIT ?", (job_id, after, limit)).fetchall()
+    return [dict(r) for r in rows]
+
+
 def artifact_file(conn: sqlite3.Connection, artifact_id: str, name: str) -> str:
     row = conn.execute("SELECT state, path, manifest_json FROM export_artifacts WHERE id = ?", (artifact_id,)).fetchone()
-    if row is None or row["state"] != "ready":
+    if row is None or row["state"] not in ("ready", "superseded") or not row["path"]:
         raise ExportError("ARTIFACT_NOT_READY")
     manifest = json.loads(row["manifest_json"])
     files = dict(manifest["files"])
     files["manifest"] = "manifest.json"
     if name not in files:
         raise ExportError("UNKNOWN_FILE", name)
-    return os.path.join(row["path"], files[name])
+    path = os.path.join(row["path"], files[name])
+    if not os.path.exists(path):
+        raise ExportError("ARTIFACT_NOT_READY", "files were purged")
+    return path

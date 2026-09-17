@@ -246,7 +246,9 @@ else:
                    "(see .env.example) to enable the dashboard.")
 
 from workspace.api import build_router as _build_workspace_router  # noqa: E402
-app.include_router(_build_workspace_router(admin_required, WORKSPACE_DIR))   # /v1/workspaces/...
+# Workspace jobs evaluate identifiers under the same operator policy as /correct.
+app.include_router(_build_workspace_router(admin_required, WORKSPACE_DIR,
+                                           policy_provider=lambda: _POLICY))   # /v1/workspaces/...
 
 
 @app.on_event("startup")

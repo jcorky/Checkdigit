@@ -1,0 +1,47 @@
+{
+  "checks": {
+    "corrected_sha256_vs_recorded": [
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36"
+    ],
+    "corrected_sha256_vs_truth": [
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+      "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36"
+    ],
+    "edits_applied": [
+      345170,
+      345170
+    ],
+    "fleet_after_main_equals_distinct_keys": [
+      2738243,
+      2738243
+    ],
+    "identifiers_missing": [
+      29834,
+      29834
+    ],
+    "records_total": [
+      3000000,
+      3000000
+    ],
+    "status_corrected": [
+      345170,
+      345170
+    ],
+    "status_invalid_structure": [
+      30228,
+      30228
+    ],
+    "status_valid": [
+      2594768,
+      2594768
+    ],
+    "truth_edits": [
+      345170,
+      345170
+    ]
+  },
+  "distinct_keys": 2738243,
+  "ok": true,
+  "records_recounted": 3000000
+}

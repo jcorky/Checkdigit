@@ -1,0 +1,82 @@
+{
+  "all_checks_pass": true,
+  "artifact": {
+    "edits_applied": 132620,
+    "id": "art_1a0b0f241efd9ef60868553",
+    "sha256": "877a80661376bfc5672d5d848e64823bfced2ef914e6a5e9840704eb66351962",
+    "size_bytes": 166091150
+  },
+  "checks": {
+    "artifact_sha256_matches_truth": [
+      "877a80661376bfc5672d5d848e64823bfced2ef914e6a5e9840704eb66351962",
+      "877a80661376bfc5672d5d848e64823bfced2ef914e6a5e9840704eb66351962"
+    ],
+    "corrected": [
+      132620,
+      132620
+    ],
+    "edits_match_truth": [
+      132620,
+      132620
+    ],
+    "records": [
+      1333334,
+      1333334
+    ],
+    "state": [
+      "awaiting_review",
+      "awaiting_review"
+    ]
+  },
+  "dataset": {
+    "containers": 1000000,
+    "expected_corrected_edits": 132620,
+    "expected_corrected_sha256": "877a80661376bfc5672d5d848e64823bfced2ef914e6a5e9840704eb66351962",
+    "format": "xml",
+    "identifier_occurrences": 1666668,
+    "path": "../bench/fleet_1m.xml",
+    "records": 1333334,
+    "seed": 20260916,
+    "size_bytes": 166091150,
+    "source_sha256": "28d30aedb32ae90d135b53eaf2a200cd1a7460a8c6468d5b07a9281f0264e72e"
+  },
+  "hardware": {
+    "cpu_count": 28,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "python": "3.13.14",
+    "ram_bytes": 68375748608,
+    "sqlite": "3.50.4"
+  },
+  "job": {
+    "counters": {
+      "identifiers_total": 1666668,
+      "records_total": 1333334,
+      "status_corrected": 132620,
+      "status_valid": 1534048
+    },
+    "findings": {
+      "IMPORT_INTENT_UNRESOLVED": 1
+    },
+    "format": "xml",
+    "state": "awaiting_review"
+  },
+  "peak_working_set_bytes": 673234944,
+  "steps": {
+    "approve_selection_s": 5.059,
+    "export_s": 2.266,
+    "ingest_validate_s": 88.09,
+    "register_source_s": 0.162
+  },
+  "storage_bytes": {
+    "artifacts": 178403578,
+    "database": 611655680,
+    "sources": 166091150
+  },
+  "throughput": {
+    "mib_per_s": 1.8,
+    "records_per_s": 15136.0
+  },
+  "total_s": 96.57
+}

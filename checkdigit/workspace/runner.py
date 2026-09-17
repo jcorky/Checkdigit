@@ -52,14 +52,16 @@ def worker_id() -> str:
 
 def run_once(conn: sqlite3.Connection, root: str, *, wid: Optional[str] = None, policy=None,
              batch_records: int = ingest.BATCH_RECORDS, fail_after_records: Optional[int] = None,
-             lease_seconds: float = jobq.LEASE_SECONDS) -> Optional[Dict[str, Any]]:
+             lease_seconds: float = jobq.LEASE_SECONDS, min_free_bytes: Optional[int] = None
+             ) -> Optional[Dict[str, Any]]:
     """Claim and run one job. Returns None when nothing is claimable."""
     wid = wid or worker_id()
     job = jobq.claim(conn, wid, lease_seconds)
     if job is None:
         return None
     state = ingest.run_job(conn, root, job, wid, batch_records=batch_records, policy=policy,
-                           fail_after_records=fail_after_records, lease_seconds=lease_seconds)
+                           fail_after_records=fail_after_records, lease_seconds=lease_seconds,
+                           min_free_bytes=min_free_bytes)
     return {"job_id": job["id"], "state": state, "worker": wid}
 
 
@@ -73,15 +75,37 @@ def run_until_idle(conn: sqlite3.Connection, root: str, *, wid: Optional[str] = 
     return n
 
 
-def serve(db_path: str, root: str, poll_seconds: float = 1.0) -> None:
-    """Long-running worker loop for a separate process."""
+def serve(db_path: str, root: str, poll_seconds: float = 1.0, *, policy_file: Optional[str] = None,
+          exit_when_idle: bool = False) -> int:
+    """Long-running worker loop for a separate process.
+
+    With `exit_when_idle` the process returns once no claimable job remains,
+    which is what the benchmark's multi-process run uses.
+    """
+    policy = None
+    if policy_file:
+        import policy as policy_mod
+        policy = policy_mod.Policy.load_file(policy_file)
     conn = connect(db_path)
     wid = worker_id()
+    ran = 0
     while True:
-        if run_once(conn, root, wid=wid) is None:
+        r = run_once(conn, root, wid=wid, policy=policy)
+        if r is None:
+            if exit_when_idle:
+                return ran
             time.sleep(poll_seconds)
+        else:
+            ran += 1
 
 
 if __name__ == "__main__":
-    import sys
-    serve(sys.argv[1], sys.argv[2])
+    import argparse
+    ap = argparse.ArgumentParser(description="workspace worker")
+    ap.add_argument("db")
+    ap.add_argument("root")
+    ap.add_argument("--policy-file", default=os.environ.get("CHECKDIGIT_POLICY_FILE") or None)
+    ap.add_argument("--exit-when-idle", action="store_true")
+    ap.add_argument("--poll-seconds", type=float, default=1.0)
+    args = ap.parse_args()
+    serve(args.db, args.root, args.poll_seconds, policy_file=args.policy_file, exit_when_idle=args.exit_when_idle)

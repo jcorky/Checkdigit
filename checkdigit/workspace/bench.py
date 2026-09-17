@@ -481,6 +481,212 @@ def verify(dataset: str, root: str) -> Dict[str, Any]:
     return out
 
 
+# --------------------------------------------------------------------------- #
+# EDIFACT and container XML datasets (multiple messages, release characters,
+# comments and CDATA) with generator-computed truth
+# --------------------------------------------------------------------------- #
+
+def _wrong(c: str, rng: random.Random) -> str:
+    return c[:-1] + str((int(c[-1]) + rng.randrange(1, 10)) % 10)
+
+
+def generate_edifact(out_path: str, messages: int, per_message: int, seed: int = 20260916) -> Dict[str, Any]:
+    """BAPLIE-like interchange: `messages` UNH..UNT groups, `per_message` EQD segments each."""
+    rng = random.Random(seed)
+    src_h, truth_h = hashlib.sha256(), hashlib.sha256()
+    edits = 0
+    total = 0
+    with open(out_path, "wb") as fh:
+        def emit(src: str, truth: Optional[str] = None) -> None:
+            fh.write(src.encode("utf-8"))
+            src_h.update(src.encode("utf-8"))
+            truth_h.update((truth if truth is not None else src).encode("utf-8"))
+        emit("UNA:+.? 'UNB+UNOA:2+SENDER+RECEIVER+260916:1200+1'\n")
+        for m in range(messages):
+            emit(f"UNH+{m + 1}+BAPLIE:D:95B:UN:SMDG20'BGM+{rng.choice(['MSC', 'HLC', 'CMA'])}12345'\n")
+            emit("FTX+AAA+++stow remark with escaped ?' apostrophe and ?+ plus'\n")
+            buf, tbuf = [], []
+            for k in range(per_message):
+                total += 1
+                c = _bic(rng)
+                shown = c
+                if rng.random() < 0.08:
+                    shown = _wrong(c, rng)
+                    edits += 1
+                eol = "\n" if k % 3 else "\r\n"
+                size = rng.choice(["22G1", "42G1", "45R1"])
+                buf.append(f"LOC+147+{rng.randrange(0, 999999):06d}::5'EQD+CN+{shown}+{size}+++5'{eol}")
+                tbuf.append(f"LOC+147+{buf[-1][8:14]}::5'EQD+CN+{c}+{size}+++5'{eol}")
+                if len(buf) >= 5000:
+                    emit("".join(buf), "".join(tbuf))
+                    buf, tbuf = [], []
+            if buf:
+                emit("".join(buf), "".join(tbuf))
+            emit(f"UNT+{per_message * 2 + 3}+{m + 1}'\n")
+        emit(f"UNZ+{messages}+1'\n")
+    truth = {"format": "edifact", "messages": messages, "records": total, "seed": seed, "expected_corrected_edits": edits,
+             "source_sha256": src_h.hexdigest(), "expected_corrected_sha256": truth_h.hexdigest(),
+             "size_bytes": os.path.getsize(out_path)}
+    with open(out_path + ".truth.json", "w", encoding="utf-8") as fh:
+        json.dump(truth, fh, indent=2, sort_keys=True)
+    return truth
+
+
+def generate_xml(out_path: str, containers: int, seed: int = 20260916) -> Dict[str, Any]:
+    """Container XML: one <container> per record, a third of them also carrying a
+    synced <unit id unique-key> element, comments and CDATA in between."""
+    rng = random.Random(seed)
+    src_h, truth_h = hashlib.sha256(), hashlib.sha256()
+    edits = 0
+    occurrences = 0
+    elements = 0                # elements carrying an identifier: the streaming path's record unit
+    with open(out_path, "wb") as fh:
+        def emit(src: str, truth: Optional[str] = None) -> None:
+            fh.write(src.encode("utf-8"))
+            src_h.update(src.encode("utf-8"))
+            truth_h.update((truth if truth is not None else src).encode("utf-8"))
+        emit('<?xml version="1.0" encoding="UTF-8"?>\n<tos:snx xmlns:tos="urn:tos:container-xml">\n')
+        buf, tbuf = [], []
+        for i in range(containers):
+            c = _bic(rng)
+            shown = c
+            if rng.random() < 0.08:
+                shown = _wrong(c, rng)
+                edits += 1
+            size = rng.choice(["22G1", "42G1", "45R1", "L5G1"])
+            n = 1
+            elements += 1
+            line = f'<container eqid="{shown}" type="{size}" class="CTR" life-cycle-state="ACT">\n'
+            tline = f'<container eqid="{c}" type="{size}" class="CTR" life-cycle-state="ACT">\n'
+            if i % 3 == 0:
+                line += f'  <unit id="{shown}" unique-key="{shown}" category="IMPRT"/>\n'
+                tline += f'  <unit id="{c}" unique-key="{c}" category="IMPRT"/>\n'
+                n = 3
+                elements += 1
+            if i % 11 == 0:
+                extra = f'  <!-- note: <container eqid="{shown}"/> is not real --><remark><![CDATA[gate <in> {shown}]]></remark>\n'
+                line += extra
+                tline += extra
+            line += "  <ownership owner=\"" + shown[:3] + "\" operator=\"" + shown[:3] + "\"/>\n</container>\n"
+            tline += "  <ownership owner=\"" + c[:3] + "\" operator=\"" + c[:3] + "\"/>\n</container>\n"
+            occurrences += n
+            if shown != c:
+                edits += n - 1
+            buf.append(line)
+            tbuf.append(tline)
+            if len(buf) >= 5000:
+                emit("".join(buf), "".join(tbuf))
+                buf, tbuf = [], []
+        if buf:
+            emit("".join(buf), "".join(tbuf))
+        emit("</tos:snx>\n")
+    truth = {"format": "xml", "records": elements, "containers": containers, "identifier_occurrences": occurrences,
+             "seed": seed, "expected_corrected_edits": edits, "source_sha256": src_h.hexdigest(),
+             "expected_corrected_sha256": truth_h.hexdigest(), "size_bytes": os.path.getsize(out_path)}
+    with open(out_path + ".truth.json", "w", encoding="utf-8") as fh:
+        json.dump(truth, fh, indent=2, sort_keys=True)
+    return truth
+
+
+def run_format(dataset: str, root: str, *, options: Optional[Dict[str, Any]] = None, log=print) -> Dict[str, Any]:
+    """Ingest, approve every correction, export, compare with the generator truth."""
+    from . import export as export_mod, ingest, review, runner, store
+    os.makedirs(root, exist_ok=True)
+    db_path = os.path.join(root, "workspace.db")
+    conn = store.connect(db_path)
+    store.ensure_workspace(conn, "bench", "Benchmark")
+    truth = json.load(open(dataset + ".truth.json", encoding="utf-8"))
+    rec: Dict[str, Any] = {"hardware": hardware(), "dataset": {"path": dataset, **truth}, "steps": {}, "checks": {}}
+    t0 = time.perf_counter()
+    t = time.perf_counter()
+    sid = ingest.register_source(conn, root, "bench", os.path.basename(dataset), dataset)
+    rec["steps"]["register_source_s"] = round(time.perf_counter() - t, 3)
+    sub = runner.submit(conn, workspace_id="bench", source_file_id=sid, intent_id=None, options=options or {})
+    t = time.perf_counter()
+    r = runner.run_once(conn, root, wid="worker-format")
+    rec["steps"]["ingest_validate_s"] = round(time.perf_counter() - t, 3)
+    summ = review.summary(conn, sub["job_id"])
+    rec["job"] = {"state": summ["state"], "counters": summ["counters"], "findings": summ["findings"],
+                  "format": summ["checkpoint"].get("inspect", {}).get("format")}
+    rec["checks"]["state"] = (r["state"] if r else None, "awaiting_review")
+    rec["checks"]["records"] = (summ["counters"].get("records_total"), truth["records"])
+    n = review.count(conn, sub["job_id"], {"status": "corrected"})
+    rec["checks"]["corrected"] = (n, truth["expected_corrected_edits"])
+    rec["throughput"] = {"records_per_s": round(truth["records"] / rec["steps"]["ingest_validate_s"], 1),
+                         "mib_per_s": round(truth["size_bytes"] / rec["steps"]["ingest_validate_s"] / (1024 * 1024), 2)}
+    t = time.perf_counter()
+    apr = review.decide(conn, sub["job_id"], {"status": "corrected"}, "approved", "bench", expected_count=n)
+    rec["steps"]["approve_selection_s"] = round(time.perf_counter() - t, 3)
+    t = time.perf_counter()
+    art = export_mod.build_artifact(conn, root, sub["job_id"], apr["id"], "bench", idempotency_key="format-export")
+    rec["steps"]["export_s"] = round(time.perf_counter() - t, 3)
+    rec["artifact"] = {"id": art["id"], "sha256": art["sha256"], "size_bytes": art["size_bytes"],
+                       "edits_applied": art["edits_applied"]}
+    rec["checks"]["artifact_sha256_matches_truth"] = (art["sha256"], truth["expected_corrected_sha256"])
+    rec["checks"]["edits_match_truth"] = (art["edits_applied"], truth["expected_corrected_edits"])
+    rec["total_s"] = round(time.perf_counter() - t0, 3)
+    rec["peak_working_set_bytes"] = peak_rss_bytes()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    rec["storage_bytes"] = {"database": os.path.getsize(db_path), "sources": dir_bytes(os.path.join(root, "sources")),
+                            "artifacts": dir_bytes(os.path.join(root, "artifacts"))}
+    rec["all_checks_pass"] = all(a == b for a, b in rec["checks"].values())
+    conn.close()
+    with open(os.path.join(root, "benchmark.json"), "w", encoding="utf-8") as fh:
+        json.dump(rec, fh, indent=2, sort_keys=True)
+    log(json.dumps({k: rec[k] for k in ("steps", "throughput", "checks", "all_checks_pass", "peak_working_set_bytes")}, indent=2))
+    return rec
+
+
+def run_multiprocess(datasets: List[str], root: str, workers: int, log=print) -> Dict[str, Any]:
+    """Queue one job per dataset, then run `workers` separate worker processes
+    against the same database until the queue is empty."""
+    import subprocess
+    from . import ingest, review, runner, store
+    os.makedirs(root, exist_ok=True)
+    db_path = os.path.join(root, "workspace.db")
+    conn = store.connect(db_path)
+    store.ensure_workspace(conn, "bench", "Benchmark")
+    jobs = []
+    for ds in datasets:
+        truth = json.load(open(ds + ".truth.json", encoding="utf-8"))
+        sid = ingest.register_source(conn, root, "bench", os.path.basename(ds), ds)
+        options = {"columns": ["container"]} if truth.get("format", "csv") == "csv" else {}
+        sub = runner.submit(conn, workspace_id="bench", source_file_id=sid, intent_id=None, options=options)
+        jobs.append((sub["job_id"], truth))
+    conn.close()
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    t = time.perf_counter()
+    procs = [subprocess.Popen([sys.executable, "-m", "workspace.runner", db_path, root, "--exit-when-idle",
+                               "--poll-seconds", "0.2"], cwd=here) for _ in range(workers)]
+    codes = [p.wait() for p in procs]
+    wall = round(time.perf_counter() - t, 3)
+    conn = store.connect(db_path)
+    rec: Dict[str, Any] = {"hardware": hardware(), "workers": workers, "wall_s": wall, "worker_exit_codes": codes,
+                           "jobs": [], "checks": {}}
+    total_records = 0
+    for job_id, truth in jobs:
+        s = review.summary(conn, job_id)
+        total_records += truth["records"]
+        rec["jobs"].append({"job_id": job_id, "state": s["state"], "records": s["counters"].get("records_total"),
+                            "corrected": s["counters"].get("status_corrected", 0), "lease_owner_final": s["lease_owner"],
+                            "attempts": s["attempts"]})
+        rec["checks"][f"{job_id}_state"] = (s["state"], "awaiting_review")
+        rec["checks"][f"{job_id}_records"] = (s["counters"].get("records_total"), truth["records"])
+        rec["checks"][f"{job_id}_corrected"] = (s["counters"].get("status_corrected", 0), truth["expected_corrected_edits"])
+    completions = [dict(r) for r in conn.execute(
+        "SELECT actor AS worker, subject AS job_id, detail FROM audit_events WHERE action = 'job.complete' ORDER BY id")]
+    rec["completions"] = completions
+    rec["distinct_worker_processes"] = len({c["worker"] for c in completions})
+    rec["checks"]["two_processes_completed_work"] = (rec["distinct_worker_processes"] >= min(workers, len(jobs)), True)
+    rec["aggregate_records_per_s"] = round(total_records / wall, 1)
+    rec["all_checks_pass"] = all(a == b for a, b in rec["checks"].values())
+    conn.close()
+    with open(os.path.join(root, "benchmark.json"), "w", encoding="utf-8") as fh:
+        json.dump(rec, fh, indent=2, sort_keys=True)
+    log(json.dumps({k: rec[k] for k in ("workers", "wall_s", "aggregate_records_per_s", "jobs", "all_checks_pass")}, indent=2))
+    return rec
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -488,11 +694,27 @@ def main(argv=None) -> int:
     g.add_argument("--records", type=int, default=3_000_000)
     g.add_argument("--seed", type=int, default=20260916)
     g.add_argument("--out", required=True)
+    ge = sub.add_parser("generate-edi")
+    ge.add_argument("--messages", type=int, default=100)
+    ge.add_argument("--per-message", type=int, default=10_000)
+    ge.add_argument("--seed", type=int, default=20260916)
+    ge.add_argument("--out", required=True)
+    gx = sub.add_parser("generate-xml")
+    gx.add_argument("--containers", type=int, default=1_000_000)
+    gx.add_argument("--seed", type=int, default=20260916)
+    gx.add_argument("--out", required=True)
     r = sub.add_parser("run")
     r.add_argument("--dataset", required=True)
     r.add_argument("--root", required=True)
     r.add_argument("--crash-after", type=int, default=None)
     r.add_argument("--delta-records", type=int, default=200)
+    rf = sub.add_parser("run-format")
+    rf.add_argument("--dataset", required=True)
+    rf.add_argument("--root", required=True)
+    rm = sub.add_parser("run-multiprocess")
+    rm.add_argument("--datasets", nargs="+", required=True)
+    rm.add_argument("--root", required=True)
+    rm.add_argument("--workers", type=int, default=2)
     v = sub.add_parser("verify")
     v.add_argument("--dataset", required=True)
     v.add_argument("--root", required=True)
@@ -501,11 +723,23 @@ def main(argv=None) -> int:
         t = time.perf_counter()
         truth = generate(args.out, args.records, args.seed)
         print(json.dumps({**truth, "generate_s": round(time.perf_counter() - t, 1)}, indent=2))
+    elif args.cmd == "generate-edi":
+        t = time.perf_counter()
+        truth = generate_edifact(args.out, args.messages, args.per_message, args.seed)
+        print(json.dumps({**truth, "generate_s": round(time.perf_counter() - t, 1)}, indent=2))
+    elif args.cmd == "generate-xml":
+        t = time.perf_counter()
+        truth = generate_xml(args.out, args.containers, args.seed)
+        print(json.dumps({**truth, "generate_s": round(time.perf_counter() - t, 1)}, indent=2))
     elif args.cmd == "run":
         rec = run(args.dataset, args.root, crash_after_records=args.crash_after, delta_records=args.delta_records)
         print(json.dumps({k: rec[k] for k in ("steps", "throughput", "query_latency_ms", "checks", "all_checks_pass",
                                                "total_s", "peak_working_set_bytes", "storage_bytes")}, indent=2))
         return 0 if rec["all_checks_pass"] else 1
+    elif args.cmd == "run-format":
+        return 0 if run_format(args.dataset, args.root)["all_checks_pass"] else 1
+    elif args.cmd == "run-multiprocess":
+        return 0 if run_multiprocess(args.datasets, args.root, args.workers)["all_checks_pass"] else 1
     else:
         out = verify(args.dataset, args.root)
         print(json.dumps(out, indent=2))

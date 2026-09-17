@@ -1,0 +1,10 @@
+{
+  "expected_corrected_edits": 79781,
+  "expected_corrected_sha256": "3bc2e57a830b86cb0788472a4fe91901936ac769c487ca27f28b81c545cb007d",
+  "format": "edifact",
+  "messages": 100,
+  "records": 1000000,
+  "seed": 20260916,
+  "size_bytes": 47345446,
+  "source_sha256": "f515b7488e5c9a35a67e134e2bc0bd514f53d7340b9c422d748a14ad2cc6a727"
+}

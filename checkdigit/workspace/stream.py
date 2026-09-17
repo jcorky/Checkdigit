@@ -244,11 +244,14 @@ def line_records(chunks: Iterator[str]) -> Iterator[Tuple[int, int, str]]:
         yield line_no, pos, carry
 
 
-def edifact_segments(chunks: Iterator[str], release: str, terminator: str) -> Iterator[Tuple[int, str]]:
-    """Yield (absolute_start, raw_segment) honouring the release character.
+def delimited_segments(chunks: Iterator[str], terminator: str, release: str = "",
+                       skip_una: bool = False) -> Iterator[Tuple[int, str]]:
+    """Yield (absolute_start, raw_segment) for terminator-delimited segments.
 
-    The raw segment keeps release characters so the caller can splice it back
-    verbatim; a UNA header (9 characters) is skipped, not yielded.
+    `release` is the escape character (EDIFACT "?"); an empty string means the
+    syntax has none (X12). The raw segment keeps release characters so the
+    caller can splice it back verbatim. With `skip_una`, a UNA service string
+    advice (nine characters, possibly split across chunks) is skipped.
     """
     buf: List[str] = []
     pos = 0
@@ -257,20 +260,21 @@ def edifact_segments(chunks: Iterator[str], release: str, terminator: str) -> It
     skipping_ws = True
     head = ""
     chunks = iter(chunks)
-    # The UNA service string advice is nine characters and may span chunks.
-    for chunk in chunks:
-        head += chunk
-        if len(head) >= 9 or not head.startswith("UNA"[:len(head)]):
-            break
-    if head.startswith("UNA") and len(head) >= 9:
-        pos = start = 9
-        head = head[9:]
+    if skip_una:
+        for chunk in chunks:
+            head += chunk
+            if len(head) >= 9 or not head.startswith("UNA"[:len(head)]):
+                break
+        if head.startswith("UNA") and len(head) >= 9:
+            pos = start = 9
+            head = head[9:]
 
     def with_head():
         if head:
             yield head
         yield from chunks
 
+    special = re.compile("[" + re.escape(terminator) + (re.escape(release) if release else "") + "]")
     for chunk in with_head():
         i = 0
         n = len(chunk)
@@ -286,10 +290,16 @@ def edifact_segments(chunks: Iterator[str], release: str, terminator: str) -> It
             if escaped:
                 buf.append(ch)
                 escaped = False
-            elif ch == release:
+                i += 1
+                pos += 1
+                continue
+            if release and ch == release:
                 buf.append(ch)
                 escaped = True
-            elif ch == terminator:
+                i += 1
+                pos += 1
+                continue
+            if ch == terminator:
                 seg = "".join(buf)
                 if seg.strip():
                     yield start, seg
@@ -299,10 +309,98 @@ def edifact_segments(chunks: Iterator[str], release: str, terminator: str) -> It
                 pos += 1
                 start = pos
                 continue
-            else:
-                buf.append(ch)
-            i += 1
-            pos += 1
+            m = special.search(chunk, i)
+            j = m.start() if m else n
+            buf.append(chunk[i:j])
+            pos += j - i
+            i = j
     tail = "".join(buf)
     if tail.strip():
         yield start, tail
+
+
+def edifact_segments(chunks: Iterator[str], release: str, terminator: str) -> Iterator[Tuple[int, str]]:
+    """EDIFACT segments: honours the release character and skips a UNA header."""
+    return delimited_segments(chunks, terminator, release, skip_una=True)
+
+
+class XmlSecurityError(ValueError):
+    """The stream carries a DOCTYPE or ENTITY declaration; refused, as on the whole-file path."""
+
+
+MAX_XML_CONSTRUCT = 4 * 1024 * 1024
+
+
+def xml_start_tags(chunks: Iterator[str]) -> Iterator[Tuple[int, str]]:
+    """Yield (absolute_offset, tag_text) for every start tag, including self-closing ones.
+
+    Comments, CDATA sections, processing instructions and end tags are skipped;
+    quotes inside attribute values are honoured when finding the end of a tag,
+    and any construct may span chunk boundaries. DOCTYPE and ENTITY declarations
+    raise XmlSecurityError. Well-formedness is not verified here.
+    """
+    carry = ""
+    base = 0
+    for chunk in chunks:
+        text = carry + chunk
+        i = 0
+        n = len(text)
+        while True:
+            lt = text.find("<", i)
+            if lt < 0:
+                i = n
+                break
+            rest = n - lt
+            if rest < 9:
+                i = lt
+                break                                    # need more text to classify the construct
+            if text.startswith("<!--", lt):
+                end = text.find("-->", lt + 4)
+                if end < 0:
+                    i = lt
+                    break
+                i = end + 3
+                continue
+            if text.startswith("<![CDATA[", lt):
+                end = text.find("]]>", lt + 9)
+                if end < 0:
+                    i = lt
+                    break
+                i = end + 3
+                continue
+            if text.startswith("<?", lt):
+                end = text.find("?>", lt + 2)
+                if end < 0:
+                    i = lt
+                    break
+                i = end + 2
+                continue
+            if text.startswith("<!", lt):
+                raise XmlSecurityError("DOCTYPE or ENTITY declaration refused")
+            # start or end tag: find '>' outside quotes
+            j = lt + 1
+            quote = ""
+            end = -1
+            while j < n:
+                ch = text[j]
+                if quote:
+                    if ch == quote:
+                        quote = ""
+                elif ch == '"' or ch == "'":
+                    quote = ch
+                elif ch == ">":
+                    end = j
+                    break
+                j += 1
+            if end < 0:
+                i = lt
+                break
+            if text[lt + 1] != "/":
+                yield base + lt, text[lt:end + 1]
+            i = end + 1
+        carry = text[i:]
+        base += i
+        if len(carry) > MAX_XML_CONSTRUCT:
+            raise ValueError("XML construct longer than the streaming limit")
+    if carry.lstrip().startswith("<!"):
+        raise XmlSecurityError("DOCTYPE or ENTITY declaration refused")

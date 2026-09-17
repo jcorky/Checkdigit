@@ -3,7 +3,7 @@ dist/
 .wrangler/
 *.log
 .DS_Store
-checkdigit/__pycache__/
+__pycache__/
 checkdigit/out/
 checkdigit/.spa-build/
 checkdigit/static/
@@ -14,3 +14,6 @@ bench/*.csv
 bench/runs/
 workspace-data/
 bench/*.truth.json
+bench/*.edi
+bench/*.xml
+bench/*.sh.log

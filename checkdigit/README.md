@@ -170,13 +170,16 @@ real BIC register download.
 
 **Private workspace (large files, durable jobs).** `workspace/` adds admin-gated
 routes under `/v1/workspaces/{workspace}` for resumable uploads, declared import
-intents, streamed validation jobs, cursor-paginated review, storage-backed
-approvals, streamed exports and atomic generation publication. State lives under
+intents with coverage scopes, streamed validation jobs (CSV, text, EDIFACT, X12,
+container XML), cursor-paginated review, storage-backed approvals, re-analysis under
+the operator policy, streamed exports, atomic generation publication, per-workspace
+roles, retention purge and storage budgets. State lives under
 `CHECKDIGIT_WORKSPACE_DIR` (default `workspace-data`). Run a worker with
 `python3 -m workspace.runner workspace-data/workspace.db workspace-data`, or call
 `POST .../jobs/{id}/run` to execute queued work inside the request. The recorded
-three-million-record run is in `../BENCHMARK.md`; reproduce it with
-`python3 -m workspace.bench generate|run|verify`.
+three-million-record CSV run and the one-million-record EDIFACT and XML runs are in
+`../BENCHMARK.md`; reproduce them with `python3 -m workspace.bench` (see
+`../bench/run_phase_c.sh`).
 
 The SPA (`checkdigit_app.jsx`) is a single-file React app with Correct,
 Dashboard, History, Containers, and Docs views: drop it into a Vite React
