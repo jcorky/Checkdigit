@@ -250,6 +250,34 @@ from workspace.api import build_router as _build_workspace_router  # noqa: E402
 app.include_router(_build_workspace_router(admin_required, WORKSPACE_DIR,
                                            policy_provider=lambda: _POLICY))   # /v1/workspaces/...
 
+# The workspace pages (built by `npm run build:workspace` into workspace-ui/) are
+# served behind the same admin gate as the API they call; they never reach the
+# public deployment.
+WORKSPACE_UI_DIR = os.environ.get("CHECKDIGIT_WORKSPACE_UI", os.path.join(os.path.dirname(os.path.abspath(__file__)), "workspace-ui"))
+_WORKSPACE_PAGES = {"": "index.html", "index": "index.html", "job": "job.html", "profiles": "profiles.html"}
+
+
+def _workspace_ui_file(path: str) -> str:
+    from fastapi.responses import FileResponse
+    name = _WORKSPACE_PAGES.get(path.strip("/"), path.strip("/"))
+    full = os.path.normpath(os.path.join(WORKSPACE_UI_DIR, name))
+    if not full.startswith(os.path.normpath(WORKSPACE_UI_DIR) + os.sep) and full != os.path.normpath(WORKSPACE_UI_DIR):
+        raise HTTPException(status_code=404, detail="not found")
+    if not os.path.isfile(full):
+        raise HTTPException(status_code=404, detail="workspace pages are not built; run `npm run build:workspace`")
+    return FileResponse(full)
+
+
+@app.get("/workspace", dependencies=[Depends(admin_required)], include_in_schema=False)
+@app.get("/workspace/", dependencies=[Depends(admin_required)], include_in_schema=False)
+def workspace_index():
+    return _workspace_ui_file("")
+
+
+@app.get("/workspace/{path:path}", dependencies=[Depends(admin_required)], include_in_schema=False)
+def workspace_page(path: str):
+    return _workspace_ui_file(path)
+
 
 @app.on_event("startup")
 def _startup() -> None:

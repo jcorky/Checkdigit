@@ -13,6 +13,7 @@ const scripts = [
   "test_contracts.py",
   "test_phase_a.py",
   "test_workspace.py",
+  "test_workspace_phase_d.py",
   "run_acceptance.py",
 ];
 let failed = 0;

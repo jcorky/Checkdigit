@@ -120,6 +120,46 @@ must know about. Each entry names the version or phase that introduced it.
 - The schema migrates in place on connect (`meta.schema_version` 2): new columns on
   `jobs`, `observations`, `fleet`, `approvals` and `export_artifacts`.
 
+## Phase D
+
+### Contracts
+
+- `contracts/findings.json` 1.1.0 adds `MESSAGE_SYNTAX_INVALID`, `MESSAGE_SCHEMA_VIOLATION`
+  (blocking publication), `PARTNER_RULE_VIOLATION` and `PROFILE_UNVERIFIED` (transmission).
+  Both surfaces load the file; no other contract file changed.
+
+### Workspace API additions
+
+- Jobs accept `profile_id`; the profile version is pinned on the job. Message feeds
+  without a profile still run and carry `PROFILE_UNVERIFIED`; the visit key needs the
+  profile's terminal site, so without one every visit is unresolved (`CONTEXT_AMBIGUOUS`).
+- Profiles: `POST|GET .../profiles`, `GET .../profiles/{id}`,
+  `POST .../profiles/{id}/verify-fixtures` (analyst), `POST .../profiles/{id}/verification`
+  (administrator, note required). Rules are validated on creation (`BAD_RULES`).
+- Messages and context: `GET .../jobs/{id}/messages`, `.../jobs/{id}/events`,
+  `.../jobs/{id}/observations/{ordinal}/layers`, `.../jobs/{id}/observations/count`,
+  `.../jobs/{id}/inspection`, `GET .../visits`, `.../visits/{id}`.
+- Deliveries and feedback: `POST|GET .../artifacts/{id}/deliveries`, `POST|GET .../feedback`,
+  `GET .../feedback/{id}`, `POST .../feedback/{id}/repair` (202, creates a job with
+  `repair_of_feedback_id`).
+- Exports refuse partial linked groups with `LINKED_EDIT_PRECONDITION_FAILED`.
+- Generation publication also applies the job's staged messages; a message conflict
+  discovered at publish time answers 409 `MESSAGE_ID_CONFLICT` and publishes nothing.
+- Re-submitting an intent whose earlier generation was abandoned creates a new job.
+
+### Schema
+
+- `meta.schema_version` 3: new columns on `feed_profiles` and `jobs`; new tables
+  `message_transactions`, `visits`, `movements`, `events`, `observation_context`,
+  `delivery_attempts`, `receiver_feedback`. Existing databases migrate on connect.
+
+### Workspace pages
+
+- `npm run build:workspace` builds `src/workspace/` into `checkdigit/workspace-ui/`
+  (`CHECKDIGIT_WORKSPACE_UI` overrides the directory); the service serves them at
+  `/workspace/`, `/workspace/job` and `/workspace/profiles` behind the admin dependency.
+  They are not part of the public `dist/`.
+
 ### Batch
 
 - `report.csv` keeps its column order and gains a trailing `source_name` column.

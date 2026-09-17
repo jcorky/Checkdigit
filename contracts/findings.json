@@ -1,6 +1,6 @@
 {
   "$comment": "Structured finding codes. A finding is an expected workflow outcome, not a server error. blocking_scope names what the finding blocks: none (informational), record, feed_transformation, publication, transmission.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "findings": [
     {
       "code": "IMPORT_INTENT_UNRESOLVED",
@@ -169,6 +169,34 @@
       "blocking_scope": "record",
       "explanation": "The input is a format the application does not parse (for example a Word document or PDF) and was not scanned as text.",
       "recovery": "Convert or export the data from its source system in a supported format."
+    },
+    {
+      "code": "MESSAGE_SYNTAX_INVALID",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "The interchange or message envelope is not well formed: a message reference or segment count in the trailer disagrees with the body, a trailer is missing, or the interchange count is wrong.",
+      "recovery": "Obtain a corrected file from the sender. Identifier findings are still reported; nothing from the affected message is applied."
+    },
+    {
+      "code": "MESSAGE_SCHEMA_VIOLATION",
+      "severity": "blocking",
+      "blocking_scope": "publication",
+      "explanation": "A message lacks a segment or reference the bound profile requires, or uses a function the profile does not support, so its business meaning cannot be established.",
+      "recovery": "Review the message against the profile's implementation guide; extend the profile if the partner's variant is legitimate. The message stays staged and unapplied."
+    },
+    {
+      "code": "PARTNER_RULE_VIOLATION",
+      "severity": "blocking",
+      "blocking_scope": "transmission",
+      "explanation": "Sender, receiver or message version differs from what the bound profile expects for this partner.",
+      "recovery": "Confirm the partner context; bind the profile that matches the sender, or record the new partner variant as a new profile version."
+    },
+    {
+      "code": "PROFILE_UNVERIFIED",
+      "severity": "warning",
+      "blocking_scope": "transmission",
+      "explanation": "No verified profile governs this feed: either none is bound, or the bound profile has not passed fixture, partner or production verification.",
+      "recovery": "Bind a profile and verify it against acceptance fixtures; partner and production verification are recorded by an administrator with evidence."
     }
   ]
 }

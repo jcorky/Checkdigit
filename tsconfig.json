@@ -15,5 +15,5 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "scripts", "vite.config.ts", "contracts/*.json"]
+  "include": ["src", "tests", "scripts", "vite.config.ts", "vite.workspace.config.ts", "contracts/*.json"]
 }

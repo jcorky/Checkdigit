@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profiles — Checkdigit workspace</title>
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172229'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23BCE962' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23BCE962' fill-opacity='0.25' stroke='%23BCE962' stroke-width='2'/%3E%3C/svg%3E">
+<script type="module" src="./profiles.ts"></script>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/workspace/">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit workspace
+    </a>
+    <nav aria-label="Workspace">
+      <a class="navlink" href="/workspace/">Jobs</a>
+      <a class="navlink" href="/workspace/profiles" aria-current="page">Profiles &amp; feedback</a>
+      <a class="navlink" href="/">Public site</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page app">
+  <div class="wrap">
+    <div class="ws-bar">
+      <div>
+        <p class="eyebrow">Terminal profiles, receiver feedback, roles</p>
+        <h1>Profiles &amp; feedback</h1>
+      </div>
+      <div id="ws-switch"></div>
+    </div>
+    <div class="stripes" aria-hidden="true" style="margin-bottom:12px"></div>
+    <div id="msg"></div>
+
+    <section class="panel step" aria-labelledby="p1">
+      <h2 class="step-title" id="p1"><span class="section-no">1</span> Feed profiles</h2>
+      <div id="profiles"></div>
+      <h3>New profile version</h3>
+      <form class="form-grid" id="profile-form">
+        <label>Name <input id="p-name" type="text" required placeholder="baplie-line"></label>
+        <label>Message family
+          <select id="p-family">
+            <option value="BAPLIE">BAPLIE</option><option value="COARRI">COARRI</option><option value="CODECO">CODECO</option>
+            <option value="COPARN">COPARN</option><option value="COPRAR">COPRAR</option><option value="IFTMIN">IFTMIN</option>
+            <option value="X12_322">X12 322</option><option value="X12_301">X12 301</option><option value="X12_404">X12 404</option>
+            <option value="SNX">Navis SNX</option><option value="CSV">Delimited (mapping contract)</option><option value="GENERIC">Generic</option>
+          </select>
+        </label>
+        <label>Terminal site <input id="p-terminal" type="text" placeholder="USLAX"></label>
+        <label>Partner <input id="p-partner" type="text" placeholder="LINE"></label>
+        <label>System <input id="p-system" type="text" placeholder="Navis N4"></label>
+        <label>System version <input id="p-system-version" type="text" placeholder="3.8"></label>
+        <label>Message version <input id="p-message-version" type="text" placeholder="D:95B:UN:SMDG20"></label>
+        <label>Acceptance fixtures (source file ids, comma separated) <input id="p-fixtures" type="text"></label>
+      </form>
+      <label>Message rules (JSON)<textarea id="p-rules" class="code"></textarea></label>
+      <label>Mapping contract for delimited feeds (JSON, optional)<textarea id="p-contract" class="code"></textarea></label>
+      <div class="row-actions"><button id="p-create" class="btn btn-primary" type="button">Create version</button></div>
+    </section>
+
+    <section class="panel step" aria-labelledby="p2">
+      <h2 class="step-title" id="p2"><span class="section-no blue">2</span> Receiver feedback</h2>
+      <div id="feedback"></div>
+      <h3>Record feedback</h3>
+      <div class="form-grid">
+        <label>Origin <select id="fb-origin"><option value="manual_upload">manual upload (CONTRL, APERAK, 997, 824)</option><option value="manual_outcome">manual outcome</option></select></label>
+        <label>Response profile <select id="fb-profile"><option value="">none</option></select></label>
+        <label>Decided by (manual outcome) <input id="fb-decided" type="text"></label>
+      </div>
+      <label>Acknowledgment text, or manual outcome JSON<textarea id="fb-text" class="code" placeholder="UNB+UNOA:2+LINE+TERMINAL+...'UNH+1+CONTRL:D:3:UN'UCI+ICR1+TERMINAL+LINE+7'UCM+1+BAPLIE:D:95B:UN+7'UNT+4+1'UNZ+1+ACK1'"></textarea></label>
+      <div class="row-actions"><button id="fb-record" class="btn btn-primary" type="button">Record and correlate</button></div>
+    </section>
+
+    <section class="panel step" aria-labelledby="p3">
+      <h2 class="step-title" id="p3"><span class="section-no orange">3</span> Visits</h2>
+      <div id="visits"></div>
+    </section>
+
+    <section class="panel step" aria-labelledby="p4">
+      <h2 class="step-title" id="p4"><span class="section-no">4</span> Roles</h2>
+      <div id="roles"></div>
+      <div class="row-actions">
+        <label class="inline-label">User <input id="r-user" type="text" placeholder="email"></label>
+        <label class="inline-label">Role
+          <select id="r-role"><option value="viewer">viewer</option><option value="analyst">analyst</option><option value="reviewer">reviewer</option><option value="administrator">administrator</option></select>
+        </label>
+        <button id="r-set" class="btn btn-small" type="button">Assign</button>
+      </div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

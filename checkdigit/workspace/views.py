@@ -64,6 +64,7 @@ def job_doc(conn: sqlite3.Connection, row: sqlite3.Row) -> Dict[str, Any]:
            "dependency_pins": {"parser_version": row["parser_version"], "ruleset_version": row["ruleset_version"],
                                "policy_fingerprint": row["policy_fingerprint"]},
            "retry_count": max(0, row["attempts"] - 1), "partial": not bool(ck.get("done")),
+           "repair_of_feedback_id": row["repair_of_feedback_id"],
            "step": row["step"], "attempts": row["attempts"], "error": row["error"],
            "analysis_version": row["analysis_version"], "generation_id": row["generation_id"],
            "cancel_requested": bool(row["cancel_requested"]), "options": json.loads(row["options_json"] or "{}"),
@@ -136,11 +137,67 @@ def artifact_doc(row: sqlite3.Row) -> Dict[str, Any]:
                       "size_bytes": row["size_bytes"]},
            "built_at": row["built_at"], "created_at": row["created_at"], "error": row["error"],
            "lineage": {"source_file_id": manifest["source"]["id"] if manifest else "",
-                       "previous_artifact_id": row["previous_artifact_id"], "repair_of_feedback_id": None},
+                       "previous_artifact_id": row["previous_artifact_id"],
+                       "repair_of_feedback_id": manifest.get("repair_of_feedback_id") if manifest else None},
            "manifest": manifest, "idempotency_key": row["idempotency_key"]}
     if row["sha256"]:
         out["sha256"] = row["sha256"]
     return out
+
+
+def message_doc(row: sqlite3.Row) -> Dict[str, Any]:
+    detail = json.loads(row["detail_json"] or "{}")
+    return {"id": row["id"], "workspace_id": row["workspace_id"], "job_id": row["job_id"],
+            "source_feed_id": row["source_feed_id"], "message_no": row["message_no"],
+            "transport_envelope_ref": row["transport_envelope_ref"], "message_ref": row["message_ref"],
+            "message_type": row["message_type"], "message_version": row["message_version"],
+            "document_id": row["document_id"], "business_key": row["business_key"], "revision_key": row["revision_key"],
+            "function": row["function"], "function_code": row["function_code"], "sender": row["sender"],
+            "receiver": row["receiver"], "sender_validated": bool(row["sender_validated"]),
+            "business_scope": row["business_scope"], "predecessor_refs": json.loads(row["predecessor_refs_json"] or "[]"),
+            "raw_hash": row["raw_hash"], "semantic_digest": row["semantic_digest"], "sequence_no": row["sequence_no"],
+            "lifecycle_resolution": row["lifecycle_resolution"], "resolution_detail": row["resolution_detail"],
+            "span": {"char_start": row["char_start"], "char_end": row["char_end"]},
+            "segment_count": row["segment_count"], "declared_segment_count": row["declared_segment_count"],
+            "identifier_count": row["identifier_count"],
+            "checks": {"syntax": row["syntax_state"], "schema": row["schema_state"], "partner": row["partner_state"],
+                       "issues": {k: detail.get(k, []) for k in ("syntax", "schema", "partner")}},
+            "context": {k: detail.get(k) for k in ("vessel", "voyage", "pol", "pod", "events")},
+            "applied_at": row["applied_at"], "superseded_by": row["superseded_by"]}
+
+
+def visit_doc(conn: sqlite3.Connection, row: sqlite3.Row) -> Dict[str, Any]:
+    out = {"id": row["id"], "workspace_id": row["workspace_id"], "equipment_identity_id": None,
+           "unresolved_association": row["unresolved_association"], "terminal_site": row["terminal_site"],
+           "source_visit_ref": row["source_visit_ref"], "visit_scope": row["visit_scope"],
+           "composite_key": row["composite_key"], "vessel": row["vessel"], "voyage": row["voyage"],
+           "first_job_id": row["first_job_id"], "created_at": row["created_at"]}
+    out["movements"] = [movement_doc(m) for m in conn.execute("SELECT * FROM movements WHERE visit_id = ? ORDER BY id", (row["id"],))]
+    out["observation_count"] = conn.execute("SELECT COUNT(*) FROM observation_context WHERE visit_id = ?", (row["id"],)).fetchone()[0]
+    return out
+
+
+def movement_doc(row: sqlite3.Row) -> Dict[str, Any]:
+    return {"id": row["id"], "workspace_id": row["workspace_id"], "mode": row["mode"], "vessel": row["vessel"],
+            "voyage": row["voyage"], "origin": row["origin"], "destination": row["destination"], "visit_id": row["visit_id"],
+            "job_id": row["job_id"], "message_no": row["message_no"]}
+
+
+def event_doc(row: sqlite3.Row) -> Dict[str, Any]:
+    return {"id": row["id"], "source": row["source"], "source_event_id": row["source_event_id"],
+            "source_event_version": None, "subject": json.loads(row["subject_json"] or "{}"),
+            "event_type": row["event_type"], "classifier": row["classifier"],
+            "event_time": {"raw": row["raw"], "tz_offset": row["tz_offset"], "precision": row["precision"],
+                           "parsed_utc": row["parsed_utc"], "ambiguous": bool(row["ambiguous"])},
+            "source_created_at": None, "receipt_time": row["receipt_time"], "provenance": row["provenance"],
+            "related_event_id": None, "job_id": row["job_id"], "message_no": row["message_no"]}
+
+
+def delivery_doc(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {"id": row["id"], "artifact_id": row["artifact_id"], "destination": row["destination"], "state": row["state"],
+            "idempotency_key": row["idempotency_key"], "started_at": row["started_at"],
+            "control_reference": row["control_reference"], "outcome_evidence": row["outcome_evidence"],
+            "recorded_by": row["recorded_by"], "created_at": row["created_at"], "origin": "manual"}
 
 
 def finding_doc(row: sqlite3.Row) -> Dict[str, Any]:

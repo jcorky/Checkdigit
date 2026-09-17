@@ -20,15 +20,25 @@ from .store import audit, connect, transaction
 
 
 def submit(conn: sqlite3.Connection, *, workspace_id: str, source_file_id: str, intent_id: Optional[str],
-           options: Dict[str, Any], actor: str = "system") -> Dict[str, Any]:
-    """Queue a job. An intent that already has a job is not run twice."""
+           options: Dict[str, Any], actor: str = "system", profile_id: Optional[str] = None) -> Dict[str, Any]:
+    """Queue a job. An intent that already has a job is not run twice. A profile is pinned by version."""
+    profile_version = None
+    if profile_id:
+        prof = conn.execute("SELECT version FROM feed_profiles WHERE id = ? AND workspace_id = ?",
+                            (profile_id, workspace_id)).fetchone()
+        if prof is None:
+            raise ingest.IngestError("unknown feed profile")
+        profile_version = prof["version"]
     with transaction(conn):
         if intent_id:
             intent = conn.execute("SELECT * FROM import_intents WHERE id = ?", (intent_id,)).fetchone()
             if intent is None:
                 raise ingest.IngestError("unknown import intent")
-            prior = conn.execute("SELECT id, generation_id, state FROM jobs WHERE import_intent_id = ? "
-                                 "AND state <> 'failed' AND state <> 'cancelled' ORDER BY created_at LIMIT 1",
+            # A live job for the same intent is the same application. A job whose
+            # generation was abandoned no longer counts: its analysis was discarded.
+            prior = conn.execute("SELECT j.id, j.generation_id, j.state FROM jobs j LEFT JOIN generations g ON g.id = j.generation_id "
+                                 "WHERE j.import_intent_id = ? AND j.state <> 'failed' AND j.state <> 'cancelled' "
+                                 "AND (g.id IS NULL OR g.state <> 'abandoned') ORDER BY j.created_at LIMIT 1",
                                  (intent_id,)).fetchone()
             if prior is not None:
                 ingest.add_finding(conn, prior["id"], "DUPLICATE_APPLICATION_PREVENTED",
@@ -36,7 +46,8 @@ def submit(conn: sqlite3.Connection, *, workspace_id: str, source_file_id: str, 
                 return {"job_id": prior["id"], "generation_id": prior["generation_id"], "duplicate": True}
         job_id = jobq.create_job(conn, workspace_id=workspace_id, source_file_id=source_file_id, intent_id=intent_id,
                                  options=options, parser_version=ingest.PARSER_VERSION,
-                                 ruleset_version=ingest.RULESET_VERSION)
+                                 ruleset_version=ingest.RULESET_VERSION, profile_id=profile_id,
+                                 profile_version=profile_version)
         gen_id = None
         if intent_id and intent["mode"] != "comparison_only":
             gen_id = reconcile.new_generation(conn, workspace_id, intent_id, job_id, intent["scope_kind"],

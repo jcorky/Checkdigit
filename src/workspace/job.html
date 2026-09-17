@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job — Checkdigit workspace</title>
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172229'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23BCE962' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23BCE962' fill-opacity='0.25' stroke='%23BCE962' stroke-width='2'/%3E%3C/svg%3E">
+<script type="module" src="./job.ts"></script>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/workspace/">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit workspace
+    </a>
+    <nav aria-label="Workspace">
+      <a class="navlink" href="/workspace/">Jobs</a>
+      <a class="navlink" href="/workspace/profiles">Profiles &amp; feedback</a>
+      <a class="navlink" href="/">Public site</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page app">
+  <div class="wrap">
+    <div class="ws-bar">
+      <div>
+        <p class="eyebrow">Job</p>
+        <h1 id="title">Job</h1>
+      </div>
+      <div id="ws-switch"></div>
+    </div>
+    <div class="stripes" aria-hidden="true" style="margin-bottom:12px"></div>
+    <div id="msg"></div>
+    <div id="tiles" class="tiles"></div>
+    <div id="job-meta"></div>
+    <div class="row-actions">
+      <button id="refresh" class="btn btn-ghost btn-small" type="button">Refresh</button>
+      <button id="run" class="btn btn-small" type="button">Run queued work</button>
+      <button id="cancel" class="btn btn-ghost btn-small" type="button">Cancel</button>
+      <button id="reanalyze" class="btn btn-ghost btn-small" type="button">Re-analyse under current policy</button>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="findings" type="button">Findings</button>
+      <button role="tab" aria-selected="false" data-tab="observations" type="button">Observations &amp; decisions</button>
+      <button role="tab" aria-selected="false" data-tab="approvals" type="button">Approvals &amp; exports</button>
+      <button role="tab" aria-selected="false" data-tab="messages" type="button">Messages</button>
+      <button role="tab" aria-selected="false" data-tab="inspection" type="button">Inspection</button>
+    </div>
+
+    <section class="tab-panel panel" data-panel="findings"><div id="findings"></div></section>
+
+    <section class="tab-panel panel" data-panel="observations" hidden>
+      <div class="filters">
+        <label>Status
+          <select id="f-status">
+            <option value="">any</option><option value="corrected">corrected</option><option value="flagged">flagged</option>
+            <option value="valid">valid</option><option value="invalid_structure">invalid structure</option>
+          </select>
+        </label>
+        <label>Decision
+          <select id="f-decision">
+            <option value="">any</option><option value="proposed">proposed</option><option value="approved">approved</option>
+            <option value="rejected">rejected</option><option value="deferred">deferred</option>
+          </select>
+        </label>
+        <label>Prefix <input id="f-prefix" type="text" size="6" placeholder="MSKU"></label>
+        <button id="apply-filter" class="btn btn-small" type="button">Apply</button>
+        <span id="match-count" class="small"></span>
+      </div>
+      <div class="row-actions">
+        <button id="approve-all" class="btn btn-primary btn-small" type="button">Approve matching proposals</button>
+        <button id="reject-all" class="btn btn-ghost btn-small" type="button">Reject matching proposals</button>
+        <button id="defer-all" class="btn btn-ghost btn-small" type="button">Defer</button>
+        <span class="small">Decisions freeze exactly the rows counted above.</span>
+      </div>
+      <div id="observations"></div>
+      <div class="row-actions"><button id="more-obs" class="btn btn-ghost btn-small" type="button" hidden>Load more</button></div>
+      <div id="layers"></div>
+    </section>
+
+    <section class="tab-panel panel" data-panel="approvals" hidden>
+      <div id="approvals"></div>
+      <h3>Export</h3>
+      <div class="row-actions">
+        <label class="inline-label">Approval <select id="export-approval"><option value="">none (unchanged copy)</option></select></label>
+        <button id="export" class="btn btn-primary btn-small" type="button">Build artifact</button>
+      </div>
+      <div id="artifacts"></div>
+    </section>
+
+    <section class="tab-panel panel" data-panel="messages" hidden><div id="messages"></div><div id="events"></div></section>
+
+    <section class="tab-panel panel" data-panel="inspection" hidden>
+      <div class="row-actions"><button id="load-inspection" class="btn btn-small" type="button">Render</button><span class="small">Bay plans up to 32 MB; each unit links to its observation.</span></div>
+      <div id="inspection"></div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

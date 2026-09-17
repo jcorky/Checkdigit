@@ -66,7 +66,17 @@ deployment). Anything not marked is not claimed.
 | Retention: per-workspace retention days, purge of abandoned uploads, superseded and failed artifact files, expired jobs and orphaned sources; published generations, the fleet and the audit log are kept | implemented, tested | `test_workspace.py` |
 | Storage budget per workspace and minimum free disk space (`CHECKDIGIT_WORKSPACE_MAX_BYTES`, `CHECKDIGIT_WORKSPACE_MIN_FREE_BYTES`); uploads refused with 413, jobs and exports fail with `RESOURCE_BUDGET_EXCEEDED` and no partial artifact | implemented, tested (free-space threshold simulated; an actual full disk was not recorded) | `test_workspace.py` |
 | Three-million-record fleet path (CSV) and one-million-record EDIFACT and container XML paths | measured; see `BENCHMARK.md` for the recorded runs, the restart, cancellation, concurrent-publisher, two-worker-process and interrupted-export evidence and the independent verification | `workspace/bench.py` |
-| Workspace user interface, terminal profiles, message lifecycle, delivery and receiver feedback | not built | Phases D and E |
+| Versioned feed profiles (`workspace/profiles.py`): system, terminal site, partner, message family and version, mapping contract, message rules (keys, sequence rule, function map, required segments, expected sender, receiver and version), acceptance fixtures; a new version per edit; verification `unverified` → `fixture_tested` by running fixtures, `partner_tested` and `production_enabled` recorded by an administrator with evidence | implemented, tested | `test_workspace_phase_d.py` |
+| Mapping contracts on profile-bound delimited feeds (`workspace/mapping.py`): header resolution by name or position, duplicate or missing required columns block, harmless reorder and preserved extensions reported, structural fingerprint recorded, every identifier cell validated while streaming with late-violation blocking (20 percent and more than three) versus isolated rows | implemented, tested; same rules as the browser inspector | `test_workspace_phase_d.py` |
+| Message envelopes and validation (`workspace/messages.py`): one transaction per EDIFACT message (UNH..UNT), X12 transaction set (ST..SE) or container XML file, with references, sender and receiver, document id and function, raw hash and semantic digest; syntax (trailer references and counts, interchange counts), schema (required segments, unsupported functions, unresolved keys) and partner (sender, receiver, version) checks per message; layer states per message | implemented, tested (EDIFACT and X12; XML has no envelope) | `test_workspace_phase_d.py` |
+| Message lifecycle: duplicate (applied once), conflict (same revision key, different payload), replacement and change supersede the applied predecessor, cancellation cancels it, missing predecessor held, older revision after a newer one held, unsupported function blocked; resolution recorded per message and applied inside the generation's publish transaction with a re-check | implemented, tested | `test_workspace_phase_d.py` |
+| Visits, movements and events (`workspace/context.py`): a visit keyed by terminal site, vessel and voyage, never by container number; missing references give an unresolved visit and `CONTEXT_AMBIGUOUS`; movements with mode, vessel, voyage, origin and destination; DTM and G62 event assertions with raw text, precision, offset (unresolved when absent), classifier planned/estimated/actual/requested; per-observation context (full or empty, stow position, size/type) | implemented, tested | `test_workspace_phase_d.py` |
+| Seven validation layers per observation computed on read from stored facts (structure, check digit, prefix registration, equipment record against the published fleet, attribute consistency, operational state, message and profile acceptance) | implemented, tested | `test_workspace_phase_d.py` |
+| Connected visual inspection: bay plan (BAPLIE) or intermodal consist rendered from the job's source with each unit linked to its observation status and decision | implemented, tested (route); sources up to 32 MiB | `test_workspace_phase_d.py` |
+| Manual deliveries with evidence (`workspace/feedback.py`), receiver feedback from uploaded CONTRL, APERAK, 997 and 824 or a manual outcome; exact, ambiguous and unmatched correlation to message transactions and delivery attempts (delivered jobs preferred); unknown codes reported; a rejection starts a linked repair job from the delivered artifact with lineage | implemented, tested | `test_workspace_phase_d.py` |
+| Linked edits: occurrences of one identifier inside one record (synced XML attributes) are exported together or not at all (`LINKED_EDIT_PRECONDITION_FAILED`) | implemented, tested | `test_workspace_phase_d.py` |
+| Workspace pages (`src/workspace/`, built by `npm run build:workspace`, served by the service at `/workspace/` behind the admin gate): jobs and uploads with intents and profiles, job detail with findings, filtered observations and decisions with frozen counts, layers, approvals, exports and artifact files, deliveries, messages and events, inspection; profiles, feedback, visits and roles | implemented; build tested (`tests/workspace-ui.test.ts`), routes tested; not yet exercised in a browser against a signed-in service | `test_workspace_phase_d.py` |
+| Connector-based delivery, automatic acknowledgment retrieval, resend policies | not built | Phase E |
 
 ## Format catalogue
 
@@ -84,8 +94,8 @@ the Python path.
 | JSON / JSONL | no | no | no | no | no | no | no | no | not supported |
 | Generic XML | only recognized container XML | no | no | no | no | no | no | no | other XML is refused, not scanned |
 | Navis N4 SNX / container XML | yes (structural) | yes | no | yes | yes | yes | yes | yes, streamed | DOCTYPE and ENTITY refused on both paths. Whole-file path parses and cross-checks located counts; the streaming path scans start tags without verifying well-formedness, and each id-bearing attribute is its own proposal (approve all occurrences of an identifier to keep them in sync) |
-| UN/EDIFACT | yes | yes (EQD/C237, qualifier CN) | no | yes | yes | yes | yes | yes, streamed | no MIG validation, no envelope or count checks; the workspace path labels observations by message and segment |
-| ANSI X12 | yes | yes (N7, N9*EQ) | no | yes | yes | yes | yes | yes, streamed | absent N7-18 flagged; an empty slot insertion lengthens the file by one byte; workspace tokens keep the split visible as `initial*number*check` |
+| UN/EDIFACT | yes | yes (EQD/C237, qualifier CN) | workspace: envelope syntax, profile schema and partner rules, lifecycle | yes | yes | yes | yes | yes, streamed | no implementation-guide validation beyond the profile's required segments; observations labelled by message and segment |
+| ANSI X12 | yes | yes (N7, N9*EQ) | workspace: envelope syntax, profile schema and partner rules, lifecycle | yes | yes | yes | yes | yes, streamed | absent N7-18 flagged; an empty slot insertion lengthens the file by one byte; workspace tokens keep the split visible as `initial*number*check` |
 | ZIP batch | yes | per member | n/a | per member | yes | per member | no | yes | budgets in `limits.py`; nested archives never expanded |
 | GZIP, XLS/XLSB/ODS, PDF, images | rejected loudly | no | no | no | no | no | no | no | convert to a supported format first |
 
@@ -96,9 +106,12 @@ fixed-size chunks and never holds it in memory; the whole-file path stays behind
 
 ## Terminal systems
 
-No terminal system profile is verified. Navis N4 SNX handling is fixture-tested on
-anonymized samples only. Tideworks, CyberLogitec OPUS and RBS TOPS have no adapters,
-profiles or fixtures in this repository. Nothing here demonstrates receiver acceptance.
+Profiles are versioned per workspace and carry their own verification state. No profile
+in this repository is partner-tested or production-enabled: the fixtures held are
+anonymized samples and generated files, so a profile can reach `fixture_tested` here and
+no further. Tideworks, CyberLogitec OPUS and RBS TOPS have no fixtures. Nothing here
+demonstrates receiver acceptance; receiver feedback is recorded from uploaded
+acknowledgments or manual outcomes and labelled as such.
 
 ## Integrations
 

@@ -17,3 +17,4 @@ bench/*.truth.json
 bench/*.edi
 bench/*.xml
 bench/*.sh.log
+checkdigit/workspace-ui/

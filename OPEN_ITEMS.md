@@ -188,6 +188,37 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
 - The workspace's X12 N7 handling mirrors the whole-file path: an empty N7-18 slot is
   filled by insertion, an absent slot is flagged and the segment is not restructured.
 
+## Phase D notes
+
+- Message rules are profile data: keys, sequence rule, function map, required segments
+  and partner expectations. The defaults (business key sender, receiver, type and document
+  id; revision key adds the message reference; no ordering) are conservative, not a
+  partner's implementation guide. OPEN: no implementation guide or partner fixture is in
+  the repository, so no profile can be verified beyond `fixture_tested` here.
+- X12 coverage is the envelope (ISA, GS, ST, SE, GE, IEA), BGN or B4 for document ids,
+  N7 context (loaded or empty, size/type) and G62 events. OPEN: 301/322/404-specific
+  segments are not interpreted beyond that.
+- Container XML has no envelope: one transaction stands for the file, keyed by its hash,
+  and the lifecycle treats every file as an original. OPEN: SNX-specific revision
+  semantics need a Navis specification.
+- Event times: DTM formats 101, 102, 201, 203, 204, 301, 303, 304 and G62 date plus time
+  are understood; anything else keeps its raw text and is marked ambiguous. A time
+  without an offset is never converted to UTC.
+- Visit resolution uses the profile's terminal site plus the vessel name (or id) and
+  voyage from TDT. OPEN: a partner that sends vessel names inconsistently will create
+  separate visits; a vessel code register would be the remedy.
+- The inspection route renders whole sources up to 32 MiB with the existing scene
+  renderers; larger sources answer 413. OPEN: a per-bay streaming renderer.
+- Deliveries are manual records with evidence; nothing is transmitted (Phase E).
+  Feedback correlation prefers transactions of jobs with a recorded delivery when a
+  reference matches several jobs.
+- OPEN: the workspace pages are built and tested for structure and origin hygiene, and
+  the service routes are tested, but the pages were not driven in a browser against a
+  signed-in service in this session (admin sign-in needs Google OIDC configuration).
+- Linked edits apply to occurrences of one identifier within one record. OPEN: linked
+  groups across records (the same container in several messages of one file) are not
+  enforced; each message is its own record.
+
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 
 - (Superseded) Digit matching was ASCII-only in TypeScript while Python accepted other

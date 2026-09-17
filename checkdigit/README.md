@@ -170,16 +170,20 @@ real BIC register download.
 
 **Private workspace (large files, durable jobs).** `workspace/` adds admin-gated
 routes under `/v1/workspaces/{workspace}` for resumable uploads, declared import
-intents with coverage scopes, streamed validation jobs (CSV, text, EDIFACT, X12,
-container XML), cursor-paginated review, storage-backed approvals, re-analysis under
-the operator policy, streamed exports, atomic generation publication, per-workspace
+intents with coverage scopes, versioned feed profiles with mapping contracts and
+message rules, streamed validation jobs (CSV, text, EDIFACT, X12, container XML) with
+message syntax, schema, partner and lifecycle checks, visits and event assertions,
+cursor-paginated review with seven validation layers per observation, storage-backed
+approvals, re-analysis under the operator policy, streamed exports, atomic generation
+publication, manual deliveries and receiver feedback with linked repair, per-workspace
 roles, retention purge and storage budgets. State lives under
 `CHECKDIGIT_WORKSPACE_DIR` (default `workspace-data`). Run a worker with
 `python3 -m workspace.runner workspace-data/workspace.db workspace-data`, or call
-`POST .../jobs/{id}/run` to execute queued work inside the request. The recorded
-three-million-record CSV run and the one-million-record EDIFACT and XML runs are in
-`../BENCHMARK.md`; reproduce them with `python3 -m workspace.bench` (see
-`../bench/run_phase_c.sh`).
+`POST .../jobs/{id}/run` to execute queued work inside the request. The workspace
+pages are built with `npm run build:workspace` (from the repository root) and served
+at `/workspace/` behind the admin gate. The recorded three-million-record CSV run and
+the one-million-record EDIFACT and XML runs are in `../BENCHMARK.md`; reproduce them
+with `python3 -m workspace.bench` (see `../bench/run_phase_c.sh`).
 
 The SPA (`checkdigit_app.jsx`) is a single-file React app with Correct,
 Dashboard, History, Containers, and Docs views: drop it into a Vite React
@@ -206,7 +210,7 @@ since the core is stdlib. Run the full sweep:
 
 ```bash
 python3 test_equipment_checkdigit.py; python3 test_substitution.py
-python3 test_contracts.py; python3 test_phase_a.py; python3 test_workspace.py
+python3 test_contracts.py; python3 test_phase_a.py; python3 test_workspace.py; python3 test_workspace_phase_d.py
 for p in 8 9 10 11 12 13 14 15 16 17 20 21 22 23 24 25; do python3 run_pass$p.py; done
 python3 run_acceptance.py
 ```

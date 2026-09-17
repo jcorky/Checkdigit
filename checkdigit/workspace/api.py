@@ -21,13 +21,16 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from . import export as export_mod, ingest, jobs as jobq, maintenance, reconcile, review, runner, store, views
+from . import (context as ctx_mod, export as export_mod, feedback as feedback_mod, ingest, jobs as jobq, maintenance,
+               profiles, reconcile, review, runner, store, views)
+
+INSPECTION_MAX_BYTES = 32 * 1024 * 1024
 
 UPLOAD_PART_MAX = 32 * 1024 * 1024
 
@@ -48,7 +51,45 @@ class IntentIn(BaseModel):
 class JobIn(BaseModel):
     source_file_id: str
     import_intent_id: Optional[str] = None
+    profile_id: Optional[str] = None
     options: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ProfileIn(BaseModel):
+    name: str
+    mapping_contract: Optional[Dict[str, Any]] = None
+    rules: Optional[Dict[str, Any]] = None
+    system: str = ""
+    system_version: str = ""
+    terminal_site: str = ""
+    partner: str = ""
+    message_family: str = ""
+    message_version: str = ""
+    correction_policy: Optional[Dict[str, Any]] = None
+    output_encoding: str = ""
+    acceptance_fixtures: Optional[List[str]] = None
+
+
+class VerificationIn(BaseModel):
+    state: str
+    note: str = ""
+
+
+class DeliveryIn(BaseModel):
+    destination: str
+    state: str
+    idempotency_key: str
+    control_reference: Optional[str] = None
+    outcome_evidence: Optional[str] = None
+    started_at: Optional[str] = None
+
+
+class FeedbackIn(BaseModel):
+    origin: str = "manual_upload"
+    text: Optional[str] = None
+    manual: Optional[Dict[str, Any]] = None
+    response_profile_id: Optional[str] = None
+    decision_by: Optional[str] = None
 
 
 class DecisionIn(BaseModel):
@@ -339,9 +380,15 @@ def build_router(admin_required: Callable[..., Any], root: str, db_path: Optiona
             owned(conn, "source_files", body.source_file_id, workspace)
             if body.import_intent_id:
                 owned(conn, "import_intents", body.import_intent_id, workspace)
+            if body.profile_id:
+                conn.execute("SELECT 1").fetchone()
+                if conn.execute("SELECT 1 FROM feed_profiles WHERE id = ? AND workspace_id = ?",
+                                (body.profile_id, workspace)).fetchone() is None:
+                    raise HTTPException(status_code=404, detail=f"profile {body.profile_id} not found in workspace {workspace}")
             try:
                 return runner.submit(conn, workspace_id=workspace, source_file_id=body.source_file_id,
-                                     intent_id=body.import_intent_id, options=body.options, actor=actor)
+                                     intent_id=body.import_intent_id, options=body.options, actor=actor,
+                                     profile_id=body.profile_id)
             except ingest.IngestError as exc:
                 raise HTTPException(status_code=422, detail=str(exc))
         finally:
@@ -405,6 +452,28 @@ def build_router(admin_required: Callable[..., Any], root: str, db_path: Optiona
                 return review.observations_page(conn, job_id, flt, after=int(cursor), limit=limit)
             except (review.ReviewError, ValueError) as exc:
                 raise HTTPException(status_code=422, detail=str(exc))
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/jobs/{job_id}/observations/count")
+    def observation_count(workspace: str, job_id: str, status: Optional[str] = None, scheme: Optional[str] = None,
+                          prefix: Optional[str] = None, decision: Optional[str] = None, token: Optional[str] = None,
+                          actor: str = Depends(need("viewer"))):
+        """How many observations a filter matches, and how many of them are undecided proposals."""
+        conn = conn_for(workspace)
+        try:
+            owned(conn, "jobs", job_id, workspace)
+            flt = {k: v for k, v in (("status", status), ("scheme", scheme), ("prefix", prefix),
+                                     ("decision", decision), ("token", token)) if v}
+            try:
+                where, params = review._where(job_id, flt)
+            except review.ReviewError as exc:
+                raise HTTPException(status_code=422, detail=str(exc))
+            population = (flt["decision"],) if "decision" in flt else review.DEFAULT_POPULATION
+            total = conn.execute(f"SELECT COUNT(*) FROM observations WHERE {where}", params).fetchone()[0]
+            proposals = conn.execute(f"SELECT COUNT(*) FROM observations WHERE {where} AND candidate IS NOT NULL AND decision IN (%s)"
+                                     % ",".join("?" * len(population)), params + list(population)).fetchone()[0]
+            return {"count": total, "proposals": proposals}
         finally:
             conn.close()
 
@@ -620,6 +689,266 @@ def build_router(admin_required: Callable[..., Any], root: str, db_path: Optiona
             if member is None:
                 raise HTTPException(status_code=404, detail=f"{key} is not in the published fleet")
             return member
+        finally:
+            conn.close()
+
+    # ---- profiles --------------------------------------------------------- #
+
+    @router.post("/{workspace}/profiles", status_code=201)
+    def create_profile(workspace: str, body: ProfileIn, actor: str = Depends(need("analyst"))):
+        conn = conn_for(workspace)
+        try:
+            try:
+                return profiles.create_profile(conn, workspace, actor, **body.model_dump())
+            except (profiles.ProfileError, ValueError) as exc:
+                raise HTTPException(status_code=422, detail={"code": getattr(exc, "code", "BAD_PROFILE"),
+                                                             "detail": getattr(exc, "detail", str(exc))})
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/profiles")
+    def list_profiles(workspace: str, cursor: str = "", limit: int = Query(100, ge=1, le=500),
+                      actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            items = profiles.list_profiles(conn, workspace, after=cursor, limit=limit + 1)
+            page = items[:limit]
+            return {"items": page, "next_cursor": page[-1]["id"] if len(items) > limit else None}
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/profiles/{profile_id}")
+    def profile_view(workspace: str, profile_id: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            row = conn.execute("SELECT * FROM feed_profiles WHERE id = ? AND workspace_id = ?", (profile_id, workspace)).fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"profile {profile_id} not found in workspace {workspace}")
+            return profiles.profile_doc(row)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/profiles/{profile_id}/verify-fixtures")
+    def verify_fixtures(workspace: str, profile_id: str, actor: str = Depends(need("analyst"))):
+        conn = conn_for(workspace)
+        try:
+            if conn.execute("SELECT 1 FROM feed_profiles WHERE id = ? AND workspace_id = ?", (profile_id, workspace)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="profile not found")
+            try:
+                return profiles.verify_fixtures(conn, root, profile_id, actor)
+            except profiles.ProfileError as exc:
+                raise conflict(exc)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/profiles/{profile_id}/verification")
+    def set_verification(workspace: str, profile_id: str, body: VerificationIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            if conn.execute("SELECT 1 FROM feed_profiles WHERE id = ? AND workspace_id = ?", (profile_id, workspace)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="profile not found")
+            try:
+                return profiles.set_verification(conn, profile_id, body.state, body.note, actor)
+            except profiles.ProfileError as exc:
+                raise HTTPException(status_code=422, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    # ---- messages, context, layers, inspection --------------------------- #
+
+    @router.get("/{workspace}/jobs/{job_id}/messages")
+    def list_messages(workspace: str, job_id: str, cursor: str = "0", limit: int = Query(100, ge=1, le=1000),
+                      actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            owned(conn, "jobs", job_id, workspace)
+            rows = conn.execute("SELECT * FROM message_transactions WHERE job_id = ? AND message_no > ? ORDER BY message_no LIMIT ?",
+                                (job_id, int(cursor), limit + 1)).fetchall()
+            items = [views.message_doc(r) for r in rows[:limit]]
+            return {"items": items, "next_cursor": str(items[-1]["message_no"]) if len(rows) > limit else None}
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/jobs/{job_id}/events")
+    def list_events(workspace: str, job_id: str, cursor: str = "", limit: int = Query(200, ge=1, le=1000),
+                    actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            owned(conn, "jobs", job_id, workspace)
+            rows = conn.execute("SELECT * FROM events WHERE job_id = ? AND id > ? ORDER BY id LIMIT ?",
+                                (job_id, cursor, limit + 1)).fetchall()
+            items = [views.event_doc(r) for r in rows[:limit]]
+            return {"items": items, "next_cursor": items[-1]["id"] if len(rows) > limit else None}
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/jobs/{job_id}/observations/{ordinal}/layers")
+    def observation_layers(workspace: str, job_id: str, ordinal: int, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            job = owned(conn, "jobs", job_id, workspace)
+            obs = conn.execute("SELECT * FROM observations WHERE job_id = ? AND ordinal = ?", (job_id, ordinal)).fetchone()
+            if obs is None:
+                raise HTTPException(status_code=404, detail="observation not found")
+            prof = profiles.profile_for_job(conn, job)
+            ctx = conn.execute("SELECT * FROM observation_context WHERE job_id = ? AND ordinal = ?", (job_id, ordinal)).fetchone()
+            return {"job_id": job_id, "ordinal": ordinal, "raw": obs["raw"], "normalized": obs["normalized"],
+                    "scheme": obs["scheme"], "candidate": obs["candidate"], "decision": obs["decision"],
+                    "layers": ctx_mod.layers_for(conn, job, obs, prof), "context": dict(ctx) if ctx else None}
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/jobs/{job_id}/inspection")
+    def inspection(workspace: str, job_id: str, max_bays: int = Query(24, ge=1, le=200), actor: str = Depends(need("viewer"))):
+        """Connected visual inspection: the message's scene with each unit's observation state."""
+        conn = conn_for(workspace)
+        try:
+            job = owned(conn, "jobs", job_id, workspace)
+            src = conn.execute("SELECT * FROM source_files WHERE id = ?", (job["source_file_id"],)).fetchone()
+            if src["size_bytes"] > INSPECTION_MAX_BYTES:
+                raise HTTPException(status_code=413, detail={"code": "RESOURCE_BUDGET_EXCEEDED",
+                                                             "detail": f"inspection renders sources up to {INSPECTION_MAX_BYTES} bytes"})
+            with open(src["path"], "rb") as fh:
+                text = fh.read().decode(src["encoding"] or "utf-8", errors="replace")
+            import baplie_scene, bayplan_render, intermodal_scene
+            scene = baplie_scene.parse_scene(text)
+            kind = "vessel"
+            if scene is None:
+                inter = intermodal_scene.parse_intermodal(text)
+                if inter is None:
+                    raise HTTPException(status_code=409, detail={"code": "UNSUPPORTED_INPUT",
+                                                                 "detail": "no bay plan or intermodal consist to draw"})
+                kind = "intermodal"
+                payload = inter.as_dict() if hasattr(inter, "as_dict") else {"units": []}
+                units = payload.get("units", [])
+            else:
+                payload = bayplan_render.render_scene(scene, max_bays=max_bays)
+                payload["units"] = scene.as_dict()["units"]
+                units = payload["units"]
+            ids = sorted({u.get("container_id") for u in units if u.get("container_id")})
+            states: Dict[str, Any] = {}
+            for i in range(0, len(ids), 500):
+                chunk = ids[i:i + 500]
+                for r in conn.execute("SELECT ordinal, normalized, raw, status, decision, candidate FROM observations WHERE job_id = ? "
+                                      "AND (raw IN (%s) OR normalized IN (%s))" % (",".join("?" * len(chunk)), ",".join("?" * len(chunk))),
+                                      (job_id, *chunk, *chunk)):
+                    states.setdefault(r["raw"], []).append(dict(r))
+                    states.setdefault(r["normalized"], []).append(dict(r))
+            for u in units:
+                u["observations"] = states.get(u.get("container_id"), [])
+            payload["kind"] = kind
+            payload["job_id"] = job_id
+            payload["findings"] = {r["code"]: r["n"] for r in conn.execute(
+                "SELECT code, COUNT(*) AS n FROM findings WHERE job_id = ? GROUP BY code", (job_id,))}
+            return payload
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/visits")
+    def list_visits(workspace: str, cursor: str = "", limit: int = Query(100, ge=1, le=500),
+                    actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            rows = conn.execute("SELECT * FROM visits WHERE workspace_id = ? AND id > ? ORDER BY id LIMIT ?",
+                                (workspace, cursor, limit + 1)).fetchall()
+            items = [views.visit_doc(conn, r) for r in rows[:limit]]
+            return {"items": items, "next_cursor": items[-1]["id"] if len(rows) > limit else None}
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/visits/{visit_id}")
+    def visit_view(workspace: str, visit_id: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            row = conn.execute("SELECT * FROM visits WHERE id = ? AND workspace_id = ?", (visit_id, workspace)).fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="visit not found")
+            return views.visit_doc(conn, row)
+        finally:
+            conn.close()
+
+    # ---- deliveries and receiver feedback -------------------------------- #
+
+    @router.post("/{workspace}/artifacts/{artifact_id}/deliveries", status_code=201)
+    def record_delivery(workspace: str, artifact_id: str, body: DeliveryIn, actor: str = Depends(need("reviewer"))):
+        conn = conn_for(workspace)
+        try:
+            owned(conn, "export_artifacts", artifact_id, workspace)
+            try:
+                out = feedback_mod.record_delivery(conn, workspace, artifact_id, destination=body.destination, state=body.state,
+                                                   idempotency_key=f"{workspace}:{artifact_id}:{body.idempotency_key}", actor=actor,
+                                                   control_reference=body.control_reference, outcome_evidence=body.outcome_evidence,
+                                                   started_at=body.started_at)
+            except feedback_mod.FeedbackError as exc:
+                raise HTTPException(status_code=422 if exc.code in ("BAD_STATE", "EVIDENCE_REQUIRED") else 409,
+                                    detail={"code": exc.code, "detail": exc.detail})
+            doc = views.delivery_doc(out)
+            doc["replayed"] = out["replayed"]
+            return doc
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/artifacts/{artifact_id}/deliveries")
+    def list_deliveries(workspace: str, artifact_id: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            owned(conn, "export_artifacts", artifact_id, workspace)
+            return {"items": [views.delivery_doc(d) for d in feedback_mod.deliveries_for_artifact(conn, artifact_id)],
+                    "next_cursor": None}
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/feedback", status_code=201)
+    def record_feedback(workspace: str, body: FeedbackIn, actor: str = Depends(need("reviewer"))):
+        conn = conn_for(workspace)
+        try:
+            prof = None
+            if body.response_profile_id:
+                row = conn.execute("SELECT * FROM feed_profiles WHERE id = ? AND workspace_id = ?",
+                                   (body.response_profile_id, workspace)).fetchone()
+                if row is None:
+                    raise HTTPException(status_code=404, detail="response profile not found")
+                prof = profiles.profile_doc(row)
+            try:
+                return feedback_mod.ingest_feedback(conn, root, workspace, actor, origin=body.origin, text=body.text,
+                                                    manual=body.manual, response_profile=prof, decision_by=body.decision_by)
+            except feedback_mod.FeedbackError as exc:
+                raise HTTPException(status_code=422, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/feedback")
+    def list_feedback(workspace: str, cursor: str = "", limit: int = Query(100, ge=1, le=500),
+                      actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            rows = conn.execute("SELECT id FROM receiver_feedback WHERE workspace_id = ? AND id > ? ORDER BY id LIMIT ?",
+                                (workspace, cursor, limit + 1)).fetchall()
+            items = [feedback_mod.feedback_doc(conn, r["id"]) for r in rows[:limit]]
+            return {"items": items, "next_cursor": items[-1]["id"] if len(rows) > limit else None}
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/feedback/{feedback_id}")
+    def feedback_view(workspace: str, feedback_id: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            if conn.execute("SELECT 1 FROM receiver_feedback WHERE id = ? AND workspace_id = ?", (feedback_id, workspace)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="feedback not found")
+            return feedback_mod.feedback_doc(conn, feedback_id)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/feedback/{feedback_id}/repair", status_code=202)
+    def start_repair(workspace: str, feedback_id: str, actor: str = Depends(need("reviewer"))):
+        conn = conn_for(workspace)
+        try:
+            if conn.execute("SELECT 1 FROM receiver_feedback WHERE id = ? AND workspace_id = ?", (feedback_id, workspace)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="feedback not found")
+            try:
+                return feedback_mod.start_repair(conn, root, workspace, feedback_id, actor, policy=policy_provider())
+            except feedback_mod.FeedbackError as exc:
+                raise conflict(exc)
         finally:
             conn.close()
 

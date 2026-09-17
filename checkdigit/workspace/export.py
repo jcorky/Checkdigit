@@ -63,6 +63,12 @@ def build_artifact(conn: sqlite3.Connection, root: str, job_id: str, approval_id
         chk = check_approval(conn, approval_id)
         if not chk["applicable"]:
             raise ExportError(chk["problems"][0], f"approval {approval_id}: {chk}")
+        partial = linked_edit_violations(conn, job_id, approval_id)
+        if partial:
+            raise ExportError("LINKED_EDIT_PRECONDITION_FAILED",
+                              f"{len(partial)} record(s) carry the same identifier in several places with only some "
+                              f"occurrences in this approval (first: record {partial[0]['record_no']} {partial[0]['normalized']}); "
+                              f"approve the linked occurrences together")
     cs = ensure_change_set(conn, job_id)
     src = conn.execute("SELECT * FROM source_files WHERE id = ?", (job["source_file_id"],)).fetchone()
     art_id = existing["id"] if existing is not None else new_id("art")
@@ -104,6 +110,8 @@ def build_artifact(conn: sqlite3.Connection, root: str, job_id: str, approval_id
         "edits_applied": result["edits"], "exceptions": result["exceptions"],
         "files": {"corrected": result["out_name"], "exceptions": "exceptions.csv", "ledger": "ledger.csv"},
         "previous_artifact_id": previous["id"] if previous else None,
+        "repair_of_feedback_id": job["repair_of_feedback_id"],
+        "profile": {"id": job["profile_id"], "version": job["profile_version"]} if job["profile_id"] else None,
         "built_at": now_iso(),
     }
     mpath = os.path.join(out_dir, "manifest.json")
@@ -121,6 +129,18 @@ def build_artifact(conn: sqlite3.Connection, root: str, job_id: str, approval_id
         audit(conn, job["workspace_id"], actor, "artifact.publish", art_id,
               f"job={job_id} approval={approval_id or ''} sha256={result['sha256']} edits={result['edits']}")
     return artifact_view(conn, art_id)
+
+
+def linked_edit_violations(conn: sqlite3.Connection, job_id: str, approval_id: str, limit: int = 20):
+    """Occurrences of one identifier inside one record (synced XML attributes) are a linked
+    group: an export applies all of them or none. Reports groups this approval covers only partly."""
+    rows = conn.execute(
+        "SELECT o.record_no, o.normalized, COUNT(*) AS n, "
+        "SUM(CASE WHEN s.ordinal IS NOT NULL AND o.decision = 'approved' AND o.version = s.version THEN 1 ELSE 0 END) AS covered "
+        "FROM observations o LEFT JOIN selection_members s ON s.approval_id = ? AND s.ordinal = o.ordinal "
+        "WHERE o.job_id = ? AND o.candidate IS NOT NULL GROUP BY o.record_no, o.normalized "
+        "HAVING covered > 0 AND covered < n LIMIT ?", (approval_id, job_id, limit)).fetchall()
+    return [dict(r) for r in rows]
 
 
 def _fail(conn: sqlite3.Connection, art_id: str, job_id: str, error: str) -> None:

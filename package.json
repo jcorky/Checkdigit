@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:workspace": "vite build --config vite.workspace.config.ts",
     "test": "vitest run",
     "preview": "wrangler dev",
     "vectors": "node scripts/regen-vectors.mjs",

@@ -31,7 +31,7 @@ import threading
 import time
 from typing import Dict, Iterator, List, Optional
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 CACHE_KIB = int(os.environ.get("CHECKDIGIT_WORKSPACE_CACHE_KIB", str(256 * 1024)))
 MAX_BYTES = int(os.environ.get("CHECKDIGIT_WORKSPACE_MAX_BYTES", "0"))
@@ -83,16 +83,173 @@ CREATE TABLE IF NOT EXISTS uploads (
     created_at TEXT NOT NULL
 );
 
+-- Versioned feed profiles: a new version is a new immutable row.
 CREATE TABLE IF NOT EXISTS feed_profiles (
     id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL REFERENCES workspaces(id),
     name TEXT NOT NULL,
     version INTEGER NOT NULL,
     contract_json TEXT NOT NULL,
+    rules_json TEXT NOT NULL DEFAULT '{}',
+    system TEXT NOT NULL DEFAULT '',
+    system_version TEXT NOT NULL DEFAULT '',
+    terminal_site TEXT NOT NULL DEFAULT '',
+    partner TEXT NOT NULL DEFAULT '',
+    message_family TEXT NOT NULL DEFAULT '',
+    message_version TEXT NOT NULL DEFAULT '',
+    structural_fingerprint TEXT,
+    correction_policy_json TEXT NOT NULL DEFAULT '{}',
+    output_encoding TEXT NOT NULL DEFAULT '',
+    acceptance_fixtures_json TEXT NOT NULL DEFAULT '[]',
     verification_state TEXT NOT NULL DEFAULT 'unverified',
+    verification_note TEXT NOT NULL DEFAULT '',
+    verified_at TEXT,
+    verification_json TEXT NOT NULL DEFAULT '{}',
     previous_version_id TEXT,
+    created_by TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     UNIQUE (workspace_id, name, version)
+);
+
+-- One row per message (EDIFACT UNH..UNT, X12 ST..SE, or one per container XML file).
+CREATE TABLE IF NOT EXISTS message_transactions (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    job_id TEXT NOT NULL REFERENCES jobs(id),
+    source_feed_id TEXT NOT NULL,
+    message_no INTEGER NOT NULL,
+    transport_envelope_ref TEXT,
+    message_ref TEXT NOT NULL DEFAULT '',
+    message_type TEXT NOT NULL DEFAULT '',
+    message_version TEXT NOT NULL DEFAULT '',
+    document_id TEXT NOT NULL DEFAULT '',
+    business_key TEXT NOT NULL,
+    revision_key TEXT NOT NULL,
+    function TEXT NOT NULL,
+    function_code TEXT NOT NULL DEFAULT '',
+    sender TEXT,
+    receiver TEXT,
+    sender_validated INTEGER NOT NULL DEFAULT 0,
+    business_scope TEXT,
+    predecessor_refs_json TEXT NOT NULL DEFAULT '[]',
+    raw_hash TEXT NOT NULL,
+    semantic_digest TEXT,
+    sequence_no INTEGER,
+    lifecycle_resolution TEXT NOT NULL DEFAULT 'staged',
+    resolution_detail TEXT NOT NULL DEFAULT '',
+    char_start INTEGER NOT NULL DEFAULT 0,
+    char_end INTEGER NOT NULL DEFAULT 0,
+    segment_count INTEGER NOT NULL DEFAULT 0,
+    declared_segment_count INTEGER,
+    identifier_count INTEGER NOT NULL DEFAULT 0,
+    syntax_state TEXT NOT NULL DEFAULT 'not_checked',
+    schema_state TEXT NOT NULL DEFAULT 'not_checked',
+    partner_state TEXT NOT NULL DEFAULT 'not_checked',
+    detail_json TEXT NOT NULL DEFAULT '{}',
+    applied_at TEXT,
+    superseded_by TEXT,
+    UNIQUE (job_id, message_no)
+);
+CREATE INDEX IF NOT EXISTS ix_msg_revision ON message_transactions(workspace_id, revision_key);
+CREATE INDEX IF NOT EXISTS ix_msg_business ON message_transactions(workspace_id, business_key);
+CREATE INDEX IF NOT EXISTS ix_msg_ref ON message_transactions(workspace_id, message_ref);
+
+CREATE TABLE IF NOT EXISTS visits (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    terminal_site TEXT NOT NULL DEFAULT '',
+    visit_scope TEXT NOT NULL,
+    source_visit_ref TEXT,
+    composite_key TEXT,
+    vessel TEXT,
+    voyage TEXT,
+    unresolved_association TEXT,
+    first_job_id TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_visits_key ON visits(workspace_id, composite_key);
+
+CREATE TABLE IF NOT EXISTS movements (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    job_id TEXT NOT NULL,
+    message_no INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    vessel TEXT,
+    voyage TEXT,
+    origin TEXT,
+    destination TEXT,
+    visit_id TEXT,
+    UNIQUE (job_id, message_no)
+);
+
+CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    job_id TEXT NOT NULL,
+    message_no INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    source_event_id TEXT NOT NULL,
+    subject_json TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    classifier TEXT NOT NULL,
+    raw TEXT NOT NULL,
+    tz_offset TEXT,
+    precision TEXT NOT NULL,
+    parsed_utc TEXT,
+    ambiguous INTEGER NOT NULL DEFAULT 0,
+    receipt_time TEXT NOT NULL,
+    provenance TEXT NOT NULL DEFAULT '',
+    UNIQUE (job_id, source_event_id)
+);
+
+-- Per-observation operational context from the message it came from.
+CREATE TABLE IF NOT EXISTS observation_context (
+    job_id TEXT NOT NULL,
+    ordinal INTEGER NOT NULL,
+    message_no INTEGER NOT NULL,
+    visit_id TEXT,
+    movement_id TEXT,
+    full_empty TEXT,
+    stow_position TEXT,
+    size_type TEXT,
+    PRIMARY KEY (job_id, ordinal)
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS delivery_attempts (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    artifact_id TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    state TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    started_at TEXT,
+    control_reference TEXT,
+    outcome_evidence TEXT,
+    recorded_by TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS receiver_feedback (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    origin TEXT NOT NULL,
+    raw_hash TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    response_profile_version TEXT,
+    response_kind TEXT NOT NULL DEFAULT '',
+    correlation_state TEXT NOT NULL,
+    attempt_id TEXT,
+    message_refs_json TEXT NOT NULL DEFAULT '[]',
+    matched_transactions_json TEXT NOT NULL DEFAULT '[]',
+    decision_by TEXT,
+    technical_ack_state TEXT NOT NULL,
+    business_processing_state TEXT NOT NULL,
+    items_json TEXT NOT NULL DEFAULT '[]',
+    source_file_id TEXT,
+    detail TEXT NOT NULL DEFAULT '',
+    repair_job_id TEXT,
+    created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS import_intents (
@@ -134,6 +291,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     policy_fingerprint TEXT NOT NULL DEFAULT '',
     analysis_version INTEGER NOT NULL DEFAULT 1,
     generation_id TEXT,
+    repair_of_feedback_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -297,6 +455,22 @@ CREATE TABLE IF NOT EXISTS audit_events (
 # Columns added after the first schema. Each entry: (table, column, definition).
 MIGRATIONS = [
     ("workspaces", "third_party_data_retention", "TEXT NOT NULL DEFAULT 'displayed_fields_only'"),
+    ("feed_profiles", "rules_json", "TEXT NOT NULL DEFAULT '{}'"),
+    ("feed_profiles", "system", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "system_version", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "terminal_site", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "partner", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "message_family", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "message_version", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "structural_fingerprint", "TEXT"),
+    ("feed_profiles", "correction_policy_json", "TEXT NOT NULL DEFAULT '{}'"),
+    ("feed_profiles", "output_encoding", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "acceptance_fixtures_json", "TEXT NOT NULL DEFAULT '[]'"),
+    ("feed_profiles", "verification_note", "TEXT NOT NULL DEFAULT ''"),
+    ("feed_profiles", "verified_at", "TEXT"),
+    ("feed_profiles", "verification_json", "TEXT NOT NULL DEFAULT '{}'"),
+    ("feed_profiles", "created_by", "TEXT NOT NULL DEFAULT ''"),
+    ("jobs", "repair_of_feedback_id", "TEXT"),
     ("jobs", "policy_fingerprint", "TEXT NOT NULL DEFAULT ''"),
     ("observations", "token", "TEXT NOT NULL DEFAULT ''"),
     ("fleet", "scope_kind", "TEXT NOT NULL DEFAULT 'source_fleet'"),

@@ -137,13 +137,64 @@ def change_manifest_sha256(conn: sqlite3.Connection, workspace_id: str, candidat
 
 GATE_CODES = ("IMPORT_INTENT_UNRESOLVED", "SNAPSHOT_INCOMPLETE", "EMPTY_SNAPSHOT_DECISION_REQUIRED",
               "BASELINE_CONFLICT", "IDENTITY_COLLISION")
+MESSAGE_CODES = ("MESSAGE_SYNTAX_INVALID", "MESSAGE_SCHEMA_VIOLATION", "PARTNER_RULE_VIOLATION", "PROFILE_UNVERIFIED",
+                 "MESSAGE_ID_CONFLICT", "MESSAGE_DUPLICATE", "PREDECESSOR_UNRESOLVED", "REVISION_OUT_OF_ORDER",
+                 "CONTEXT_AMBIGUOUS", "MAPPING_DRIFT", "MAPPING_REORDER_HARMLESS", "MAPPING_EXTENSION_PRESERVED",
+                 "MAPPING_VIOLATION_LATE")
+
+
+def feed_gates(conn: sqlite3.Connection, job: sqlite3.Row) -> List[str]:
+    """Profile, mapping, message and context findings for any job. Returns the blocking gate names."""
+    from . import context as ctx_mod, messages, profiles
+    from .ingest import add_finding
+    job_id = job["id"]
+    ck = jobq.load_checkpoint(conn, job_id)
+    fmt = (ck.get("inspect") or {}).get("format", "")
+    profile = profiles.profile_for_job(conn, job)
+    blocked: List[str] = []
+    with transaction(conn):
+        conn.execute("DELETE FROM findings WHERE job_id = ? AND code IN (%s)" % ",".join("?" * len(MESSAGE_CODES)),
+                     (job_id, *MESSAGE_CODES))
+        # A message feed without a verified profile is reported; a delimited job
+        # declares its own column mapping, so only a bound-but-unverified profile is.
+        if profile is None and fmt in ("edifact", "x12", "xml"):
+            add_finding(conn, job_id, "PROFILE_UNVERIFIED", "no feed profile is bound to this job")
+        elif profile is not None and profile["verification_state"] == "unverified":
+            add_finding(conn, job_id, "PROFILE_UNVERIFIED",
+                        f"profile {profile['name']} v{profile['version']} has not been verified")
+        mapping = ck.get("mapping")
+        if mapping:
+            for code, detail, loc in (mapping.get("check") or {}).get("findings", []):
+                add_finding(conn, job_id, code, detail, loc)
+            validation = mapping.get("validation") or {}
+            for code, detail, loc in validation.get("findings", []):
+                add_finding(conn, job_id, code, detail, loc)
+            if (mapping.get("check") or {}).get("blocked") or validation.get("blocked"):
+                blocked.append("MAPPING")
+        if fmt in ("edifact", "x12", "xml"):
+            rules = profiles.normalize_rules(profile["rules"], profile.get("message_family") or "") if profile else None
+            result = messages.resolve_lifecycle(conn, job, rules)
+            for code, detail, loc in result["findings"]:
+                add_finding(conn, job_id, code, detail, loc)
+            for issue in (ck.get("messages") or {}).get("issues", []):
+                add_finding(conn, job_id, "MESSAGE_SYNTAX_INVALID", issue, "interchange")
+                result["blocking"] = True
+            if result["blocking"]:
+                blocked.append("MESSAGE")
+            for v in conn.execute("SELECT DISTINCT v.id, v.unresolved_association, c.message_no FROM visits v "
+                                  "JOIN observation_context c ON c.visit_id = v.id WHERE c.job_id = ? "
+                                  "AND v.unresolved_association IS NOT NULL", (job_id,)).fetchall():
+                add_finding(conn, job_id, "CONTEXT_AMBIGUOUS", f"visit {v['id']}: {v['unresolved_association']}",
+                            f"message {v['message_no']}")
+    return blocked
 
 
 def finish_job(conn: sqlite3.Connection, job: sqlite3.Row, worker_id: str) -> None:
-    """After streaming: intent gates, comparison, manifest, findings, generation state."""
+    """After streaming: feed gates, intent gates, comparison, manifest, findings, generation state."""
     job_id = job["id"]
     ws = job["workspace_id"]
     from .ingest import add_finding
+    feed_blocked = feed_gates(conn, job)
     if not job["import_intent_id"]:
         with transaction(conn):
             conn.execute("DELETE FROM findings WHERE job_id = ? AND code = 'IMPORT_INTENT_UNRESOLVED'", (job_id,))
@@ -158,7 +209,7 @@ def finish_job(conn: sqlite3.Connection, job: sqlite3.Row, worker_id: str) -> No
             add_finding(conn, job_id, "IMPORT_INTENT_UNRESOLVED", "comparison only: nothing will be applied")
             return
         sk, sv = intent["scope_kind"], intent["scope_value"]
-        blocked: List[str] = []
+        blocked: List[str] = list(feed_blocked)
         current = current_generation(conn, ws)
         if (intent["baseline_generation_id"] or None) != (current or None):
             add_finding(conn, job_id, "BASELINE_CONFLICT",
@@ -244,7 +295,12 @@ def publish(conn: sqlite3.Connection, generation_id: str, actor: str, *,
         fx = json.loads(gen["change_counts_json"] or "{}")
         mode = fx.get("mode", "incremental")
         sk, sv = gen["scope_kind"], gen["scope_value"]
-        applied = {"upserted": 0, "retired": 0}
+        applied: Dict[str, Any] = {"upserted": 0, "retired": 0}
+        if gen["job_id"]:
+            from . import messages
+            msgs = messages.apply_on_publish(conn, gen["job_id"])
+            if any(msgs.values()):
+                applied["messages"] = msgs
         if mode == "explicit_removal":
             cur = conn.execute("DELETE FROM fleet WHERE workspace_id = ? AND key IN "
                                "(SELECT key FROM memberships WHERE generation_id = ?)", (ws, generation_id))

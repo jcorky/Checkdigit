@@ -6,15 +6,16 @@ Source registration, import intents and the streaming job runner.
 A job streams its source once, emits one observation per identifier found,
 stages generation memberships when the intent asks for reconciliation, and
 checkpoints after every committed batch. All work units are idempotent:
-observation and membership rows carry natural keys and a replayed batch is a
-no-op, so a job interrupted at any point resumes from its checkpoint without
-double counting.
+observation, membership, message, movement, event and context rows carry
+natural keys and a replayed batch is a no-op, so a job interrupted at any
+point resumes from its checkpoint without double counting.
 
-Formats on the streaming path: CSV (mapped columns), plain text lines,
-EDIFACT (EQD equipment segments), X12 (N7 split identifiers and N9*EQ
-references) and container XML (id-bearing attributes). Anything else is
-refused here with UNSUPPORTED_INPUT and remains on the whole-file service
-path, which has its own size limit.
+Formats on the streaming path: CSV (mapped columns or a profile's mapping
+contract), plain text lines, EDIFACT (EQD equipment segments), X12 (N7 split
+identifiers and N9*EQ references) and container XML (id-bearing attributes).
+Message formats also feed a collector that records one transaction per
+message with its context (messages.py, context.py). Anything else is refused
+with UNSUPPORTED_INPUT and remains on the whole-file service path.
 """
 from __future__ import annotations
 
@@ -29,13 +30,13 @@ from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Tuple
 
 import equipment_checkdigit as kernel
 from edifact_locator import Separators, parse_segment
-from x12_locator import Delims, detect_delims
+from x12_locator import detect_delims
 
 from . import jobs as jobq
 from .store import BudgetExceeded, audit, check_free_space, check_store_budget, new_id, now_iso, transaction
 from .stream import XmlSecurityError, csv_records, delimited_segments, line_records, text_chunks, xml_start_tags
 
-PARSER_VERSION = "workspace-py/2"
+PARSER_VERSION = "workspace-py/3"
 RULESET_VERSION = "kernel/2"
 BATCH_RECORDS = 5000
 INSPECT_BYTES = 256 * 1024
@@ -61,17 +62,19 @@ class IngestError(Exception):
 class Item(NamedTuple):
     """One identifier occurrence inside a record.
 
-    token  : the identifier text handed to the kernel
-    raw    : the exact source span an approved correction replaces
-    offset : absolute character offset of `raw`
-    attrs  : the record's other attributes, hashed for identity comparison
-    x12    : (initial, number, printed_check or None) for an X12 N7 segment
+    token   : the identifier text handed to the kernel
+    raw     : the exact source span an approved correction replaces
+    offset  : absolute character offset of `raw`
+    attrs   : the record's other attributes, hashed for identity comparison
+    x12     : (initial, number, printed_check or None) for an X12 N7 segment
+    context : message context dict from the collector (message formats)
     """
     token: str
     raw: str
     offset: int
     attrs: str
     x12: Optional[Tuple[str, str, Optional[str]]] = None
+    context: Optional[Dict[str, Any]] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -215,7 +218,7 @@ def inspect_source(path: str, options: Dict[str, Any], codec: Optional[str] = No
             fmt = "xml"
         elif text.startswith("PK"):
             fmt = "archive"
-        elif options.get("columns"):
+        elif options.get("columns") or options.get("mapping_contract"):
             fmt = "csv"
         else:
             first = stripped.split("\n", 1)[0]
@@ -223,12 +226,13 @@ def inspect_source(path: str, options: Dict[str, Any], codec: Optional[str] = No
     out: Dict[str, Any] = {"format": fmt, "codec": codec}
     if fmt == "csv":
         first = text.lstrip("﻿").split("\n", 1)[0]
-        delim = options.get("delimiter")
+        delim = options.get("delimiter") or (options.get("mapping_contract") or {}).get("delimiter")
         if not delim:
             counts = {d: first.count(d) for d in (",", ";", "\t", "|")}
             delim = max(counts, key=lambda d: counts[d]) if any(counts.values()) else ","
         out["delimiter"] = delim
-        out["has_header"] = bool(options.get("has_header", True))
+        contract = options.get("mapping_contract")
+        out["has_header"] = bool(contract["has_header"]) if contract else bool(options.get("has_header", True))
     if fmt == "edifact":
         sep = Separators()
         if stripped[:3] == "UNA" and len(stripped) >= 9:
@@ -260,32 +264,58 @@ def _resolve_columns(header: Dict[str, int], columns: List[Any], has_header: boo
     return out
 
 
-def _csv_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
+def _csv_stream(path: str, info: Dict[str, Any], options: Dict[str, Any], state: Optional[Dict[str, Any]] = None
+                ) -> Iterator[Tuple[int, str, List[Item]]]:
+    """CSV records. With a mapping contract in `state`, the header is checked against it
+    before any row is read and every identifier cell is validated as it streams."""
+    from . import mapping
     delim = info["delimiter"]
     has_header = info["has_header"]
-    columns = options.get("columns") or []
+    columns = list(options.get("columns") or [])
     attribute_columns = options.get("attribute_columns")
-    if not columns:
-        raise IngestError("csv jobs need a 'columns' option naming the identifier column(s)")
+    contract = (state or {}).get("contract")
+    if not columns and not contract:
+        raise IngestError("csv jobs need a 'columns' option naming the identifier column(s), or a bound profile with a mapping contract")
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     indices: Optional[List[int]] = None
     attr_indices: Optional[List[int]] = None
+    validator: Optional[mapping.StreamValidator] = None
     for rec in csv_records(chunks, delim):
         if indices is None:
             header: Dict[str, int] = {}
+            header_list: Optional[List[str]] = None
             if has_header:
-                header = {f.value.strip().lstrip("﻿").lower(): f.col for f in rec.fields}
-            indices = _resolve_columns(header, columns, has_header, "identifier")
+                header_list = [f.value.strip().lstrip("﻿") for f in rec.fields]
+                header = {h.lower(): i for i, h in enumerate(header_list)}
+            if contract:
+                check = mapping.check_header(contract, mapping.fingerprint_of(header_list, len(rec.fields), delim))
+                state["check"] = check
+                state["fingerprint"] = mapping.fingerprint_of(header_list, len(rec.fields), delim)["sha256"]
+                if check["blocked"]:
+                    state["validation"] = {"rows": 0, "violations": 0, "blocked": True, "findings": [],
+                                           "treatment": check["treatment"]}
+                    return
+                id_fields = [f for f in contract["fields"] if f["type"] == "identifier"]
+                indices = [check["resolved"][f["name"]] for f in id_fields if check["resolved"].get(f["name"]) is not None]
+                if columns:
+                    indices = _resolve_columns(header, columns, has_header, "identifier")
+                validator = mapping.StreamValidator(indices)
+                state["validator"] = validator
+            else:
+                indices = _resolve_columns(header, columns, has_header, "identifier")
             if attribute_columns is not None:
                 attr_indices = _resolve_columns(header, attribute_columns, has_header, "attribute")
             if has_header:
                 continue
         if len(rec.fields) == 1 and rec.fields[0].value == "":
             continue
+        values = [f.value for f in rec.fields]
+        if validator is not None:
+            validator.observe(rec.no, values)
         if attr_indices is None:
-            others = [f.value for k, f in enumerate(rec.fields) if k not in indices]
+            others = [v for k, v in enumerate(values) if k not in indices]
         else:
-            others = [rec.fields[k].value if k < len(rec.fields) else "" for k in attr_indices]
+            others = [values[k] if k < len(values) else "" for k in attr_indices]
         attrs = "\x1f".join(others)
         items: List[Item] = []
         for idx in indices:
@@ -296,15 +326,16 @@ def _csv_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Ite
             offset = f.start + (1 if f.quoted else 0)
             raw = f.value.strip()
             if raw == "" or (f.quoted and '"' in raw):
-                # empty, or a quoted value containing escaped quotes: no single splice span
                 items.append(Item("", "", offset, attrs))
                 continue
             offset += len(f.value) - len(f.value.lstrip())
             items.append(Item(raw, raw, offset, attrs))
         yield rec.no, f"row {rec.no + 1}", items
+    if validator is not None:
+        state["validation"] = validator.finish()
 
 
-def _txt_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
+def _txt_stream(path: str, info: Dict[str, Any], options: Dict[str, Any], state=None) -> Iterator[Tuple[int, str, List[Item]]]:
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     for line_no, start, line in line_records(chunks):
         upper = line.upper()
@@ -313,15 +344,19 @@ def _txt_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Ite
         yield line_no - 1, f"line {line_no}", items
 
 
-def _edifact_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
+def _edifact_stream(path: str, info: Dict[str, Any], options: Dict[str, Any], state=None) -> Iterator[Tuple[int, str, List[Item]]]:
     s = info["separators"]
     sep = Separators(component=s["component"], element=s["element"], decimal=s["decimal"],
                      release=s["release"], segment=s["segment"])
+    collector = (state or {}).get("collector")
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     seg_no = 0
     message = 0
+    end = 0
     for start, raw in delimited_segments(chunks, sep.segment, sep.release, skip_una=True):
         seg_no += 1
+        end = start + len(raw)
+        ctx = collector.segment(seg_no, start, raw, sep) if collector is not None else None
         if raw.startswith("UNH"):
             message += 1
             continue
@@ -335,20 +370,26 @@ def _edifact_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) ->
         eqid = els[2][0] if len(els) > 2 and els[2] else ""
         location = f"message {message} segment {seg_no} EQD"
         if not eqid:
-            yield seg_no, location, [Item("", "", start, raw)]
+            yield seg_no, location, [Item("", "", start, raw, None, ctx)]
             continue
         off = raw.find(eqid)
-        yield seg_no, location, [Item(eqid, eqid, start + off, raw.replace(eqid, "", 1))]
+        yield seg_no, location, [Item(eqid, eqid, start + off, raw.replace(eqid, "", 1), None, ctx)]
+    if state is not None:
+        state["end"] = end
 
 
-def _x12_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
+def _x12_stream(path: str, info: Dict[str, Any], options: Dict[str, Any], state=None) -> Iterator[Tuple[int, str, List[Item]]]:
     d = info["delims"]
     ele, seg_term = d["element"], d["segment"]
+    collector = (state or {}).get("collector")
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     seg_no = 0
     transaction_set = 0
+    end = 0
     for start, raw in delimited_segments(chunks, seg_term, "", skip_una=False):
         seg_no += 1
+        end = start + len(raw)
+        ctx = collector.segment(seg_no, start, raw) if collector is not None else None
         els = raw.split(ele)
         tag = els[0]
         if tag == "ST":
@@ -361,30 +402,37 @@ def _x12_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Ite
             location = f"set {transaction_set} segment {seg_no} N7"
             attrs = ele.join(e for k, e in enumerate(els) if k not in (1, 2, 18))
             if not initial and not number:
-                yield seg_no, location, [Item("", "", start, attrs)]
+                yield seg_no, location, [Item("", "", start, attrs, None, ctx)]
                 continue
             printed = els[18] if has18 else None
             offset = start + sum(len(e) + 1 for e in els[:18]) if has18 else start + len(raw)
             # The token keeps the X12 split visible: initial*number*check. Two
             # parts mean the check digit element is absent from the segment.
             token = f"{initial}*{number}*{printed}" if has18 else f"{initial}*{number}"
-            yield seg_no, location, [Item(token, printed or "", offset, attrs, (initial, number, printed))]
+            yield seg_no, location, [Item(token, printed or "", offset, attrs, (initial, number, printed), ctx)]
         elif tag == "N9" and len(els) > 2 and els[1] == "EQ":
             token = els[2]
             offset = start + len(els[0]) + 1 + len(els[1]) + 1
             location = f"set {transaction_set} segment {seg_no} N9*EQ"
-            yield seg_no, location, [Item(token, token, offset, ele.join(els[3:]))] if token else \
-                (seg_no, location, [Item("", "", offset, "")])
+            if token:
+                yield seg_no, location, [Item(token, token, offset, ele.join(els[3:]))]
+            else:
+                yield seg_no, location, [Item("", "", offset, "")]
+    if state is not None:
+        state["end"] = end
 
 
 def _localname(name: str) -> str:
     return name.rsplit(":", 1)[-1]
 
 
-def _xml_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Iterator[Tuple[int, str, List[Item]]]:
+def _xml_stream(path: str, info: Dict[str, Any], options: Dict[str, Any], state=None) -> Iterator[Tuple[int, str, List[Item]]]:
+    collector = (state or {}).get("collector")
     chunks = (t for _c, t in text_chunks(path, info["codec"]))
     record = 0
+    end = 0
     for tag_start, tag in xml_start_tags(chunks):
+        end = tag_start + len(tag)
         m = RE_XML_NAME.match(tag, 1)
         if not m:
             continue
@@ -393,25 +441,29 @@ def _xml_stream(path: str, info: Dict[str, Any], options: Dict[str, Any]) -> Ite
             continue
         items: List[Item] = []
         attr_text = tag
+        size_type = ""
         for am in RE_XML_ATTR.finditer(tag, m.end()):
             attr = _localname(am.group(1))
+            value = am.group(2) if am.group(2) is not None else am.group(3)
+            if attr == "type" and element in ("container", "equipment"):
+                size_type = value
             if (element, attr) not in XML_EQID_ATTRS:
                 continue
-            value = am.group(2) if am.group(2) is not None else am.group(3)
             value_offset = tag_start + am.start(2 if am.group(2) is not None else 3)
             attr_text = attr_text.replace(value, "", 1) if value else attr_text
-            if not value:
-                items.append(Item("", "", value_offset, ""))
-            else:
-                items.append(Item(value, value, value_offset, ""))
+            items.append(Item(value or "", value or "", value_offset, ""))
         if not items:
             continue
-        items = [Item(i.token, i.raw, i.offset, attr_text, i.x12) for i in items]
+        ctx = collector.element_context(items[0].token, size_type) if collector is not None else None
+        items = [Item(i.token, i.raw, i.offset, attr_text, i.x12, ctx) for i in items]
         record += 1
         yield record - 1, f"element {record} {element}", items
+    if state is not None:
+        state["end"] = end
 
 
 STREAMS = {"csv": _csv_stream, "txt": _txt_stream, "edifact": _edifact_stream, "x12": _x12_stream, "xml": _xml_stream}
+MESSAGE_FORMATS = ("edifact", "x12", "xml")
 
 
 # --------------------------------------------------------------------------- #
@@ -467,6 +519,41 @@ def evaluate_item(item: Item, context: kernel.FieldContext, owner_policy: str, p
     return res, candidate
 
 
+def _build_stream_state(conn: sqlite3.Connection, job: sqlite3.Row, info: Dict[str, Any], options: Dict[str, Any],
+                        src: sqlite3.Row) -> Dict[str, Any]:
+    """Per-format helpers: the message collector or the mapping contract from the bound profile."""
+    from . import context as ctx_mod, messages, mapping, profiles
+    state: Dict[str, Any] = {}
+    profile = profiles.profile_for_job(conn, job)
+    fmt = info["format"]
+    ws, job_id = job["workspace_id"], job["id"]
+    if fmt in MESSAGE_FORMATS:
+        rules = profiles.normalize_rules(profile["rules"], profile.get("message_family") or "") if profile else None
+        terminal = profile["terminal_site"] if profile else ""
+
+        def resolver(message_no: int, *, terminal: str, vessel: str, voyage: str) -> Dict[str, Any]:
+            visit = ctx_mod.resolve_visit(conn, ws, job_id, message_no, terminal=terminal, vessel=vessel, voyage=voyage)
+            row = conn.execute("SELECT id FROM movements WHERE job_id = ? AND message_no = ?", (job_id, message_no)).fetchone()
+            if row is None:
+                mode = "rail" if fmt == "x12" else ("vessel" if vessel or voyage else "unknown")
+                conn.execute(messages.MOVEMENT_INSERT,
+                             ctx_mod.movement_row(ws, job_id, message_no, mode=mode, vessel=vessel, voyage=voyage,
+                                                  origin="", destination="", visit_id=visit["id"]))
+                row = conn.execute("SELECT id FROM movements WHERE job_id = ? AND message_no = ?", (job_id, message_no)).fetchone()
+            visit["movement_id"] = row["id"]
+            return visit
+        kwargs = dict(receipt_time=now_iso(), visit_resolver=resolver, source_sha256=src["sha256"], terminal_site=terminal)
+        if fmt == "edifact":
+            state["collector"] = messages.EdifactCollector(ws, job_id, rules, **kwargs)
+        elif fmt == "x12":
+            state["collector"] = messages.X12Collector(ws, job_id, rules, element=info["delims"]["element"], **kwargs)
+        else:
+            state["collector"] = messages.XmlCollector(ws, job_id, rules, **kwargs)
+    elif fmt == "csv" and profile and (profile.get("mapping_contract") or {}).get("fields"):
+        state["contract"] = mapping.normalize_contract(profile["mapping_contract"])
+    return state
+
+
 def run_job(conn: sqlite3.Connection, root: str, job: sqlite3.Row, worker_id: str, *,
             batch_records: int = BATCH_RECORDS, policy=None,
             fail_after_records: Optional[int] = None, lease_seconds: float = jobq.LEASE_SECONDS,
@@ -485,7 +572,15 @@ def run_job(conn: sqlite3.Connection, root: str, job: sqlite3.Row, worker_id: st
         check_free_space(root, min_free_bytes)
         if "inspect" not in ckpt:
             jobq.set_step(conn, job_id, worker_id, "inspecting", "detect format")
-            info = inspect_source(src["path"], options, src["encoding"])
+            profile_contract = None
+            if job["profile_id"]:
+                from . import profiles
+                prof = profiles.profile_for_job(conn, job)
+                if prof and (prof.get("mapping_contract") or {}).get("fields"):
+                    from . import mapping
+                    profile_contract = mapping.normalize_contract(prof["mapping_contract"])
+            info = inspect_source(src["path"], {**options, **({"mapping_contract": profile_contract} if profile_contract else {})},
+                                  src["encoding"])
             if info["format"] not in STREAMS:
                 with transaction(conn):
                     add_finding(conn, job_id, "UNSUPPORTED_INPUT",
@@ -500,7 +595,7 @@ def run_job(conn: sqlite3.Connection, root: str, job: sqlite3.Row, worker_id: st
         if not ckpt.get("done"):
             jobq.set_step(conn, job_id, worker_id, "validating", f"stream {info['format']}")
             _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_records, policy,
-                            fail_after_records, lease_seconds)
+                            fail_after_records, lease_seconds, src)
         jobq.set_step(conn, job_id, worker_id, "validating", "reconcile")
         reconcile.finish_job(conn, job, worker_id)
         with transaction(conn):
@@ -558,8 +653,10 @@ def observation_row(job_id: str, ordinal: int, record_no: int, location: str, it
 
 
 def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_records, policy, fail_after,
-                    lease_seconds) -> None:
+                    lease_seconds, src) -> None:
+    from . import context as ctx_mod, messages
     job_id = job["id"]
+    ws = job["workspace_id"]
     fmt = info["format"]
     context = _context(options, fmt)
     owner_policy = options.get("owner_policy", "strict")
@@ -573,13 +670,39 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
     committed_this_attempt = 0
     obs_rows: List[tuple] = []
     member_rows: List[tuple] = []
+    msg_rows: List[tuple] = []
+    event_rows: List[tuple] = []
+    ctx_rows: List[tuple] = []
     counts: Dict[str, int] = {}
     pending_records = 0
     last_record_no = resume_after
     records_since_check = 0
+    state = _build_stream_state(conn, job, info, options, src)
+    collector = state.get("collector")
+    receipt = now_iso()
+
+    def ctx_tuple(c: Dict[str, Any]) -> tuple:
+        return (job_id, c["ordinal"], c["message_no"], c.get("visit_id"), c.get("movement_id"), c.get("full_empty"),
+                c.get("stow_position"), c.get("size_type"))
+
+    def drain_messages() -> None:
+        if collector is None:
+            return
+        for m in collector.take_messages():
+            msg_rows.append(messages.message_row(ws, job_id, src["id"], m))
+            subject = {"message_no": m["message_no"], "vessel": m["vessel"], "voyage": m["voyage"]}
+            event_rows.extend(ctx_mod.event_rows(ws, job_id, m["message_no"], m["events"], receipt, subject,
+                                                 f"{fmt}:{m['message_type'] or 'file'}"))
+            if m["visit"] is not None:
+                conn.execute("UPDATE movements SET origin = ?, destination = ? WHERE job_id = ? AND message_no = ?",
+                             (m["pol"] or None, m["pod"] or None, job_id, m["message_no"]))
+            for c in m["contexts"]:
+                if "ordinal" in c:
+                    ctx_rows.append(ctx_tuple(c))
 
     def flush(final_record_no: int) -> None:
-        nonlocal obs_rows, member_rows, counts, pending_records, committed_this_attempt
+        nonlocal obs_rows, member_rows, msg_rows, event_rows, ctx_rows, counts, pending_records, committed_this_attempt
+        drain_messages()
         with transaction(conn):
             if obs_rows:
                 conn.executemany(
@@ -589,6 +712,12 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
             if member_rows:
                 conn.executemany("INSERT OR IGNORE INTO memberships (generation_id, key, attrs_hash) VALUES (?,?,?)",
                                  member_rows)
+            if msg_rows:
+                conn.executemany(messages.MESSAGE_INSERT, msg_rows)
+            if event_rows:
+                conn.executemany(messages.EVENT_INSERT, event_rows)
+            if ctx_rows:
+                conn.executemany(messages.CONTEXT_INSERT, ctx_rows)
             for name, delta in counts.items():
                 jobq.bump_counter(conn, job_id, name, delta)
             ckpt["record_no"] = final_record_no
@@ -596,15 +725,18 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
             jobq.checkpoint(conn, job_id, worker_id, ckpt)
             jobq.heartbeat(conn, job_id, worker_id, lease_seconds)
         committed_this_attempt += pending_records
-        obs_rows, member_rows, counts, pending_records = [], [], {}, 0
+        obs_rows, member_rows, msg_rows, event_rows, ctx_rows, counts, pending_records = [], [], [], [], [], {}, 0
         if fail_after is not None and committed_this_attempt >= fail_after:
             raise _SimulatedCrash(f"simulated crash after {committed_this_attempt} records")
 
-    stream = STREAMS[fmt](job_src_path(conn, job), info, options)
+    stream = STREAMS[fmt](job_src_path(conn, job), info, options, state)
     for record_no, location, items in stream:
         if record_no <= resume_after:
             # Already committed by an earlier attempt; observation ordinals for
             # skipped records were restored from the checkpoint.
+            for item in items:
+                if item.context is not None and "ordinal" not in item.context:
+                    item.context["ordinal"] = -1
             continue
         pending_records += 1
         counts["records_total"] = counts.get("records_total", 0) + 1
@@ -613,6 +745,14 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
             ordinal += 1
             row, status = observation_row(job_id, ordinal, record_no, location, item, context, owner_policy, policy)
             obs_rows.append(row)
+            if item.context is not None:
+                c = item.context
+                c["ordinal"] = ordinal
+                if c.get("movement_id") is None and c.get("visit_id") is not None and collector is not None \
+                        and collector.current is not None and collector.current.get("visit"):
+                    c["movement_id"] = collector.current["visit"].get("movement_id")
+                if not c.get("defer"):
+                    ctx_rows.append(ctx_tuple(c))
             if item.token == "" and item.x12 is None:
                 counts["identifiers_missing"] = counts.get("identifiers_missing", 0) + 1
                 counts["records_quarantined"] = counts.get("records_quarantined", 0) + 1
@@ -629,9 +769,15 @@ def _stream_records(conn, root, job, worker_id, info, options, ckpt, batch_recor
             if records_since_check >= 200_000:
                 records_since_check = 0
                 check_free_space(root)
-    if pending_records or not ckpt.get("done"):
-        ckpt["done"] = True
-        flush(last_record_no)
+    if collector is not None:
+        summary = collector.finish(state.get("end", 0))
+        ckpt["messages"] = summary
+    if "validation" in state or "check" in state:
+        ckpt["mapping"] = {"check": {k: v for k, v in (state.get("check") or {}).items() if k != "resolved"},
+                           "resolved": (state.get("check") or {}).get("resolved"),
+                           "validation": state.get("validation"), "fingerprint": state.get("fingerprint")}
+    ckpt["done"] = True
+    flush(last_record_no)
 
 
 def job_src_path(conn: sqlite3.Connection, job: sqlite3.Row) -> str:

@@ -71,12 +71,20 @@ reproducible benchmark with an independent verifier (`BENCHMARK.md`). SQLite sta
 measured runs fit one host. Not in this phase: a workspace user interface, splitting one
 file across several workers, an actual out-of-space recording.
 
-### Phase D: multi-terminal profiles, EDI/XML validation, lifecycle, visits, feedback
+### Phase D: multi-terminal profiles, EDI/XML validation, lifecycle, visits, feedback (delivered 2026-09-17)
 
 Depends on: C (job model), partner fixtures and specifications.
-Versioned terminal profiles, syntax/schema/partner validation, profile-specific
-message lifecycle, visit and movement reconciliation, connected visual inspection,
-manual receiver feedback with exact correlation and linked repair.
+Delivered: versioned feed profiles with mapping contracts, message rules and evidence-
+gated verification; envelope syntax, profile schema and partner checks per message; the
+message lifecycle (duplicates, conflicts, replacements, cancellations, held predecessors,
+out-of-order revisions, unsupported functions) resolved after streaming and applied in
+the publish transaction; visits keyed by terminal, vessel and voyage, movements and event
+assertions with kept precision and offsets; seven validation layers per observation;
+connected bay-plan and consist inspection; manual deliveries and receiver feedback
+(CONTRL, APERAK, 997, 824, manual outcome) with exact, ambiguous or unmatched
+correlation and linked repair jobs; linked edits for synced occurrences; the workspace
+pages served by the service. Verification beyond `fixture_tested` needs partner fixtures
+and implementation guides that are not in this repository.
 
 ### Phase E: authorized operational connections and automation
 
