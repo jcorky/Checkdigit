@@ -87,11 +87,13 @@ def run_until_idle(conn: sqlite3.Connection, root: str, *, wid: Optional[str] = 
 
 
 def serve(db_path: str, root: str, poll_seconds: float = 1.0, *, policy_file: Optional[str] = None,
-          exit_when_idle: bool = False) -> int:
+          exit_when_idle: bool = False, automation: bool = False, automation_seconds: float = 30.0) -> int:
     """Long-running worker loop for a separate process.
 
     With `exit_when_idle` the process returns once no claimable job remains,
-    which is what the benchmark's multi-process run uses.
+    which is what the benchmark's multi-process run uses. With `automation`
+    the loop also runs the automation tick (stale-send recovery and inbox
+    polling over enabled inbound connections) every `automation_seconds`.
     """
     policy = None
     if policy_file:
@@ -100,7 +102,15 @@ def serve(db_path: str, root: str, poll_seconds: float = 1.0, *, policy_file: Op
     conn = connect(db_path)
     wid = worker_id()
     ran = 0
+    last_tick = 0.0
     while True:
+        if automation and time.time() - last_tick >= automation_seconds:
+            from . import automation as automation_mod
+            try:
+                automation_mod.tick(conn, root, policy=policy)
+            except Exception as exc:  # noqa: BLE001 - the loop keeps running; the failure is in the audit log
+                print(f"[automation] {type(exc).__name__}: {exc}")
+            last_tick = time.time()
         r = run_once(conn, root, wid=wid, policy=policy)
         if r is None:
             if exit_when_idle:
@@ -118,5 +128,8 @@ if __name__ == "__main__":
     ap.add_argument("--policy-file", default=os.environ.get("CHECKDIGIT_POLICY_FILE") or None)
     ap.add_argument("--exit-when-idle", action="store_true")
     ap.add_argument("--poll-seconds", type=float, default=1.0)
+    ap.add_argument("--automation", action="store_true", help="also poll enabled inbound connections and recover stale sends")
+    ap.add_argument("--automation-seconds", type=float, default=30.0)
     args = ap.parse_args()
-    serve(args.db, args.root, args.poll_seconds, policy_file=args.policy_file, exit_when_idle=args.exit_when_idle)
+    serve(args.db, args.root, args.poll_seconds, policy_file=args.policy_file, exit_when_idle=args.exit_when_idle,
+          automation=args.automation, automation_seconds=args.automation_seconds)

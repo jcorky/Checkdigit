@@ -171,8 +171,21 @@ def layers_for(conn: sqlite3.Connection, job: sqlite3.Row, obs: sqlite3.Row, pro
         out.append(_layer("check_digit", "unsupported", "kernel", ruleset, obs["reason"]))
     else:
         out.append(_layer("check_digit", "not_checked", "kernel", ruleset, "no identifier shape to check", False))
-    out.append(_layer("prefix_registration", "not_checked", "workspace", "register/none",
-                      "no owner-code register is bound to this workspace", False))
+    from .references import prefix_registration
+    reg = prefix_registration(conn, ws, obs["normalized"]) if obs["normalized"] else None
+    if reg is None:
+        out.append(_layer("prefix_registration", "not_checked", "workspace", "register/none",
+                          "no owner-code register is bound to this workspace", False))
+    elif obs["scheme"] not in ("iso6346", "ilu"):
+        out.append(_layer("prefix_registration", "unsupported", reg["source"], reg["version"],
+                          f"{obs['scheme']} identifiers carry no owner code", False))
+    elif reg["registered"]:
+        out.append(_layer("prefix_registration", "passed", reg["source"], reg["version"],
+                          f"{reg['prefix']} registered to {reg['owner']}" + (f" ({reg['country']})" if reg["country"] else "")
+                          + "; registration does not prove the serial number"))
+    else:
+        out.append(_layer("prefix_registration", "failed", reg["source"], reg["version"],
+                          f"{reg['prefix']} is not in the register version {reg['version']}"))
     # The fleet is keyed by the observed identifier; a check-digit candidate is a
     # proposal and never an identity, so the lookup uses the normalized value.
     key = obs["normalized"]

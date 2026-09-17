@@ -104,13 +104,29 @@ async function decide(decision: string): Promise<void> {
   await Promise.all([loadObservations(), loadApprovals(), loadJob()]);
 }
 
+interface Connection { id: string; name: string; can_transmit: boolean }
+let connections: Connection[] = [];
+
 async function loadApprovals(): Promise<void> {
-  const page = await get<Page<Approval>>(`/jobs/${jobId}/approvals?limit=200`);
-  byId("approvals").innerHTML = table(["Approval", "Decision", "State", "Count", "Filter", "By", "When"], page.items.map((a) => [
+  const page = await get<Page<Approval & { authorization_scope: string }>>(`/jobs/${jobId}/approvals?limit=200`);
+  byId("approvals").innerHTML = table(["Approval", "Decision", "State", "Count", "Filter", "By", "Scope", "When", ""], page.items.map((a) => [
     html`<code>${a.id}</code>`, state(a.decision === "approve" ? "approved" : a.decision === "reject" ? "rejected" : "deferred"),
     state(a.state) + (a.stale_reason ? html` <span class="small">${a.stale_reason}</span>` : ""), num(a.selection_manifest.count),
-    esc(JSON.stringify(a.filter)), esc(a.approver), when(a.decided_at),
+    esc(JSON.stringify(a.filter)), esc(a.approver), esc(a.authorization_scope), when(a.decided_at),
+    a.decision === "approve" && a.state === "approved" && a.authorization_scope !== "transmission"
+      ? html`<button class="btn btn-ghost btn-small" data-authorize="${a.id}" type="button">Authorize transmission</button>` : "",
   ]), "No decisions yet.");
+  byId("approvals").querySelectorAll<HTMLButtonElement>("button[data-authorize]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
+    const note = prompt("Customer's transmission authorization (who, ticket, date):") ?? "";
+    await post(`/approvals/${b.dataset.authorize}/authorize-transmission`, { note });
+    notice(msg, "ok", "Transmission authorized for this approval's edits.");
+    await loadApprovals();
+  })));
+  try {
+    connections = (await get<Page<Connection>>("/connections")).items.filter((c) => c.can_transmit);
+  } catch {
+    connections = [];
+  }
   const sel = byId<HTMLSelectElement>("export-approval");
   sel.innerHTML = `<option value="">none (unchanged copy)</option>` + page.items
     .filter((a) => a.decision === "approve" && a.state === "approved")
@@ -122,8 +138,18 @@ async function loadApprovals(): Promise<void> {
     a.state === "ready" || a.state === "superseded"
       ? ["corrected", "exceptions", "ledger", "manifest"].map((n) => html`<a href="${base()}/artifacts/${a.id}/files/${n}">${n}</a>`).join(" · ")
       : "—",
-    a.state === "ready" ? html`<button class="btn btn-ghost btn-small" data-deliver="${a.id}" type="button">Record delivery</button>` : "",
+    a.state === "ready"
+      ? html`<button class="btn btn-ghost btn-small" data-deliver="${a.id}" type="button">Record delivery</button>` +
+        (connections.length ? html` <select data-connection-for="${a.id}">${raw(connections.map((c) => html`<option value="${c.id}">${c.name}</option>`).join(""))}</select> <button class="btn btn-small" data-transmit="${a.id}" type="button">Transmit</button>` : "")
+      : "",
   ]), "No artifacts yet.");
+  byId("artifacts").querySelectorAll<HTMLButtonElement>("button[data-transmit]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
+    const sel = byId("artifacts").querySelector<HTMLSelectElement>(`select[data-connection-for="${b.dataset.transmit}"]`);
+    const out = await post<{ id: string; state: string; error: string | null; control_reference: string | null }>(`/artifacts/${b.dataset.transmit}/transmit`, {
+      connection_id: sel?.value, idempotency_key: `ui-${Date.now()}`,
+    });
+    notice(msg, out.state === "delivery_confirmed" ? "ok" : "warn", `Transmission ${out.id}: ${out.state}${out.error ? ` (${out.error})` : ""}; control reference ${out.control_reference ?? "—"}.`);
+  })));
   byId("artifacts").querySelectorAll<HTMLButtonElement>("button[data-deliver]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
     const destination = prompt("Destination (as delivered, for the record):");
     if (!destination) return;

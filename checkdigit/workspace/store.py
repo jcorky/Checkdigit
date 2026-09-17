@@ -31,7 +31,7 @@ import threading
 import time
 from typing import Dict, Iterator, List, Optional
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 CACHE_KIB = int(os.environ.get("CHECKDIGIT_WORKSPACE_CACHE_KIB", str(256 * 1024)))
 MAX_BYTES = int(os.environ.get("CHECKDIGIT_WORKSPACE_MAX_BYTES", "0"))
@@ -227,8 +227,110 @@ CREATE TABLE IF NOT EXISTS delivery_attempts (
     control_reference TEXT,
     outcome_evidence TEXT,
     recorded_by TEXT NOT NULL DEFAULT '',
+    connection_id TEXT,
+    origin TEXT NOT NULL DEFAULT 'manual',
+    lease_until REAL,
+    receipt_json TEXT,
+    error TEXT,
+    resend_of_id TEXT,
+    resend_note TEXT,
+    updated_at TEXT,
     created_at TEXT NOT NULL
 );
+
+-- Authorized connections to partner systems. Secrets are never stored: the
+-- configuration names environment variables that hold them.
+CREATE TABLE IF NOT EXISTS connections (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    partner TEXT NOT NULL DEFAULT '',
+    profile_id TEXT,
+    config_json TEXT NOT NULL DEFAULT '{}',
+    duplicate_handling TEXT NOT NULL DEFAULT 'unknown',
+    state TEXT NOT NULL DEFAULT 'draft',
+    authorized_by TEXT,
+    authorized_at TEXT,
+    authorization_note TEXT NOT NULL DEFAULT '',
+    verified_at TEXT,
+    verification_json TEXT NOT NULL DEFAULT '{}',
+    created_by TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (workspace_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS inbox_files (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    connection_id TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    source_file_id TEXT,
+    job_id TEXT,
+    feedback_id TEXT,
+    detail TEXT NOT NULL DEFAULT '',
+    seen_at TEXT NOT NULL,
+    UNIQUE (connection_id, sha256)
+);
+
+CREATE TABLE IF NOT EXISTS enrichment_requests (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    provider TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    fields_json TEXT NOT NULL DEFAULT '[]',
+    scope_json TEXT NOT NULL DEFAULT '{}',
+    authorized_by TEXT,
+    authorized_at TEXT,
+    authorization_note TEXT NOT NULL DEFAULT '',
+    estimated_requests INTEGER NOT NULL DEFAULT 0,
+    budget_json TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'planned',
+    storage_policy TEXT NOT NULL DEFAULT 'displayed_fields_only',
+    results_json TEXT NOT NULL DEFAULT '{}',
+    created_by TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS enrichment_results (
+    workspace_id TEXT NOT NULL,
+    request_id TEXT NOT NULL,
+    identifier TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    fields_json TEXT NOT NULL,
+    retrieved_at TEXT NOT NULL,
+    PRIMARY KEY (request_id, identifier)
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS reference_snapshots (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+    source TEXT NOT NULL,
+    version TEXT NOT NULL,
+    retrieved_at TEXT NOT NULL,
+    license_note TEXT NOT NULL DEFAULT '',
+    path TEXT,
+    sha256 TEXT,
+    row_count INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS owner_register (
+    workspace_id TEXT NOT NULL,
+    prefix TEXT NOT NULL,
+    company TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL DEFAULT '',
+    country TEXT NOT NULL DEFAULT '',
+    snapshot_id TEXT NOT NULL,
+    PRIMARY KEY (workspace_id, prefix)
+) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS receiver_feedback (
     id TEXT PRIMARY KEY,
@@ -471,6 +573,14 @@ MIGRATIONS = [
     ("feed_profiles", "verification_json", "TEXT NOT NULL DEFAULT '{}'"),
     ("feed_profiles", "created_by", "TEXT NOT NULL DEFAULT ''"),
     ("jobs", "repair_of_feedback_id", "TEXT"),
+    ("delivery_attempts", "connection_id", "TEXT"),
+    ("delivery_attempts", "origin", "TEXT NOT NULL DEFAULT 'manual'"),
+    ("delivery_attempts", "lease_until", "REAL"),
+    ("delivery_attempts", "receipt_json", "TEXT"),
+    ("delivery_attempts", "error", "TEXT"),
+    ("delivery_attempts", "resend_of_id", "TEXT"),
+    ("delivery_attempts", "resend_note", "TEXT"),
+    ("delivery_attempts", "updated_at", "TEXT"),
     ("jobs", "policy_fingerprint", "TEXT NOT NULL DEFAULT ''"),
     ("observations", "token", "TEXT NOT NULL DEFAULT ''"),
     ("fleet", "scope_kind", "TEXT NOT NULL DEFAULT 'source_fleet'"),

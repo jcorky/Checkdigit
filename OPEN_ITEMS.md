@@ -219,6 +219,35 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   groups across records (the same container in several messages of one file) are not
   enforced; each message is its own record.
 
+## Phase E notes
+
+- No partner system, provider or paid service was contacted from this repository. The
+  filesystem transport is the only one exercised end to end; it covers shared and mounted
+  drop folders. OPEN: sftp needs `paramiko` (not installed here) and a partner host to
+  verify against; https needs a partner endpoint. Both stay `authorized` at most until a
+  connectivity test passes.
+- A connection transmits only with the customer's authorization recorded on the
+  connection and a transmission authorization recorded on the approval, and only to a
+  receiver whose profile is production-enabled. OPEN: no profile can reach that state
+  here without partner evidence, so no transmission can be enabled from this repository
+  alone.
+- Resend policy: an unknown outcome is resent automatically only when the receiver is
+  recorded as rejecting duplicates; otherwise an administrator's note is required and
+  kept with the attempt. Nothing is resent on a schedule.
+- Inbox automation runs inside the worker process (`--automation`) or on request; there
+  is no separate scheduler, and a file is processed by the worker that finds it. OPEN: a
+  multi-worker deployment should give each inbound connection one poller; two workers
+  polling the same inbox is safe (hash memory) but wasteful.
+- Enrichment providers are the service's existing adapters, enabled by credentials in
+  the environment; none are configured here, so every real request fails with
+  "not configured" and the budget and storage-policy behaviour is proven with a stand-in
+  provider. OPEN: provider terms (BoxTech in particular) must be confirmed before a
+  credential is set; the storage policy keeps displayed fields only and does not reuse
+  them.
+- The owner-code register must be obtained from the BIC under its own terms and imported
+  with the licence note; the repository ships only the observational seed used by the
+  public service.
+
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 
 - (Superseded) Digit matching was ASCII-only in TypeScript while Python accepted other

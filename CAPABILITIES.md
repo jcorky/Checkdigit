@@ -75,8 +75,12 @@ deployment). Anything not marked is not claimed.
 | Connected visual inspection: bay plan (BAPLIE) or intermodal consist rendered from the job's source with each unit linked to its observation status and decision | implemented, tested (route); sources up to 32 MiB | `test_workspace_phase_d.py` |
 | Manual deliveries with evidence (`workspace/feedback.py`), receiver feedback from uploaded CONTRL, APERAK, 997 and 824 or a manual outcome; exact, ambiguous and unmatched correlation to message transactions and delivery attempts (delivered jobs preferred); unknown codes reported; a rejection starts a linked repair job from the delivered artifact with lineage | implemented, tested | `test_workspace_phase_d.py` |
 | Linked edits: occurrences of one identifier inside one record (synced XML attributes) are exported together or not at all (`LINKED_EDIT_PRECONDITION_FAILED`) | implemented, tested | `test_workspace_phase_d.py` |
-| Workspace pages (`src/workspace/`, built by `npm run build:workspace`, served by the service at `/workspace/` behind the admin gate): jobs and uploads with intents and profiles, job detail with findings, filtered observations and decisions with frozen counts, layers, approvals, exports and artifact files, deliveries, messages and events, inspection; profiles, feedback, visits and roles | implemented; build tested (`tests/workspace-ui.test.ts`), routes tested; not yet exercised in a browser against a signed-in service | `test_workspace_phase_d.py` |
-| Connector-based delivery, automatic acknowledgment retrieval, resend policies | not built | Phase E |
+| Workspace pages (`src/workspace/`, built by `npm run build:workspace`, served by the service at `/workspace/` behind the admin gate): jobs and uploads with intents and profiles, job detail with findings, filtered observations and decisions with frozen counts, layers, approvals with transmission authorization, exports, artifact files, deliveries and transmission, messages and events, inspection; profiles, feedback, visits and roles; connections, transmissions, inbox automation, reference snapshots and enrichment requests | implemented; build tested (`tests/workspace-ui.test.ts`), routes tested; not yet exercised in a browser against a signed-in service | `test_workspace_phase_d.py` |
+| Authorized connections (`workspace/connections.py`): filesystem drop folders (full), sftp (needs the optional `paramiko` package; reports its absence) and https endpoints (outbound only); lifecycle draft → authorized (administrator note naming the customer authorization) → verified (connectivity test; network transports are contacted only once authorized) → enabled (outbound needs a production-enabled receiver profile) → disabled; secrets only as environment variable names | implemented, tested (filesystem end to end; sftp and https limits) | `test_workspace_phase_e.py` |
+| Transmission (`workspace/transmit.py`): a separate transmission authorization on the approval, then send over an enabled connection with the artifact's control reference; states queued → sending → delivery_confirmed, failed or outcome_unknown (timeouts and expired send leases raise `DELIVERY_OUTCOME_UNKNOWN`); idempotent per key; resend after an unknown outcome only when the receiver rejects duplicates or an administrator records a note | implemented, tested | `test_workspace_phase_e.py` |
+| Inbound automation (`workspace/automation.py`): enabled inbound connections are polled by the worker (`--automation`) or on request; every file is remembered by hash; feeds become sources and jobs under the connection's profile and declared intent; acknowledgments become connector feedback, correlated to the transmission, and an exact rejection starts the repair draft; one bad file never stops the inbox | implemented, tested | `test_workspace_phase_e.py` |
+| Reference snapshots (`workspace/references.py`): an owner-code register imported with version and licence note feeds the prefix registration layer (passed, failed, unsupported for UIC) | implemented, tested | `test_workspace_phase_e.py` |
+| Enrichment requests: provider, purpose, fields, scope, estimate and budget; run only after an administrator's authorization; stop at the budget (`paused`); keep only what the provider's storage policy allows; providers exist only where credentials are configured, otherwise the request fails with that reason | implemented, tested with a stand-in provider; no provider credentials in this repository | `test_workspace_phase_e.py` |
 
 ## Format catalogue
 
@@ -117,8 +121,17 @@ acknowledgments or manual outcomes and labelled as such.
 
 | Candidate | State |
 |---|---|
-| BIC prefix / facility APIs, BoxTech | adapter code for BoxTech exists; not provider-tested; storage policy restricts retention; the reference library links to the official sites |
+| Partner file exchange over a shared or mounted folder | connection kind `filesystem`; verified end to end on one host (outbound send, inbound feeds and acknowledgments) |
+| Partner SFTP | connection kind `sftp`; adapter needs `paramiko`, which is not installed here; verification reports that rather than pretending |
+| Partner HTTPS endpoint | connection kind `https` (outbound); code path exists, never contacted from this repository |
+| BIC owner-code register | imported as a reference snapshot with version and licence note; feeds the prefix registration layer |
+| BIC BoxTech | enrichment provider when credentials are configured; storage policy keeps displayed fields only; not provider-tested |
+| Maersk, CMA CGM, Hapag-Lloyd, ZIM (DCSA-style), Terminal49 | enrichment providers when credentials are configured; not provider-tested |
 | UN/LOCODE, SMDG, NMFTA SCAC | no imports; described in the reference library |
-| Maersk, CMA CGM, Hapag-Lloyd, ZIM (DCSA-style) | adapter code exists; not provider-tested |
-| APM Terminals, Portbase, Terminal49, Vizion, project44 | Terminal49 adapter stub only; others none |
+| APM Terminals, Portbase, Vizion, project44 | none |
 | BAPLIE Viewer / TEDIVO | none; benchmark only |
+
+Nothing above is enabled by default. A connection transmits only after an administrator
+records the customer's authorization, a connectivity test passes, and the receiver's
+profile is production-enabled; an enrichment provider is called only for an authorized
+request within its budget.

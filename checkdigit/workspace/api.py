@@ -27,8 +27,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from . import (context as ctx_mod, export as export_mod, feedback as feedback_mod, ingest, jobs as jobq, maintenance,
-               profiles, reconcile, review, runner, store, views)
+from . import (automation, connections as conn_mod, context as ctx_mod, export as export_mod, feedback as feedback_mod, ingest,
+               jobs as jobq, maintenance, profiles, reconcile, references, review, runner, store, transmit, views)
 
 INSPECTION_MAX_BYTES = 32 * 1024 * 1024
 
@@ -90,6 +90,47 @@ class FeedbackIn(BaseModel):
     manual: Optional[Dict[str, Any]] = None
     response_profile_id: Optional[str] = None
     decision_by: Optional[str] = None
+
+
+class ConnectionIn(BaseModel):
+    name: str
+    kind: str
+    direction: str
+    config: Dict[str, Any] = Field(default_factory=dict)
+    partner: str = ""
+    profile_id: Optional[str] = None
+    duplicate_handling: str = "unknown"
+
+
+class NoteIn(BaseModel):
+    note: str = ""
+
+
+class TransmitIn(BaseModel):
+    connection_id: str
+    idempotency_key: str
+
+
+class ResendIn(BaseModel):
+    idempotency_key: str
+    note: Optional[str] = None
+
+
+class OwnerRegisterIn(BaseModel):
+    text: str
+    version: str
+    license_note: str
+    source: str = "bic_owner_register"
+
+
+class EnrichmentIn(BaseModel):
+    provider: str
+    purpose: str
+    fields: List[str] = Field(default_factory=list)
+    scope: Dict[str, Any]
+    estimated_requests: int = 0
+    budget: Dict[str, Any] = Field(default_factory=dict)
+    storage_policy: str = "displayed_fields_only"
 
 
 class DecisionIn(BaseModel):
@@ -949,6 +990,248 @@ def build_router(admin_required: Callable[..., Any], root: str, db_path: Optiona
                 return feedback_mod.start_repair(conn, root, workspace, feedback_id, actor, policy=policy_provider())
             except feedback_mod.FeedbackError as exc:
                 raise conflict(exc)
+        finally:
+            conn.close()
+
+    # ---- connections, transmission, automation --------------------------- #
+
+    def owned_connection(conn: sqlite3.Connection, connection_id: str, workspace: str) -> sqlite3.Row:
+        row = conn.execute("SELECT * FROM connections WHERE id = ? AND workspace_id = ?", (connection_id, workspace)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"connection {connection_id} not found in workspace {workspace}")
+        return row
+
+    @router.post("/{workspace}/connections", status_code=201)
+    def create_connection(workspace: str, body: ConnectionIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            try:
+                return conn_mod.create_connection(conn, workspace, actor, **body.model_dump())
+            except conn_mod.ConnectionError_ as exc:
+                raise HTTPException(status_code=422, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/connections")
+    def list_connections(workspace: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            return {"items": conn_mod.list_connections(conn, workspace), "next_cursor": None}
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/connections/{connection_id}")
+    def connection_view(workspace: str, connection_id: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            owned_connection(conn, connection_id, workspace)
+            return conn_mod.connection_doc(conn, connection_id)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/connections/{connection_id}/authorize")
+    def authorize_connection(workspace: str, connection_id: str, body: NoteIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            owned_connection(conn, connection_id, workspace)
+            try:
+                return conn_mod.authorize(conn, connection_id, actor, body.note)
+            except conn_mod.ConnectionError_ as exc:
+                raise HTTPException(status_code=422, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/connections/{connection_id}/verify")
+    def verify_connection(workspace: str, connection_id: str, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            owned_connection(conn, connection_id, workspace)
+            try:
+                return conn_mod.verify(conn, connection_id, actor)
+            except conn_mod.ConnectionError_ as exc:
+                raise conflict(exc)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/connections/{connection_id}/enable")
+    def enable_connection(workspace: str, connection_id: str, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            owned_connection(conn, connection_id, workspace)
+            try:
+                return conn_mod.enable(conn, connection_id, actor)
+            except conn_mod.ConnectionError_ as exc:
+                raise conflict(exc)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/connections/{connection_id}/disable")
+    def disable_connection(workspace: str, connection_id: str, body: NoteIn = NoteIn(), actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            owned_connection(conn, connection_id, workspace)
+            return conn_mod.disable(conn, connection_id, actor, body.note)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/connections/{connection_id}/poll")
+    def poll_connection(workspace: str, connection_id: str, actor: str = Depends(need("analyst"))):
+        conn = conn_for(workspace)
+        try:
+            owned_connection(conn, connection_id, workspace)
+            try:
+                return automation.poll_connection(conn, root, connection_id, actor, policy=policy_provider())
+            except conn_mod.ConnectionError_ as exc:
+                raise conflict(exc)
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/automation/tick")
+    def automation_tick(workspace: str, actor: str = Depends(need("analyst"))):
+        conn = conn_for(workspace)
+        try:
+            return automation.tick(conn, root, workspace, policy=policy_provider())
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/inbox")
+    def inbox(workspace: str, cursor: str = "", limit: int = Query(100, ge=1, le=500), actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            items = automation.inbox_page(conn, workspace, after=cursor, limit=limit + 1)
+            page = items[:limit]
+            return {"items": page, "next_cursor": page[-1]["id"] if len(items) > limit else None}
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/approvals/{approval_id}/authorize-transmission")
+    def authorize_transmission(workspace: str, approval_id: str, body: NoteIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            owned(conn, "approvals", approval_id, workspace)
+            try:
+                return transmit.authorize_transmission(conn, approval_id, actor, body.note)
+            except transmit.TransmitError as exc:
+                raise HTTPException(status_code=422 if exc.code == "EVIDENCE_REQUIRED" else 409, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/artifacts/{artifact_id}/transmit", status_code=201)
+    def transmit_artifact(workspace: str, artifact_id: str, body: TransmitIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            owned(conn, "export_artifacts", artifact_id, workspace)
+            owned_connection(conn, body.connection_id, workspace)
+            try:
+                return transmit.send_artifact(conn, root, workspace, artifact_id, body.connection_id, actor,
+                                              idempotency_key=f"{workspace}:{artifact_id}:{body.idempotency_key}")
+            except transmit.TransmitError as exc:
+                raise conflict(exc)
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/transmissions")
+    def list_transmissions(workspace: str, cursor: str = "", limit: int = Query(100, ge=1, le=500),
+                           actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            items = transmit.list_attempts(conn, workspace, after=cursor, limit=limit + 1)
+            page = items[:limit]
+            return {"items": page, "next_cursor": page[-1]["id"] if len(items) > limit else None}
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/transmissions/{attempt_id}/resend", status_code=201)
+    def resend_transmission(workspace: str, attempt_id: str, body: ResendIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            try:
+                return transmit.resend(conn, root, workspace, attempt_id, actor,
+                                       idempotency_key=f"{workspace}:resend:{attempt_id}:{body.idempotency_key}", note=body.note)
+            except transmit.TransmitError as exc:
+                raise conflict(exc)
+        finally:
+            conn.close()
+
+    # ---- reference snapshots and enrichment requests --------------------- #
+
+    @router.post("/{workspace}/reference/owner-register", status_code=201)
+    def import_owner_register(workspace: str, body: OwnerRegisterIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            try:
+                return references.import_owner_register(conn, root, workspace, actor, text=body.text, version=body.version,
+                                                        license_note=body.license_note, source=body.source)
+            except references.ReferenceError as exc:
+                raise HTTPException(status_code=422, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/reference")
+    def list_reference(workspace: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            return {"items": references.list_snapshots(conn, workspace), "next_cursor": None,
+                    "owner_codes": conn.execute("SELECT COUNT(*) FROM owner_register WHERE workspace_id = ?", (workspace,)).fetchone()[0]}
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/enrichment", status_code=201)
+    def create_enrichment(workspace: str, body: EnrichmentIn, actor: str = Depends(need("analyst"))):
+        conn = conn_for(workspace)
+        try:
+            try:
+                return references.create_request(conn, workspace, actor, **body.model_dump())
+            except references.ReferenceError as exc:
+                raise HTTPException(status_code=422, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/enrichment")
+    def list_enrichment(workspace: str, actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            return {"items": references.list_requests(conn, workspace), "next_cursor": None,
+                    "providers_configured": sorted(references.default_providers().keys())}
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/enrichment/{request_id}/authorize")
+    def authorize_enrichment(workspace: str, request_id: str, body: NoteIn, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            if conn.execute("SELECT 1 FROM enrichment_requests WHERE id = ? AND workspace_id = ?", (request_id, workspace)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="request not found")
+            try:
+                return references.authorize_request(conn, request_id, actor, body.note)
+            except references.ReferenceError as exc:
+                raise HTTPException(status_code=422, detail={"code": exc.code, "detail": exc.detail})
+        finally:
+            conn.close()
+
+    @router.post("/{workspace}/enrichment/{request_id}/run")
+    def run_enrichment(workspace: str, request_id: str, actor: str = Depends(need("administrator"))):
+        conn = conn_for(workspace)
+        try:
+            if conn.execute("SELECT 1 FROM enrichment_requests WHERE id = ? AND workspace_id = ?", (request_id, workspace)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="request not found")
+            try:
+                return references.run_request(conn, request_id, actor)
+            except references.ReferenceError as exc:
+                raise conflict(exc)
+        finally:
+            conn.close()
+
+    @router.get("/{workspace}/enrichment/{request_id}/results")
+    def enrichment_results(workspace: str, request_id: str, cursor: str = "", limit: int = Query(200, ge=1, le=1000),
+                           actor: str = Depends(need("viewer"))):
+        conn = conn_for(workspace)
+        try:
+            if conn.execute("SELECT 1 FROM enrichment_requests WHERE id = ? AND workspace_id = ?", (request_id, workspace)).fetchone() is None:
+                raise HTTPException(status_code=404, detail="request not found")
+            items = references.results_for(conn, request_id, after=cursor, limit=limit + 1)
+            page = items[:limit]
+            return {"items": page, "next_cursor": page[-1]["identifier"] if len(items) > limit else None}
         finally:
             conn.close()
 

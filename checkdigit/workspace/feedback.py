@@ -241,8 +241,10 @@ def ingest_feedback(conn: sqlite3.Connection, root: str, workspace_id: str, acto
                     text: Optional[str] = None, manual: Optional[Dict[str, Any]] = None,
                     response_profile: Optional[Dict[str, Any]] = None, decision_by: Optional[str] = None) -> Dict[str, Any]:
     """Record receiver feedback and correlate it. Returns the feedback document."""
-    if origin not in ("manual_upload", "manual_outcome"):
-        raise FeedbackError("BAD_ORIGIN", "feedback recorded here is manual_upload or manual_outcome; connectors are Phase E")
+    if origin not in ("manual_upload", "manual_outcome", "connector"):
+        raise FeedbackError("BAD_ORIGIN", "origin is manual_upload, manual_outcome or connector")
+    if origin == "connector" and text is None:
+        raise FeedbackError("BAD_UPLOAD", "connector feedback is the acknowledgment text fetched from the inbox")
     if origin == "manual_outcome":
         if not manual or not manual.get("message_refs"):
             raise FeedbackError("BAD_OUTCOME", "a manual outcome names the message references it concerns")

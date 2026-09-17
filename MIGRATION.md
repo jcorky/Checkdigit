@@ -160,6 +160,36 @@ must know about. Each entry names the version or phase that introduced it.
   `/workspace/`, `/workspace/job` and `/workspace/profiles` behind the admin dependency.
   They are not part of the public `dist/`.
 
+## Phase E
+
+### Workspace API additions
+
+- Connections: `POST|GET .../connections`, `GET .../connections/{id}`,
+  `POST .../connections/{id}/authorize` (administrator, note required), `.../verify`,
+  `.../enable`, `.../disable`, `.../poll` (inbound, analyst). Configuration values that
+  look like secrets are refused (`SECRET_IN_CONFIG`); keys ending in `_env` must name
+  environment variables.
+- Transmission: `POST .../approvals/{id}/authorize-transmission` (administrator),
+  `POST .../artifacts/{id}/transmit` (201; 409 with `TRANSMISSION_NOT_AUTHORIZED`,
+  `CONNECTION_NOT_ENABLED`, `PROFILE_MISMATCH`, `PROFILE_UNVERIFIED`),
+  `GET .../transmissions`, `POST .../transmissions/{id}/resend` (`RESEND_NOT_SAFE` without
+  a note when the receiver's duplicate handling is not `rejects_duplicates`).
+- Automation: `POST .../automation/tick`, `GET .../inbox`. The worker takes
+  `--automation [--automation-seconds N]` to poll enabled inbound connections and
+  recover stale sends on a schedule.
+- References and enrichment: `POST .../reference/owner-register` (administrator),
+  `GET .../reference`, `POST|GET .../enrichment`, `POST .../enrichment/{id}/authorize`,
+  `POST .../enrichment/{id}/run` (administrator), `GET .../enrichment/{id}/results`.
+- Receiver feedback accepts origin `connector` (set by the inbox automation only).
+- Delivery attempts carry `connection_id`, `origin`, `receipt`, `error`, `resend_of_id`
+  and `resend_note`; the contract fields are unchanged.
+
+### Schema
+
+- `meta.schema_version` 4: new columns on `delivery_attempts`; new tables
+  `connections`, `inbox_files`, `enrichment_requests`, `enrichment_results`,
+  `reference_snapshots`, `owner_register`. Existing databases migrate on connect.
+
 ### Batch
 
 - `report.csv` keeps its column order and gains a trailing `source_name` column.

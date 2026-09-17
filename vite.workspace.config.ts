@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 // never from the Cloudflare deployment. Output: checkdigit/workspace-ui/.
 const root = resolve(import.meta.dirname, "src", "workspace");
 
-export const workspacePages = ["index", "job", "profiles"] as const;
+export const workspacePages = ["index", "job", "profiles", "connections"] as const;
 
 export default defineConfig({
   root,

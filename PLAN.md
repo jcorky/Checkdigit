@@ -86,9 +86,18 @@ correlation and linked repair jobs; linked edits for synced occurrences; the wor
 pages served by the service. Verification beyond `fixture_tested` needs partner fixtures
 and implementation guides that are not in this repository.
 
-### Phase E: authorized operational connections and automation
+### Phase E: authorized operational connections and automation (delivered 2026-09-17, no partner reached)
 
 Depends on: D, customer authorization and verified receiver contracts.
+Delivered: connections with an authorization, verification and enablement lifecycle;
+transmission over enabled connections with a separate transmission authorization,
+outcome tracking and the resend policy; inbound automation over inbox connections
+(feeds under their profile and intent, acknowledgments correlated and repaired);
+reference snapshots feeding the prefix layer; enrichment requests with authorization,
+budgets and storage policies; the connections page. The filesystem transport is
+exercised end to end; sftp and https transports carry their code paths and report their
+limits, and no partner system, provider or paid service was contacted from this
+repository. Everything stays disabled until an administrator authorizes it.
 
 ## Dependency map
 

@@ -254,7 +254,7 @@ app.include_router(_build_workspace_router(admin_required, WORKSPACE_DIR,
 # served behind the same admin gate as the API they call; they never reach the
 # public deployment.
 WORKSPACE_UI_DIR = os.environ.get("CHECKDIGIT_WORKSPACE_UI", os.path.join(os.path.dirname(os.path.abspath(__file__)), "workspace-ui"))
-_WORKSPACE_PAGES = {"": "index.html", "index": "index.html", "job": "job.html", "profiles": "profiles.html"}
+_WORKSPACE_PAGES = {"": "index.html", "index": "index.html", "job": "job.html", "profiles": "profiles.html", "connections": "connections.html"}
 
 
 def _workspace_ui_file(path: str) -> str:

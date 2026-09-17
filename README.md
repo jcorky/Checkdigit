@@ -32,7 +32,7 @@ npm test          # parity suite, site checks, wrangler dev smoke
 npm run build     # type-check and build to dist/
 npm run preview   # serve dist/ with wrangler dev
 npm run vectors   # regenerate tests/vectors/*.json from the Python kernel
-npm run test:py   # Python kernel, substitution, contract, Phase A, workspace and Phase D tests + acceptance harness
+npm run test:py   # Python kernel, substitution, contract, Phase A, workspace, Phase D and Phase E tests + acceptance harness
 npm run test:all  # both suites
 npm run sync      # mirror the working tree to the OneDrive backup folder (manual; not run by the build)
 ```

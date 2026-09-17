@@ -175,11 +175,13 @@ message rules, streamed validation jobs (CSV, text, EDIFACT, X12, container XML)
 message syntax, schema, partner and lifecycle checks, visits and event assertions,
 cursor-paginated review with seven validation layers per observation, storage-backed
 approvals, re-analysis under the operator policy, streamed exports, atomic generation
-publication, manual deliveries and receiver feedback with linked repair, per-workspace
-roles, retention purge and storage budgets. State lives under
+publication, manual deliveries and receiver feedback with linked repair, authorized
+connections with transmission and inbox automation, reference snapshots and enrichment
+requests, per-workspace roles, retention purge and storage budgets. State lives under
 `CHECKDIGIT_WORKSPACE_DIR` (default `workspace-data`). Run a worker with
-`python3 -m workspace.runner workspace-data/workspace.db workspace-data`, or call
-`POST .../jobs/{id}/run` to execute queued work inside the request. The workspace
+`python3 -m workspace.runner workspace-data/workspace.db workspace-data --automation`
+(the flag polls enabled inbound connections and recovers stale sends), or call
+`POST .../jobs/{id}/run` and `POST .../automation/tick` to do the work inside a request. The workspace
 pages are built with `npm run build:workspace` (from the repository root) and served
 at `/workspace/` behind the admin gate. The recorded three-million-record CSV run and
 the one-million-record EDIFACT and XML runs are in `../BENCHMARK.md`; reproduce them
@@ -210,7 +212,7 @@ since the core is stdlib. Run the full sweep:
 
 ```bash
 python3 test_equipment_checkdigit.py; python3 test_substitution.py
-python3 test_contracts.py; python3 test_phase_a.py; python3 test_workspace.py; python3 test_workspace_phase_d.py
+python3 test_contracts.py; python3 test_phase_a.py; python3 test_workspace.py; python3 test_workspace_phase_d.py; python3 test_workspace_phase_e.py
 for p in 8 9 10 11 12 13 14 15 16 17 20 21 22 23 24 25; do python3 run_pass$p.py; done
 python3 run_acceptance.py
 ```
