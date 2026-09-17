@@ -8,3 +8,9 @@ checkdigit/out/
 checkdigit/.spa-build/
 checkdigit/static/
 .wrangler-*.log
+
+# Benchmark datasets and run directories (regenerate with workspace.bench)
+bench/*.csv
+bench/runs/
+workspace-data/
+bench/*.truth.json

@@ -45,6 +45,9 @@ import auth
 
 DB_PATH = os.environ.get("CHECKDIGIT_DB", "checkdigit.db")
 STATIC_DIR = os.environ.get("CHECKDIGIT_STATIC", "static")
+# Private workspace (durable jobs, generations, artifacts). Its database and
+# file stores live under this directory; the routes are admin-gated.
+WORKSPACE_DIR = os.environ.get("CHECKDIGIT_WORKSPACE_DIR", "workspace-data")
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CHECKDIGIT_CORS_ORIGINS", "*").split(",") if o.strip()]
 # Optional BIC owner-code register (CSV/JSON). Enables free-text corroboration
 # and owner enrichment. Obtain the authoritative register from bic-code.org; the
@@ -241,6 +244,9 @@ else:
             detail="Admin access is disabled on this server. Set "
                    "CHECKDIGIT_ADMIN_AUTH=google and configure Google sign-in "
                    "(see .env.example) to enable the dashboard.")
+
+from workspace.api import build_router as _build_workspace_router  # noqa: E402
+app.include_router(_build_workspace_router(admin_required, WORKSPACE_DIR))   # /v1/workspaces/...
 
 
 @app.on_event("startup")

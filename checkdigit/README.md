@@ -168,6 +168,16 @@ public URL — `DEPLOY_PUBLIC.md` spells out the TLS and AT&T-residential
 tradeoffs. Replace `owner_registry.seed.csv` (observational sample) with the
 real BIC register download.
 
+**Private workspace (large files, durable jobs).** `workspace/` adds admin-gated
+routes under `/v1/workspaces/{workspace}` for resumable uploads, declared import
+intents, streamed validation jobs, cursor-paginated review, storage-backed
+approvals, streamed exports and atomic generation publication. State lives under
+`CHECKDIGIT_WORKSPACE_DIR` (default `workspace-data`). Run a worker with
+`python3 -m workspace.runner workspace-data/workspace.db workspace-data`, or call
+`POST .../jobs/{id}/run` to execute queued work inside the request. The recorded
+three-million-record run is in `../BENCHMARK.md`; reproduce it with
+`python3 -m workspace.bench generate|run|verify`.
+
 The SPA (`checkdigit_app.jsx`) is a single-file React app with Correct,
 Dashboard, History, Containers, and Docs views: drop it into a Vite React
 scaffold and build into `static/` for same-origin serving; it also runs
@@ -193,6 +203,7 @@ since the core is stdlib. Run the full sweep:
 
 ```bash
 python3 test_equipment_checkdigit.py; python3 test_substitution.py
+python3 test_contracts.py; python3 test_phase_a.py; python3 test_workspace.py
 for p in 8 9 10 11 12 13 14 15 16 17 20 21 22 23 24 25; do python3 run_pass$p.py; done
 python3 run_acceptance.py
 ```

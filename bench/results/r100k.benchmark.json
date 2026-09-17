@@ -1,0 +1,245 @@
+{
+  "all_checks_pass": true,
+  "approval": {
+    "digest": "a4d41e77e2d87b710ee6166125304b7840903b14990d8c68ef8bc65fc1148091",
+    "id": "apr_1a0ad5006443474139349ed",
+    "selection_count": 11654
+  },
+  "artifact": {
+    "edits_applied": 11654,
+    "exceptions": 1985,
+    "id": "art_1a0ad500820d9f34276589a",
+    "sha256": "ec9788ebcc435962c9659c571664bf4032ef2a7598a1f7b13eb9352f5c391e1c",
+    "size_bytes": 4816840,
+    "state": "ready"
+  },
+  "cancellation": {
+    "records_committed": 80000,
+    "state": "cancelled",
+    "stop_latency_s": 0.168
+  },
+  "checks": {
+    "artifact_sha256_matches_truth": [
+      "ec9788ebcc435962c9659c571664bf4032ef2a7598a1f7b13eb9352f5c391e1c",
+      "ec9788ebcc435962c9659c571664bf4032ef2a7598a1f7b13eb9352f5c391e1c"
+    ],
+    "cancelled_state": [
+      "cancelled",
+      "cancelled"
+    ],
+    "delta_added": [
+      200,
+      200
+    ],
+    "delta_retired": [
+      0,
+      0
+    ],
+    "edits_match_truth": [
+      11654,
+      11654
+    ],
+    "fleet_after_delta": [
+      96485,
+      96485
+    ],
+    "fleet_after_race": [
+      96535,
+      96535
+    ],
+    "interrupted_export_not_ready": [
+      "failed",
+      "failed"
+    ],
+    "observations_equal_records": [
+      100000,
+      100000
+    ],
+    "one_publisher_wins": [
+      [
+        "BASELINE_CONFLICT",
+        "published"
+      ],
+      [
+        "BASELINE_CONFLICT",
+        "published"
+      ]
+    ],
+    "replay_is_noop": [
+      true,
+      true
+    ],
+    "retry_matches": [
+      "ec9788ebcc435962c9659c571664bf4032ef2a7598a1f7b13eb9352f5c391e1c",
+      "ec9788ebcc435962c9659c571664bf4032ef2a7598a1f7b13eb9352f5c391e1c"
+    ],
+    "untouched_after_delta": [
+      96285,
+      96285
+    ]
+  },
+  "concurrent_publish": {
+    "a": "published",
+    "b": "BASELINE_CONFLICT"
+  },
+  "dataset": {
+    "categories": {
+      "conflict": 524,
+      "duplicate": 1552,
+      "junk": 974,
+      "missing": 1011,
+      "valid": 84809,
+      "wrong_body": 3100,
+      "wrong_check": 8030
+    },
+    "expected_corrected_edits": 11654,
+    "expected_corrected_sha256": "ec9788ebcc435962c9659c571664bf4032ef2a7598a1f7b13eb9352f5c391e1c",
+    "path": "../bench/fleet_100k.csv",
+    "records": 100000,
+    "seed": 20260916,
+    "size_bytes": 4816840,
+    "source_sha256": "aafb2111bf4afcc68358634d7d16f05df9514b17dc10cc068e28411a5b60ac6b"
+  },
+  "delta": {
+    "effects": {
+      "added": 200,
+      "baseline": 96285,
+      "blocked": [],
+      "candidate": 200,
+      "changed": 0,
+      "complete": true,
+      "mode": "incremental",
+      "removed": 96285,
+      "retire": 0,
+      "retire_withheld": 0,
+      "unchanged": 0
+    },
+    "publish": {
+      "applied": {
+        "retired": 0,
+        "upserted": 200
+      },
+      "fleet_count": 96485,
+      "generation_id": "gen_1a0ad4ffcd81dacbeaf6420",
+      "published_at": "2026-09-17T03:01:35Z",
+      "replayed": false,
+      "state": "published",
+      "superseded": "gen_1a0ad4fec8faf25d929fbb1"
+    },
+    "untouched_rows_from_main": 96285
+  },
+  "generation": {
+    "effects": {
+      "added": 96285,
+      "baseline": 0,
+      "blocked": [],
+      "candidate": 96285,
+      "changed": 0,
+      "complete": false,
+      "mode": "incremental",
+      "removed": 0,
+      "retire": 0,
+      "retire_withheld": 0,
+      "unchanged": 0
+    },
+    "id": "gen_1a0ad4fec8faf25d929fbb1",
+    "state": "publishable"
+  },
+  "hardware": {
+    "cpu_count": 28,
+    "machine": "AMD64",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "python": "3.13.14",
+    "ram_bytes": 68375748608,
+    "sqlite": "3.50.4"
+  },
+  "interrupted_export": {
+    "error": "SIMULATED_INTERRUPTION",
+    "retry_sha256": "ec9788ebcc435962c9659c571664bf4032ef2a7598a1f7b13eb9352f5c391e1c",
+    "state_after_interruption": "failed",
+    "state_after_retry": "ready"
+  },
+  "job": {
+    "attempts": 2,
+    "blocking": [
+      "IDENTITY_COLLISION"
+    ],
+    "counters": {
+      "identifiers_missing": 1011,
+      "identifiers_total": 98989,
+      "identity_collisions": 1701,
+      "records_quarantined": 1985,
+      "records_total": 100000,
+      "status_corrected": 11654,
+      "status_invalid_structure": 974,
+      "status_valid": 86361
+    },
+    "findings": {
+      "IDENTITY_COLLISION": 1
+    },
+    "state": "awaiting_review"
+  },
+  "job_id": "job_1a0ad4fec8f4fd36b76487d",
+  "peak_working_set_bytes": 125448192,
+  "publish_main": {
+    "applied": {
+      "retired": 0,
+      "upserted": 96285
+    },
+    "fleet_count": 96285,
+    "generation_id": "gen_1a0ad4fec8faf25d929fbb1",
+    "published_at": "2026-09-17T03:01:35Z",
+    "replayed": false,
+    "state": "published",
+    "superseded": null
+  },
+  "query_latency_ms": {
+    "count_corrected": {
+      "ms": 0.59,
+      "n": 11654
+    },
+    "invalid_structure": {
+      "p50": 1.71,
+      "p95": 2.36,
+      "pages": 10
+    },
+    "prefix_MSKU": {
+      "p50": 1.13,
+      "p95": 1.37,
+      "pages": 25
+    },
+    "status_corrected": {
+      "p50": 0.91,
+      "p95": 1.05,
+      "pages": 25
+    },
+    "unfiltered": {
+      "p50": 0.75,
+      "p95": 1.3,
+      "pages": 25
+    }
+  },
+  "steps": {
+    "approve_selection_s": 0.378,
+    "attempts": 2,
+    "delta_ingest_compare_s": 0.053,
+    "delta_publish_s": 0.003,
+    "export_s": 0.129,
+    "ingest_validate_s": 3.881,
+    "interrupted_export_and_retry_s": 0.143,
+    "publish_main_s": 0.15,
+    "register_source_s": 0.013,
+    "simulated_crash": "simulated crash after 40000 records"
+  },
+  "storage_bytes": {
+    "artifacts": 11823652,
+    "database": 81211392,
+    "sources": 4826833
+  },
+  "throughput": {
+    "mib_per_s": 1.18,
+    "records_per_s": 25766.6
+  },
+  "total_s": 7.193
+}

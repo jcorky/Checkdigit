@@ -56,6 +56,34 @@ must know about. Each entry names the version or phase that introduced it.
   being computed (or, for an X12 non-ASCII initial, raising). The TypeScript port always
   behaved this way; the vectors now cover it.
 
+## Phase C
+
+### Workspace API (`/v1/workspaces/{workspace}/...`)
+
+- New admin-gated routes mounted by `checkdigit/api.py`: resumable uploads
+  (`POST .../uploads`, `PUT .../uploads/{id}?offset=`, `POST .../uploads/{id}/complete`),
+  `POST .../intents`, `POST .../jobs` (202), `POST .../jobs/{id}/run` (inline worker),
+  `POST .../jobs/{id}/cancel`, `GET .../jobs/{id}`, `GET .../jobs/{id}/observations` and
+  `.../findings` (cursor pagination: `cursor`, `limit`, `next_cursor`),
+  `POST .../jobs/{id}/decisions`, `GET .../approvals/{id}`, `POST .../jobs/{id}/reanalyze`,
+  `POST .../jobs/{id}/exports` (201), `GET .../artifacts/{id}` and
+  `.../artifacts/{id}/files/{corrected|exceptions|ledger|manifest}`,
+  `GET .../generations/{id}`, `.../generations/{id}/members`,
+  `POST .../generations/{id}/publish`, `GET .../fleet`, `GET .../{workspace}`.
+- Conflicts answer 409 with `{"code": ..., "detail": ...}` using the shared finding codes
+  (`SELECTION_DRIFT`, `APPROVAL_STALE`, `BASELINE_CONFLICT`, `PUBLICATION_BLOCKED`, ...).
+  Entities from another workspace answer 404.
+- Writes that must be safe to retry take `operation_id` (decisions, publish) or
+  `idempotency_key` (exports) and replay the recorded outcome with `replayed: true`.
+
+### Environment and storage
+
+- `CHECKDIGIT_WORKSPACE_DIR` (default `workspace-data`) holds `workspace.db` (WAL) and
+  the `sources/`, `uploads/` and `artifacts/` stores. It is separate from
+  `CHECKDIGIT_DB`; nothing from the public history database is read by the workspace.
+- A worker process can run `python3 -m workspace.runner <db> <dir>`; without one, the
+  `.../jobs/{id}/run` route executes queued work inside the request.
+
 ### Batch
 
 - `report.csv` keeps its column order and gains a trailing `source_name` column.

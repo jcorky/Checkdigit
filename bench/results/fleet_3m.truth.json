@@ -1,0 +1,17 @@
+{
+  "categories": {
+    "conflict": 14943,
+    "duplicate": 45065,
+    "junk": 30228,
+    "missing": 29834,
+    "valid": 2549703,
+    "wrong_body": 89882,
+    "wrong_check": 240345
+  },
+  "expected_corrected_edits": 345170,
+  "expected_corrected_sha256": "0688393590b711208da960f4fe35aa376da75943bc7ffedbce97b6e6436f3a36",
+  "records": 3000000,
+  "seed": 20260916,
+  "size_bytes": 149937153,
+  "source_sha256": "598039f9e5d5cedf93fb083a65b2c0d32d6d5cd695a68ca72c65699be320619b"
+}

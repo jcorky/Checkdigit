@@ -117,8 +117,8 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
 - OPEN: Terminal system profiles (Navis N4 versions, Tideworks, CyberLogitec OPUS, RBS
   TOPS) need vendor specifications and fixtures before any profile can leave the
   `unverified` state.
-- OPEN: Three-million-record processing is unmeasured; the current parsers read whole
-  files. Phase C builds the streaming and durable-job path and the benchmark.
+- Resolved in Phase C: three-million-record processing is measured on the streaming
+  workspace path (`BENCHMARK.md`); the whole-file parsers remain behind the upload limit.
 - OPEN: Lighthouse and the deployed-URL checks for the Electric Yard pages are not run
   until a deployment is authorized.
 - OPEN: At 360 px the eleven cells are about 19 px wide, below a comfortable touch
@@ -147,6 +147,38 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
 - OPEN: screenshots of the Files, Compare and Reference pages could not be captured
   through the Browser pane in this session (timeouts while hidden); states were verified
   through the DOM.
+
+## Phase C notes
+
+- The workspace keeps SQLite (WAL, one file per workspace directory). The recorded run
+  fits one host with a 256 MiB page cache per connection
+  (`CHECKDIGIT_WORKSPACE_CACHE_KIB`). The first three-million attempt ran with SQLite's
+  default 2 MiB cache and slowed from about 20,000 to under 5,000 records per second
+  once the random-order key indexes outgrew the cache; the cache size was raised and the
+  run repeated (`BENCHMARK.md`). A move to another store needs a measured reason.
+- Job resumption re-streams the file from the start and skips records at or below the
+  checkpointed record number rather than seeking to a byte offset; character offsets and
+  byte offsets do not map one to one under UTF-8. The rescan costs one read of the file
+  per restart and keeps every batch idempotent.
+- Identity collisions (one identifier with differing attributes) are computed from
+  storage after streaming, so a resumed job sees pairs that straddle the crash.
+- OPEN: X12 and container XML are not on the streaming path. They stay on the whole-file
+  service path behind the 5 MiB upload limit; a streaming XML scanner needs the element
+  boundary work described in the brief and fixtures larger than the ones held.
+- OPEN: Disk pressure is not simulated. Artifact builds write to a temporary file and
+  rename, so a failed write leaves the artifact `failed` and never `ready`; an actual
+  out-of-space run has not been recorded.
+- OPEN: The workspace has no user interface and no roles beyond the admin gate
+  (`user_roles` is stored but not enforced). The API is the surface; the Electric Yard
+  workspace pages are Phase D work alongside the profile and lifecycle features.
+- OPEN: The benchmark worker runs in the same process as the API when the
+  `.../jobs/{id}/run` route is used. Production use needs the separate worker process
+  (`python3 -m workspace.runner`), which the lease protocol already supports; a
+  multi-process run against one database is covered by the concurrent-publisher and
+  lease tests, not by a recorded multi-worker benchmark.
+- On the mapped-column CSV path every non-empty cell of a declared identifier column is
+  evaluated (kernel normalization of spaces and hyphens); the whole-file `/correct` CSV
+  path locates bare `[A-Z]{4}[0-9]{7}` tokens only. Recorded in `CAPABILITIES.md`.
 
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 

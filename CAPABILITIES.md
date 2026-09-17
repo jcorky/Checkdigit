@@ -55,8 +55,14 @@ deployment). Anything not marked is not claimed.
 | Watch folder / SFTP inbox | implemented, tested (smoke) | acceptance A7; not durable |
 | BAPLIE and intermodal scene models and SVG rendering | implemented, not connected to the root build | `run_pass23`, `run_pass24` |
 | Shared contract data | implemented, tested both sides | `test_contracts.py`, `tests/contracts.test.ts` |
-| Durable jobs, workspaces, generations, approvals with storage-backed selections, artifacts, feedback | **contracts only**; the local inspector implements the browser-side model | `contracts/`, `src/lib/localjob.ts` |
-| Three-million-record processing | not implemented, not measured | Phase C |
+| Private workspace (`checkdigit/workspace/`): immutable source store, import intents with idempotent fingerprints, durable job queue with leases, heartbeats, checkpoints, retries, cancellation and crash recovery without double counting | implemented, tested | `test_workspace.py` |
+| Streaming readers that keep decoder and parser state across chunk boundaries: UTF-8 multibyte sequences, CSV quoted newlines and escaped quotes, CRLF split across chunks, EDIFACT release characters and a UNA header split across chunks | implemented, tested (every chunk size from 1 upward against the standard library parser) | `test_workspace.py` |
+| Staged generations: candidate memberships, comparison with the published fleet, completeness gates (declared count, parse completion, quarantine), empty-snapshot decision, retirement withheld for partial or quarantined snapshots, explicit removal, change manifest hash, atomic publication with baseline check, replay by operation id, two publishers cannot both win | implemented, tested | `test_workspace.py`, `bench/` runs |
+| Storage-backed selection manifests with expected-count check, approval bound to the change-set fingerprint, stale on re-analysis, optimistic version check per member, export refused on drift | implemented, tested | `test_workspace.py` |
+| Streamed corrected export with per-edit source verification, temporary file and rename, exceptions and ledger CSV, manifest JSON, artifact row switched to ready only after the rename, interrupted build never served, retry by idempotency key | implemented, tested; output byte-identical to the whole-file correctors | `test_workspace.py` |
+| Versioned workspace API under `/v1/workspaces/{workspace}` (resumable uploads, intents, jobs, cursor-paginated observations and findings, decisions, approvals, exports, artifact files, generations, fleet), admin-gated, workspace-scoped lookups | implemented, tested | `test_workspace.py` |
+| Three-million-record fleet path (CSV) | measured; see `BENCHMARK.md` for the recorded run, the restart, cancellation, concurrent-publisher and interrupted-export evidence and the independent verification | `workspace/bench.py` |
+| Workspace user interface, roles beyond the admin gate, delivery and receiver feedback | not built | Phases D and E |
 
 ## Format catalogue
 
@@ -67,20 +73,22 @@ the Python path.
 
 | Format | Detect | Inspect | Validate | Edit | Export | Re-import | Local | Service | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| Plain text | yes (catch-all) | yes | no | yes | yes | yes | yes | yes | uppercase `[A-Z]{4}[0-9]{7}` only in files; free text is flagged unless trusted |
-| CSV / TSV | opt-in mapping | yes | contract checks only | yes | yes | yes | yes | yes | RFC 4180 quoting, sniffed delimiter; whole-file parse; leading zeros preserved as text |
+| Plain text | yes (catch-all) | yes | no | yes | yes | yes | yes | yes, streamed | uppercase `[A-Z]{4}[0-9]{7}` only in files; free text is flagged unless trusted |
+| CSV / TSV | opt-in mapping | yes | contract checks only | yes | yes | yes | yes | yes, streamed | RFC 4180 quoting, sniffed delimiter; leading zeros preserved as text. Whole-file path locates bare 4+7 tokens only; the workspace path evaluates every cell of a mapped column (kernel normalization of spaces and hyphens, whole trimmed cell as the splice span) |
 | Fixed-width | opt-in ranges | yes | no | yes | yes | yes | yes | yes | 1-based inclusive ranges; whole-file parse |
 | XLSX | yes | yes | no | yes | yes (ZIP re-assembled) | yes | no | yes | formula-cached values and split runs flagged; timestamps not preserved |
 | JSON / JSONL | no | no | no | no | no | no | no | no | not supported |
 | Generic XML | only recognized container XML | no | no | no | no | no | no | no | other XML is refused, not scanned |
-| Navis N4 SNX / container XML | yes (structural) | yes | no | yes | yes | yes | yes | yes | DOCTYPE and ENTITY refused; integrity check between parsed and located counts |
-| UN/EDIFACT | yes | yes (EQD/C237, qualifier CN) | no | yes | yes | yes | yes | yes | no MIG validation, no envelope or count checks |
-| ANSI X12 | yes | yes (N7, N9*EQ) | no | yes | yes | yes | yes | yes | absent N7-18 flagged; an empty slot insertion lengthens the file by one byte |
+| Navis N4 SNX / container XML | yes (structural) | yes | no | yes | yes | yes | yes | yes (whole file) | DOCTYPE and ENTITY refused; integrity check between parsed and located counts; not on the workspace streaming path |
+| UN/EDIFACT | yes | yes (EQD/C237, qualifier CN) | no | yes | yes | yes | yes | yes, streamed | no MIG validation, no envelope or count checks |
+| ANSI X12 | yes | yes (N7, N9*EQ) | no | yes | yes | yes | yes | yes (whole file) | absent N7-18 flagged; an empty slot insertion lengthens the file by one byte; not on the workspace streaming path |
 | ZIP batch | yes | per member | n/a | per member | yes | per member | no | yes | budgets in `limits.py`; nested archives never expanded |
 | GZIP, XLS/XLSB/ODS, PDF, images | rejected loudly | no | no | no | no | no | no | no | convert to a supported format first |
 
-Excel worksheets hold at most 1,048,576 rows; a three-million-record export will need
-partitioned files or another format when that path is built.
+Excel worksheets hold at most 1,048,576 rows; a three-million-record export is written
+as CSV by the workspace path. "Streamed" means the workspace job reads the file in
+fixed-size chunks and never holds it in memory; the whole-file path stays behind the
+5 MiB upload limit of `/correct`.
 
 ## Terminal systems
 

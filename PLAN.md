@@ -53,12 +53,21 @@ reference library. Application semantics other than comparison stay comparison-o
 (recorded as `IMPORT_INTENT_UNRESOLVED`). Not yet: Excel in the browser, saved mapping
 recipes, offline shell.
 
-### Phase C: private durable-job workspace and the three-million-record path
+### Phase C: private durable-job workspace and the three-million-record path (delivered 2026-09-16)
 
 Depends on: B (review model), A (contracts).
-Durable jobs, staged snapshot/delta reconciliation, storage-backed selections,
-optimistic version checks, atomic generation and artifact publication, recorded
-benchmarks with restart and concurrent-update tests.
+Delivered in `checkdigit/workspace/`: SQLite-backed workspace with an immutable source
+store, import intents, a durable job queue (leases, heartbeats, checkpoints, retries,
+cancellation, crash recovery with idempotent batches), streaming readers for CSV, plain
+text and EDIFACT that keep decoder and parser state across chunk boundaries, staged
+generations with completeness gates and atomic publication onto a materialized fleet
+table, storage-backed selection manifests with expected-count and version checks,
+streamed export with verified splices and atomic artifact publication, a versioned API
+with resumable uploads and cursor pagination, and a reproducible benchmark with an
+independent verifier (`BENCHMARK.md`). SQLite stays: the measured run fits one host.
+Not in this phase: X12 and container XML on the streaming path (whole-file only, behind
+the upload limit), a workspace user interface, roles beyond the admin gate, disk-pressure
+simulation.
 
 ### Phase D: multi-terminal profiles, EDI/XML validation, lifecycle, visits, feedback
 
