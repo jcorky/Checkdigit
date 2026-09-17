@@ -53,9 +53,15 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
 
 ## Open
 
-- OPEN: Custom Domain cost and per-Worker count are not stated on the custom-domains
-  page. The kickoff assumption is "free on a zone already on Cloudflare". Confirm in
-  the dashboard when binding the domain; stop if a charge is shown.
+- Resolved 2026-09-17: the site is deployed to Workers Static Assets and both
+  `thecheckdigit.com` and `www.thecheckdigit.com` are Custom Domains on the Worker,
+  created by `wrangler deploy` from the `routes` entries in `wrangler.jsonc`. No charge
+  was presented; the account stays on the free plan. The former tunnel CNAME for the
+  apex and the old `www` A record were deleted by the owner first. The `workers.dev`
+  route is disabled because the config does not enable it.
+- OPEN: Lighthouse has not been run against `https://thecheckdigit.com` yet; it needs a
+  Chrome-driven run (`npx lighthouse`) or PageSpeed Insights, both of which fetch tooling
+  or call an external service and are left for an explicit instruction.
 - OPEN: EN 13044 (ILU) check-digit arithmetic is unconfirmed against the normative
   text. Checked 2026-09-16: UIRR (uirr.com/services/ilu-code) states the ILU code is
   "fully compatible with the worldwide BIC-code used for (maritime) containers according

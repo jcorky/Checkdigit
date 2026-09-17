@@ -44,6 +44,18 @@ Cloudflare creates the records when the Custom Domain is added.
 A Custom Domain cannot be added to a hostname that already has a CNAME record. If
 either hostname has one, remove that record first and note it here.
 
+### How it was done (2026-09-17)
+
+The Custom Domains are declared as `routes` with `custom_domain: true` in
+`wrangler.jsonc`, so `wrangler deploy` creates them without the dashboard steps above.
+Before that deploy the owner deleted the two records the zone still carried from the
+earlier self-hosted setup: the apex CNAME to a Cloudflare Tunnel and an A record for
+`www`. The first deploy without routes served the site at
+`thecheckdigit.jayde-cork.workers.dev`; the second deploy with routes attached both
+hostnames, and every route was checked over HTTPS on each. With `routes` declared and
+`workers_dev` absent from the config, the `workers.dev` address is disabled. The
+tunnel itself was left in place for `app.thecheckdigit.com`.
+
 ## Rollback
 
 `wrangler deploy` keeps previous versions. To roll back:

@@ -2,6 +2,12 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "thecheckdigit",
   "compatibility_date": "2026-09-16",
+  // Custom Domains on the Worker (free; Cloudflare creates the DNS records and
+  // certificate). The hostnames must not carry other DNS records first.
+  "routes": [
+    { "pattern": "thecheckdigit.com", "custom_domain": true },
+    { "pattern": "www.thecheckdigit.com", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./dist",
     "html_handling": "auto-trailing-slash",
