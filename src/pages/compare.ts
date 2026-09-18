@@ -88,9 +88,14 @@ function render(): void {
     `Comparison complete: ${total} distinct ${total === 1 ? "number" : "numbers"}. ` +
     `${result.counts["only_a"] ?? 0} only in ${aL}, ${result.counts["only_b"] ?? 0} only in ${bL}, ${result.counts["both"] ?? 0} in both.`;
   if (url) URL.revokeObjectURL(url);
-  url = URL.createObjectURL(new Blob([compareCsv(result, aL, bL)], { type: "text/csv" }));
+  const showingAll = filter === "all";
+  url = URL.createObjectURL(new Blob([compareCsv({ ...result, entries: shown }, aL, bL)], { type: "text/csv" }));
   el.csv.href = url;
-  el.csv.hidden = false;
+  el.csv.download = showingAll ? "checkdigit-compare.csv" : "checkdigit-compare-filtered.csv";
+  el.csv.textContent = showingAll
+    ? `Download all ${result.entries.length.toLocaleString()} results (CSV)`
+    : `Download ${shown.length.toLocaleString()} filtered result${shown.length === 1 ? "" : "s"} (CSV)`;
+  el.csv.hidden = shown.length === 0;
 }
 
 function badgeFor(outcome: string): string {
@@ -115,8 +120,26 @@ function invalidate(): void {
 }
 
 el.run.addEventListener("click", () => {
-  const a = sideFromText(el.aLabel.value.trim() || "First list", el.a.value);
-  const b = sideFromText(el.bLabel.value.trim() || "Second list", el.b.value);
+  const aL = el.aLabel.value.trim() || "First list";
+  const bL = el.bLabel.value.trim() || "Second list";
+  const a = sideFromText(aL, el.a.value);
+  const b = sideFromText(bL, el.b.value);
+  // A side whose input was too large to read in full cannot be compared without
+  // misrepresenting it as complete. Refuse rather than compare partial rows.
+  const refused = [a.refused ? aL : null, b.refused ? bL : null].filter(Boolean) as string[];
+  if (refused.length) {
+    result = null;
+    el.results.hidden = true;
+    el.csv.hidden = true;
+    if (url) {
+      URL.revokeObjectURL(url);
+      url = "";
+    }
+    const cap = (a.refused ?? b.refused)?.cap ?? 10000;
+    el.staleNote.hidden = false;
+    el.staleNote.innerHTML = html`<span class="notice-error">${refused.join(" and ")} ${refused.length === 1 ? "has" : "have"} more than ${cap.toLocaleString()} numbers, more than this comparison reads at once. Split the ${refused.length === 1 ? "list" : "lists"} or use the Files inspector, then compare again.</span>`;
+    return;
+  }
   result = compare(a, b, el.key.value as CompareKey);
   el.results.hidden = false;
   el.staleNote.hidden = true;

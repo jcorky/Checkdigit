@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import { compare, compareCsv, outcomeLabel, sideFromText } from "../src/lib/compare";
 
+describe("a side too large to read in full is reported as refused", () => {
+  it("carries the refusal so the page can refuse rather than compare partial rows", () => {
+    const big = Array.from({ length: 10_001 }, () => "CSQU3054383").join("\n");
+    const side = sideFromText("Big feed", big);
+    expect(side.refused).toEqual({ count: 10_001, cap: 10_000 });
+    const ok = sideFromText("Small", "CSQU3054383\nMSKU1234565");
+    expect(ok.refused).toBeNull();
+  });
+});
+
 describe("outcome labels are descriptive and neutral", () => {
   it("names each membership outcome in plain language, repeating the list names", () => {
     expect(outcomeLabel("only_a", "Terminal feed", "Fleet master")).toBe("Only in Terminal feed");

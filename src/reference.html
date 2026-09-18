@@ -22,6 +22,7 @@
     </a>
     <nav aria-label="Site">
       <a class="navlink" href="/check">Check</a>
+      <a class="navlink" href="/bulk">List</a>
       <a class="navlink" href="/files">Files</a>
       <a class="navlink" href="/compare">Compare</a>
       <a class="navlink" href="/reference" aria-current="page">Reference</a>
@@ -56,7 +57,10 @@
     </div>
     <div class="ref-grid">
       <nav class="ref-nav" id="ref-nav" aria-label="Articles"></nav>
-      <div id="articles"></div>
+      <div>
+        <div id="articles"></div>
+        <p class="empty-state" id="ref-empty" hidden><span class="stripes" aria-hidden="true"></span><span id="ref-empty-text"></span></p>
+      </div>
     </div>
   </div>
 </main>

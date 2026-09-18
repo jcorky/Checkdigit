@@ -472,9 +472,12 @@ header.bar :focus-visible {
   display: none;
 }
 
-.notice .notice-error { color: var(--err-text); }
-.notice .notice-warn { color: var(--warn-text); }
-.notice .notice-info { color: var(--text); }
+.notice .notice-error,
+.notice-error { color: var(--err-text); }
+.notice .notice-warn,
+.notice-warn { color: var(--warn-text); }
+.notice .notice-info,
+.notice-info { color: var(--text); }
 
 .breakdown {
   margin-top: 14px;

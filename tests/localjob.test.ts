@@ -52,6 +52,18 @@ describe("proposals carry evidence and context", () => {
     expect(proposals.every((p) => p.state === "proposed")).toBe(true);
   });
 
+  it("building the export twice from the same decisions yields identical edits", () => {
+    const { proposals } = analyse(true);
+    const approved = decide(proposals, proposals.filter((p) => p.kind === "correction").map((p) => p.id), "approve").proposals;
+    const first = applyApproved(TEXT, approved);
+    // approving does not change decision state, so a second build sees the same set
+    expect(approved.filter((p) => p.kind === "correction").every((p) => p.state === "approved")).toBe(true);
+    const second = applyApproved(TEXT, approved);
+    expect(second.edits).toEqual(first.edits);
+    expect(second.text).toBe(first.text);
+    expect(first.text).not.toBe(TEXT);
+  });
+
   it("free text without trust yields flags, not corrections", () => {
     const intent = { ...defaultIntent(), scope: { kind: "source_fleet" as const, value: "x" } };
     const [det, report] = correct("note CSQU3054384 here", { trust: false });

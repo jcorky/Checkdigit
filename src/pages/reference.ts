@@ -273,6 +273,8 @@ quick.addEventListener("input", () => {
 // search
 const search = byId<HTMLInputElement>("search");
 const count = byId("search-count");
+const refEmpty = byId("ref-empty");
+const refEmptyText = byId("ref-empty-text");
 search.addEventListener("input", () => {
   const q = search.value.trim().toLowerCase();
   let shown = 0;
@@ -282,4 +284,10 @@ search.addEventListener("input", () => {
     if (hit) shown++;
   }
   count.textContent = q ? `${shown} of ${ARTICLES.length} articles` : "";
+  if (q && shown === 0) {
+    refEmptyText.textContent = `No articles match “${search.value.trim()}”. Clear the search to see all ${ARTICLES.length}.`;
+    refEmpty.hidden = false;
+  } else {
+    refEmpty.hidden = true;
+  }
 });

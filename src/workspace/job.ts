@@ -117,7 +117,8 @@ async function loadApprovals(): Promise<void> {
       ? html`<button class="btn btn-ghost btn-small" data-authorize="${a.id}" type="button">Authorize transmission</button>` : "",
   ]), "No decisions yet.");
   byId("approvals").querySelectorAll<HTMLButtonElement>("button[data-authorize]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
-    const note = prompt("Customer's transmission authorization (who, ticket, date):") ?? "";
+    const note = prompt("Customer's transmission authorization (who, ticket, date):");
+    if (note === null) return;
     await post(`/approvals/${b.dataset.authorize}/authorize-transmission`, { note });
     notice(msg, "ok", "Transmission authorized for this approval's edits.");
     await loadApprovals();
@@ -153,7 +154,8 @@ async function loadApprovals(): Promise<void> {
   byId("artifacts").querySelectorAll<HTMLButtonElement>("button[data-deliver]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
     const destination = prompt("Destination (as delivered, for the record):");
     if (!destination) return;
-    const st = prompt("Outcome: delivery_confirmed, failed or outcome_unknown", "delivery_confirmed") ?? "";
+    const st = prompt("Outcome: delivery_confirmed, failed or outcome_unknown", "delivery_confirmed");
+    if (st === null) return;
     const evidence = st === "delivery_confirmed" ? prompt("Evidence (transfer log line, receipt reference):") ?? "" : "";
     const ref = prompt("Interchange control reference sent (optional, correlates feedback):") ?? "";
     await post(`/artifacts/${b.dataset.deliver}/deliveries`, { destination, state: st, idempotency_key: `ui-${Date.now()}`, outcome_evidence: evidence || null, control_reference: ref || null });

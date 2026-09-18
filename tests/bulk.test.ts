@@ -1,6 +1,44 @@
 import { describe, expect, it } from "vitest";
 
-import { BULK_CAP, BULK_COLUMNS, extractTokens, rowRecord, summarize, toCsv, toJson } from "../src/lib/bulk";
+import { BULK_CAP, BULK_COLUMNS, extractTokens, rowRecord, summarize, toCsv, toJson, validateEntries } from "../src/lib/bulk";
+
+describe("list validation mode accounts for every supplied entry", () => {
+  it("produces a row for each entry, including unrecognized ones", () => {
+    const res = validateEntries("CSQU3054383\nCSQU30543X3\nwrong");
+    expect(res.rows.map((r) => r.as_found)).toEqual(["CSQU3054383", "CSQU30543X3", "wrong"]);
+    const structure = res.rows.map((r) => r.validation.layers.find((l) => l.layer === "structure")?.state);
+    expect(structure).toEqual(["passed", "failed", "failed"]);
+    const s = summarize(res.rows);
+    expect(s).toMatchObject({ total: 3, check_passed: 1, structure_failed: 2 });
+  });
+
+  it("preserves source line and original text", () => {
+    const res = validateEntries("a\n\n  CSQU3054383  \nx,y");
+    expect(res.rows.map((r) => [r.line, r.as_found])).toEqual([
+      [1, "a"],
+      [3, "CSQU3054383"],
+      [4, "x"],
+      [4, "y"],
+    ]);
+  });
+
+  it("refuses above the cap rather than silently truncating", () => {
+    const many = Array.from({ length: BULK_CAP + 3 }, () => "wrong").join("\n");
+    const res = validateEntries(many);
+    expect(res.refused).toEqual({ count: BULK_CAP + 3, cap: BULK_CAP });
+  });
+});
+
+describe("extraction mode reports what it set aside", () => {
+  it("counts cells that held no identifier and samples them", () => {
+    const res = extractTokens("ref CSQU3054383 here\nnote: nothing\nMSKU1234565");
+    expect(res.rows.map((r) => r.normalized)).toEqual(["CSQU3054383", "MSKU1234565"]);
+    expect(res.excluded).toEqual({ count: 1, samples: ["note: nothing"] });
+  });
+  it("has no excluded record when every cell yields a token", () => {
+    expect(extractTokens("CSQU3054383\nMSKU1234565").excluded).toBeNull();
+  });
+});
 
 describe("several-number paste", () => {
   it("extracts one token per line or cell and normalizes visibly", () => {

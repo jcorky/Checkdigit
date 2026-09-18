@@ -20,6 +20,15 @@ describe("hidden state is enforced globally", () => {
   });
 });
 
+describe("the headline uses a readable colour, not the low-contrast lime", () => {
+  const css = read("styles/site.css");
+  it("no heading colours its text with the lime brand token", () => {
+    // the light-mode lime headline measured ~1.16:1 on the off-white background
+    expect(css).not.toMatch(/\bh1[^{}]*\{[^}]*color:\s*var\(--lime\)/);
+    expect(css).not.toContain(".hero h1 em");
+  });
+});
+
 describe("check page announces results and keeps a persistent live region", () => {
   const htmlText = read("check.html");
   const ts = read("pages/check.ts");
@@ -54,6 +63,28 @@ describe("compare page uses descriptive list names and labelled controls", () =>
   });
 });
 
+describe("files page: idempotent export, source-scoped state, keyboard", () => {
+  const ts = read("pages/files.ts");
+  it("does not mutate approved decisions when building, so rebuilds are identical", () => {
+    expect(ts).not.toContain('state: "applied_to_draft"');
+    expect(ts).toContain("invalidateExport");
+  });
+  it("re-derives the mapping and clears review state for a new source", () => {
+    const setSource = ts.slice(ts.indexOf("async function setSource"), ts.indexOf("el.file.addEventListener"));
+    expect(setSource).toContain("state.mapping = null");
+    expect(setSource).toContain("state.approvals = []");
+  });
+  it("lets nested action buttons handle their own keys", () => {
+    expect(ts).toContain("if (ev.target !== tr) return;");
+    expect(ts).toContain("restoreRowFocus");
+  });
+  it("uses consistent decision labels and no red FAILED for kept originals", () => {
+    expect(ts).toContain("Approve change");
+    expect(ts).toContain("Review later");
+    expect(ts).toContain('rejected: ["neutral", "Kept original"]');
+  });
+});
+
 describe("files page keeps a simple local check simple", () => {
   const htmlText = read("files.html");
   const advancedIndex = htmlText.indexOf('id="advanced"');
@@ -77,6 +108,34 @@ describe("files page keeps a simple local check simple", () => {
   });
 });
 
+describe("compare and check page correctness guards", () => {
+  const compareTs = read("pages/compare.ts");
+  const checkTs = read("pages/check.ts");
+  it("compare refuses when a side was read only partially", () => {
+    expect(compareTs).toContain("a.refused");
+    expect(compareTs).toContain("b.refused");
+  });
+  it("compare export names its scope", () => {
+    expect(compareTs).toContain("Download all");
+    expect(compareTs).toContain("filtered result");
+  });
+  it("check share fragment carries the selected scheme", () => {
+    expect(checkTs).toContain("function fragmentFor");
+    expect(checkTs).toMatch(/scheme !== "auto"/);
+  });
+  it("check keeps a matching check digit from suppressing a category warning", () => {
+    expect(checkTs).toContain("category needs review");
+  });
+});
+
+describe("homepage routes unsupported input instead of showing a stale result", () => {
+  const indexTs = read("pages/index.ts");
+  it("clears the segmented result and routes a UIC number to the full checker", () => {
+    expect(indexTs).toContain("handleUnsupported");
+    expect(indexTs).toMatch(/\/check#uic:/);
+  });
+});
+
 describe("reference page names the task and offers a compact selector", () => {
   const htmlText = read("reference.html");
   it("uses a descriptive heading and a topic selector", () => {
@@ -88,11 +147,16 @@ describe("reference page names the task and offers a compact selector", () => {
 describe("homepage names the task and starts empty", () => {
   const htmlText = read("index.html");
   const ts = read("pages/index.ts");
-  it("leads with a task-naming headline and task cards", () => {
+  it("leads with a task-naming headline and task cards for every entry point", () => {
     expect(htmlText).toContain("Check container and equipment numbers.");
     expect(htmlText).toContain("Check a number");
-    expect(htmlText).toContain("Check a file");
+    expect(htmlText).toContain("Check a list");
+    expect(htmlText).toContain("Review a file");
     expect(htmlText).toContain("Compare lists");
+    expect(htmlText).toContain("Guides &amp; reference");
+  });
+  it("exposes the list checker in the main navigation", () => {
+    expect(htmlText).toMatch(/<a class="navlink" href="\/bulk">List<\/a>/);
   });
   it("starts empty and offers an explicit example action", () => {
     expect(ts).toContain('cellsFrom("")');

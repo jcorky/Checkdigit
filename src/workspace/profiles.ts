@@ -27,8 +27,10 @@ async function loadProfiles(): Promise<void> {
     await loadProfiles();
   })));
   byId("profiles").querySelectorAll<HTMLButtonElement>("button[data-verify]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
-    const st = prompt("Verification state: partner_tested, production_enabled or unverified", "partner_tested") ?? "";
-    const note = prompt("Evidence note (partner test, ticket, date):") ?? "";
+    const st = prompt("Verification state: partner_tested, production_enabled or unverified", "partner_tested");
+    if (st === null) return;
+    const note = prompt("Evidence note (partner test, ticket, date):");
+    if (note === null) return;
     await post(`/profiles/${b.dataset.verify}/verification`, { state: st, note });
     await loadProfiles();
   })));

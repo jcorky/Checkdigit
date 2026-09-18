@@ -35,7 +35,8 @@ async function loadConnections(): Promise<void> {
     const id = b.dataset.id;
     switch (b.dataset.act) {
       case "authorize": {
-        const note = prompt("Customer authorization on record (contract, ticket, date):") ?? "";
+        const note = prompt("Customer authorization on record (contract, ticket, date):");
+        if (note === null) return;
         await post(`/connections/${id}/authorize`, { note });
         break;
       }
@@ -45,7 +46,12 @@ async function loadConnections(): Promise<void> {
         break;
       }
       case "enable": await post(`/connections/${id}/enable`); break;
-      case "disable": await post(`/connections/${id}/disable`, { note: prompt("Reason:") ?? "" }); break;
+      case "disable": {
+        const reason = prompt("Reason:");
+        if (reason === null) return;
+        await post(`/connections/${id}/disable`, { note: reason });
+        break;
+      }
       case "poll": {
         const out = await post<{ new: number; jobs: string[]; feedback: string[]; repairs: string[] }>(`/connections/${id}/poll`);
         notice(msg, "ok", `Inbox polled: ${out.new} new file(s), ${out.jobs.length} job(s), ${out.feedback.length} acknowledgment(s), ${out.repairs.length} repair draft(s).`);
@@ -77,7 +83,8 @@ async function loadTransmissions(): Promise<void> {
     a.state === "failed" || a.state === "outcome_unknown" ? html`<button class="btn btn-ghost btn-small" data-resend="${a.id}" type="button">Resend</button>` : "",
   ]), "No transmissions yet.");
   byId("transmissions").querySelectorAll<HTMLButtonElement>("button[data-resend]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
-    const note = prompt("Administrator note (required after an unknown outcome unless the receiver rejects duplicates):") ?? "";
+    const note = prompt("Administrator note (required after an unknown outcome unless the receiver rejects duplicates):");
+    if (note === null) return;
     const out = await post<Attempt>(`/transmissions/${b.dataset.resend}/resend`, { idempotency_key: `ui-${Date.now()}`, note: note || null });
     notice(msg, out.state === "delivery_confirmed" ? "ok" : "warn", `Resend ${out.id}: ${out.state}${out.error ? ` (${out.error})` : ""}.`);
     await loadTransmissions();
@@ -110,7 +117,9 @@ async function loadReference(): Promise<void> {
   ]), "No enrichment requests.");
   byId("enrichment").querySelectorAll<HTMLButtonElement>("button[data-eact]").forEach((b) => b.addEventListener("click", () => run(msg, async () => {
     if (b.dataset.eact === "authorize") {
-      await post(`/enrichment/${b.dataset.id}/authorize`, { note: prompt("Who approved the provider terms and the spend:") ?? "" });
+      const note = prompt("Who approved the provider terms and the spend:");
+      if (note === null) return;
+      await post(`/enrichment/${b.dataset.id}/authorize`, { note });
     } else {
       const out = await post<Enrichment>(`/enrichment/${b.dataset.id}/run`);
       notice(msg, out.status === "completed" ? "ok" : "warn", `Request ${out.id} is ${out.status}: ${JSON.stringify(out.results).slice(0, 200)}`);

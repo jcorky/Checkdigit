@@ -308,6 +308,50 @@ Acted on a researched review of the five public pages at 1440, 390 and 320 px.
 - OPEN: no usability testing with people was done; findings are from an automated review
   and browser inspection. The save-dialog export and Firefox/Safari were not exercised.
 
+## UI review pass 2 (2026-09-18): confirmed defects and correctness
+
+A deeper combined usability and repository review (against commit 94ac0ca) reported
+reproducible bugs; each is fixed and verified in the browser or by test.
+
+- Export idempotence (Files): building the reviewed file twice used to produce the
+  original on the second build, because the first build flipped approved proposals to
+  `applied_to_draft` and the export only selects `approved`. Building no longer mutates
+  decision state, so a rebuild of the same change set is byte-identical; a decision,
+  source, analysis or mapping change now withdraws the built download until it is rebuilt.
+- Partial comparison (Compare): a side whose input exceeded the 10,000-number cap was
+  compared as if complete. Compare now refuses, names the oversized side, and points to
+  splitting the list or using Files; nothing is compared or exported.
+- List validation (Check a list): malformed entries (`CSQU30543X3`, `wrong`) used to
+  vanish. A new "list" mode shows a row for every supplied entry, marking unrecognized
+  ones invalid; the "free text" mode reports and samples the cells it set aside.
+- Mapping follows the source (Files): selecting a different file now re-derives the
+  column mapping and clears prior decisions instead of reusing the old mapping.
+- Homepage: the list checker (`/bulk`) is now in the main navigation and the task cards;
+  a UIC wagon number (11–12 digits) that the eleven-cell model cannot hold clears the
+  segmented result and routes to the full checker rather than leaving a stale success.
+- Single-number result: a matching check digit with an unresolved category now reads
+  "Check digit matches; category needs review" rather than PASSED beside UNKNOWN CATEGORY.
+- Share links carry the selected scheme in the fragment (`#uic:218124712173`) so a shared
+  check reopens under the same conditions.
+- Files decisions: labels are Approve change / Keep original / Review later / Undo;
+  keeping the original shows a neutral "Kept original", not a red FAILED; Enter on a row
+  action button activates it (and keeps focus) instead of selecting the row.
+- Export scope is explicit and consistent: Compare and the list checker both label the
+  download "all N" or "N filtered" and export exactly the shown rows.
+- Reference: an empty search shows a clear "no articles match" state.
+- Private workspace (needs a signed-in service to verify fully): the connections, job and
+  profiles pages converted a cancelled browser prompt into an empty string and submitted
+  the request anyway; cancel now stops the action. The larger workspace UX items in the
+  review (named selectors instead of raw IDs, grouping the connections page into sections,
+  replacing prompt chains with forms, pre-action confirmation of destination and effect)
+  are noted as OPEN pending a signed-in service to build and verify against.
+- Tests: 338 vitest cases (17 files) including new guards for export idempotence, list
+  validation, extraction exclusions, comparison refusal, neutral outcomes, the scheme
+  fragment, the UIC route, keyboard handling, and a guard against a lime headline.
+- OPEN: the contrast check still tests tokens plus a browser-rendered spot check, not a
+  full automated rendered-theme sweep (no DOM test environment is installed). No usability
+  testing with people was done.
+
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 
 - (Superseded) Digit matching was ASCII-only in TypeScript while Python accepted other

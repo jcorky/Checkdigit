@@ -1,6 +1,6 @@
 import "../styles/site.css";
 import "../styles/app.css";
-import { extractTokens, rowRecord, summarize, toCsv, toJson, type BulkRow } from "../lib/bulk";
+import { extractTokens, rowRecord, summarize, toCsv, toJson, validateEntries, type BulkRow, type ListMode } from "../lib/bulk";
 import { decodeBytes } from "../lib/encoding";
 import { badge, byId, html, raw } from "../ui/dom";
 
@@ -8,6 +8,8 @@ const el = {
   drop: byId("drop"),
   file: byId<HTMLInputElement>("file"),
   paste: byId<HTMLTextAreaElement>("paste"),
+  mode: byId<HTMLSelectElement>("mode"),
+  modeNote: byId("mode-note"),
   run: byId<HTMLButtonElement>("run"),
   clear: byId<HTMLButtonElement>("clear"),
   note: byId("note"),
@@ -18,6 +20,7 @@ const el = {
   json: byId<HTMLAnchorElement>("dl-json"),
   table: byId<HTMLTableElement>("table"),
   empty: byId("empty"),
+  emptyText: byId("empty-text"),
 };
 
 let rows: BulkRow[] = [];
@@ -44,12 +47,20 @@ function render(): void {
     ["Check failed", s["check_failed"]],
     ["Computed (no check digit)", s["computed"]],
     ["Flagged", s["flagged"]],
-    ["Invalid structure", s["structure_failed"]],
+    ["Invalid or unrecognized", s["structure_failed"]],
   ]
     .map(([k, v]) => html`<div class="tile"><span class="k">${String(k)}</span><span class="v">${String(v)}</span></div>`)
     .join("");
   const body = el.table.tBodies[0] as HTMLTableSectionElement;
-  el.empty.hidden = rows.length > 0;
+  if (rows.length === 0) {
+    el.emptyText.textContent = "No entries to check. Paste or drop a list above.";
+    el.empty.hidden = false;
+  } else if (shown.length === 0) {
+    el.emptyText.textContent = "No rows match this filter. Choose a different view above.";
+    el.empty.hidden = false;
+  } else {
+    el.empty.hidden = true;
+  }
   body.innerHTML = shown
     .map((r) => {
       const rec = rowRecord(r);
@@ -69,28 +80,53 @@ function render(): void {
     })
     .join("");
   for (const u of urls.splice(0)) URL.revokeObjectURL(u);
+  const scope = filter === "all" ? "all" : "filtered";
   const csvUrl = URL.createObjectURL(new Blob([toCsv(shown)], { type: "text/csv" }));
   const jsonUrl = URL.createObjectURL(new Blob([toJson(shown)], { type: "application/json" }));
   urls.push(csvUrl, jsonUrl);
   el.csv.href = csvUrl;
   el.json.href = jsonUrl;
+  el.csv.download = scope === "all" ? "checkdigit-list.csv" : "checkdigit-list-filtered.csv";
+  el.json.download = scope === "all" ? "checkdigit-list.json" : "checkdigit-list-filtered.json";
+  el.csv.textContent = scope === "all" ? `Download all ${shown.length.toLocaleString()} (CSV)` : `Download ${shown.length.toLocaleString()} shown (CSV)`;
+  el.json.textContent = scope === "all" ? `Download all ${shown.length.toLocaleString()} (JSON)` : `Download ${shown.length.toLocaleString()} shown (JSON)`;
 }
 
+const MODE_NOTE: Record<ListMode, string> = {
+  validate: "Every non-empty entry gets a row, including ones that are not recognized as a number (reported as invalid structure).",
+  extract: "Numbers are located inside the text; other content is set aside and counted, not shown as rows.",
+};
+
 function run(text: string): void {
-  const res = extractTokens(text);
+  const mode = el.mode.value as ListMode;
+  const res = mode === "validate" ? validateEntries(text) : extractTokens(text);
   rows = res.rows;
-  el.results.hidden = false;
   if (res.refused) {
-    el.note.innerHTML = html`<span class="notice-error">Refused: the input contains about ${res.refused.count.toLocaleString()} numbers; the list checker handles ${res.refused.cap.toLocaleString()} at a time. Split the list or use the Files inspector.</span>`;
-    rows = [];
     el.results.hidden = true;
+    el.note.innerHTML = html`<span class="notice-error">Too many entries: about ${res.refused.count.toLocaleString()} were supplied and this checker handles ${res.refused.cap.toLocaleString()} at a time. Split the list or use the Files inspector.</span>`;
+    rows = [];
     return;
   }
-  el.note.textContent = rows.length ? `${rows.length.toLocaleString()} number${rows.length === 1 ? "" : "s"} found in ${res.cells_seen.toLocaleString()} cells.` : "No identifier-shaped tokens found.";
+  el.results.hidden = false;
+  if (mode === "validate") {
+    el.note.textContent = rows.length
+      ? `${rows.length.toLocaleString()} entr${rows.length === 1 ? "y" : "ies"} checked.`
+      : "No entries supplied.";
+  } else {
+    const excluded = res.excluded;
+    el.note.innerHTML = rows.length || excluded
+      ? html`${rows.length.toLocaleString()} number${rows.length === 1 ? "" : "s"} found in ${res.cells_seen.toLocaleString()} cells.${
+          excluded ? raw(html` <span class="notice-warn">${excluded.count.toLocaleString()} cell${excluded.count === 1 ? "" : "s"} held no number and ${excluded.count === 1 ? "was" : "were"} set aside${excluded.samples.length ? ` (e.g. ${excluded.samples.slice(0, 3).map((s) => `"${s}"`).join(", ")})` : ""}.</span>`) : ""
+        }`
+      : "No identifier-shaped tokens found.";
+  }
   render();
 }
 
 el.run.addEventListener("click", () => run(el.paste.value));
+el.mode.addEventListener("change", () => {
+  el.modeNote.textContent = MODE_NOTE[el.mode.value as ListMode];
+});
 el.clear.addEventListener("click", () => {
   el.paste.value = "";
   rows = [];
@@ -125,3 +161,5 @@ el.file.addEventListener("change", async () => {
   const f = el.file.files?.[0];
   if (f) await useFile(f);
 });
+
+el.modeNote.textContent = MODE_NOTE[el.mode.value as ListMode];

@@ -52,8 +52,16 @@ const STATE_LABEL: Record<string, string> = {
   insufficient_information: "Insufficient information",
 };
 
+const SCHEMES = new Set(["iso6346", "ilu", "uic"]);
+
+// The fragment carries the selected scheme so a shared check reopens under the
+// same conditions: "#iso6346:CSQU3054384", or just "#CSQU3054384" for auto-detect.
+function fragmentFor(norm: string, scheme: string): string {
+  return scheme !== "auto" && SCHEMES.has(scheme) ? `${scheme}:${norm}` : norm;
+}
+
 function shareUrl(norm: string): string {
-  return `${location.origin}/check#${norm}`;
+  return `${location.origin}/check#${fragmentFor(norm, schemeEl.value)}`;
 }
 
 function layersTable(v: TokenValidation): string {
@@ -111,7 +119,7 @@ function summaryText(v: TokenValidation): string {
 function render(): void {
   const value = input.value;
   const norm = normalize(value);
-  history.replaceState(null, "", norm ? `#${norm}` : location.pathname);
+  history.replaceState(null, "", norm ? `#${fragmentFor(norm, schemeEl.value)}` : location.pathname);
 
   const n = analyzeText(value);
   if (n.rejected.length > 0) {
@@ -139,7 +147,7 @@ function render(): void {
   const schemeChip = html`<span class="badge neutral">${SCHEME_LABEL[v.scheme] ?? v.scheme}</span>`;
   const structure = v.layers.find((l) => l.layer === "structure");
   const categoryFlag =
-    e && e.ok && e.kind === "iso6346_ilu" && v.scheme === "unknown"
+    e && e.ok && e.kind === "iso6346_ilu" && v.scheme === "unknown" && e.verdict !== "valid"
       ? html`<p class="result-note t-flag">Category letter ${e.category} is neither ISO 6346 (U, J, Z) nor ILU (A, B, D, E, K). Flagged for review.</p>`
       : "";
 
@@ -159,11 +167,20 @@ function render(): void {
         resultRow("Explanation", "This is the check digit the arithmetic gives for the body you entered. Confirm the body against your source; a wrong body can still produce a check digit.");
       announce = `${e.body}: calculated check digit ${e.computed}. Full number ${e.full}.`;
     } else if (e.verdict === "valid") {
+      // A matching check digit never suppresses an unresolved category warning.
+      const unknownCat = e.kind === "iso6346_ilu" && v.scheme === "unknown";
+      const resultText = unknownCat
+        ? html`<span class="t-ok">Check digit matches</span>; <span class="t-flag">category needs review.</span>`
+        : html`<span class="t-ok">Check digit matches.</span>`;
       summary =
         resultRow("Entered", html`<span class="id">${v.normalized}</span> ${raw(copyBtn(v.normalized, "the entered number"))}`) +
-        resultRow("Result", html`<span class="t-ok">Check digit matches.</span> ${raw(schemeChip)}`) +
-        resultRow("Explanation", "The printed check digit agrees with the body. Structure and arithmetic pass.");
-      announce = `${v.normalized}: check digit matches.`;
+        resultRow("Result", html`${raw(resultText)} ${raw(schemeChip)}`) +
+        resultRow("Explanation", unknownCat
+          ? `The printed check digit agrees with the body, but category letter ${e.category} is neither ISO 6346 (U, J, Z) nor ILU (A, B, D, E, K), so the scheme is unresolved.`
+          : "The printed check digit agrees with the body. Structure and arithmetic pass.");
+      announce = unknownCat
+        ? `${v.normalized}: check digit matches, but the category needs review.`
+        : `${v.normalized}: check digit matches.`;
     } else {
       // Mismatch: keep the entered number and the proposed number distinct.
       summary =
@@ -230,14 +247,23 @@ function render(): void {
 }
 
 function fromHash(): void {
-  const h = location.hash.slice(1);
-  if (h) {
-    try {
-      input.value = decodeURIComponent(h);
-    } catch {
-      input.value = h;
+  let h = location.hash.slice(1);
+  if (!h) return;
+  try {
+    h = decodeURIComponent(h);
+  } catch {
+    /* keep the raw fragment */
+  }
+  const sep = h.indexOf(":");
+  if (sep > 0) {
+    const scheme = h.slice(0, sep).toLowerCase();
+    if (SCHEMES.has(scheme)) {
+      schemeEl.value = scheme;
+      input.value = h.slice(sep + 1);
+      return;
     }
   }
+  input.value = h;
 }
 
 input.addEventListener("input", render);

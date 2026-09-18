@@ -1,5 +1,6 @@
 import "../styles/site.css";
 import {
+  analyzeText,
   backspace,
   CELL_COUNT,
   cellsFrom,
@@ -50,6 +51,7 @@ const anatomy = {
 };
 
 let cells: Cells = cellsFrom("");
+let routed = false;
 
 const cellInputs: HTMLInputElement[] = CELL_LABELS.map((label, i) => {
   if (i === 10) {
@@ -72,6 +74,7 @@ const cellInputs: HTMLInputElement[] = CELL_LABELS.map((label, i) => {
 });
 
 function apply(result: EditResult): void {
+  routed = false;
   cells = result.cells;
   showNotice(result.notice);
   render();
@@ -121,14 +124,44 @@ cellInputs.forEach((input, i) => {
   input.addEventListener("focus", () => input.select());
 });
 
+// The eleven-cell model holds a container or ILU number. A UIC wagon number
+// (11 to 12 digits) or anything longer cannot fit; rather than reject it and
+// leave a stale result on screen, the input is routed to the full checker.
+function handleUnsupported(value: string): boolean {
+  const norm = analyzeText(value).accepted;
+  const isUic = /^[0-9]{11,12}$/.test(norm);
+  if (!isUic && norm.length <= CELL_COUNT) return false;
+  routed = true;
+  cells = cellsFrom("");
+  cellInputs.forEach((inp) => (inp.value = ""));
+  const dash = "—";
+  anatomy.owner.textContent = dash;
+  anatomy.cat.textContent = dash;
+  anatomy.serial.textContent = dash;
+  anatomy.check.textContent = dash;
+  hintEl.textContent = HINT_DEFAULT;
+  setCheckState("");
+  showNotice(null);
+  if (isUic) {
+    cta.href = `/check#uic:${norm}`;
+    statusEl.innerHTML = html`<span class="t-flag">This looks like a UIC wagon number.</span> The quick checker here covers container and ILU numbers; open it in the full checker for the Luhn working. <a href="/check#uic:${norm}">Open it →</a>`;
+  } else {
+    cta.href = norm ? `/check#${norm}` : "/check";
+    statusEl.innerHTML = html`<span class="t-flag">Too long for a container number.</span> Open it in the full checker. <a href="${norm ? `/check#${norm}` : "/check"}">Open it →</a>`;
+  }
+  return true;
+}
+
 wholeEl.addEventListener("input", () => {
+  if (handleUnsupported(wholeEl.value)) return;
+  routed = false;
   const r = replaceAll(cells, wholeEl.value);
   cells = r.cells;
   showNotice(r.notice);
   render(false);
 });
 wholeEl.addEventListener("change", () => {
-  wholeEl.value = tokenOf(cells);
+  if (!routed) wholeEl.value = tokenOf(cells);
 });
 clearBtn.addEventListener("click", () => apply(replaceAll(cells, "")));
 exampleBtn.addEventListener("click", () => apply(replaceAll(cells, EXAMPLE)));

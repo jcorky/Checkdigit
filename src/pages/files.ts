@@ -20,7 +20,7 @@ import { proposeContract, type MappingContract } from "../lib/mapping";
 import { decodeBytes } from "../lib/encoding";
 import { WHOLE_FILE_LIMIT } from "../lib/largejob";
 import type { ApplyResponse, InspectResponse, StreamProgressMessage, WorkerRequest, WorkerResponse } from "../worker/inspect.worker";
-import { badge, byId, html, raw } from "../ui/dom";
+import { byId, html, raw } from "../ui/dom";
 import { createLargeController } from "./files-large";
 
 // The Files page: bind the local job model to the DOM. Parsing and splicing
@@ -186,8 +186,15 @@ async function setSource(bytes: Uint8Array, filename: string, contentType: strin
   el.sourceLine.hidden = false;
   el.sourceLine.innerHTML = html`<span class="id">${filename}</span> · ${bytes.length.toLocaleString()} bytes · ${encoding} · sha256 <span class="id">${sha.slice(0, 16)}…</span> · read in this tab only`;
   el.inspect.disabled = false;
+  // A new source starts a fresh review: the mapping is re-derived from this
+  // file's own header, and prior decisions and artefacts do not carry over.
+  state.mapping = null;
   state.analysis = null;
   state.proposals = [];
+  state.approvals = [];
+  state.selected = null;
+  state.fingerprint = "";
+  state.allowUndecided = false;
   state.jobState = "uploaded";
   el.results.hidden = true;
   el.exportSection.hidden = true;
@@ -479,12 +486,12 @@ function renderProposals(): void {
         <td class="id">${raw(highlightChange(p.raw, p.candidate))}</td>
         <td>${issueOf(p)}</td>
         <td class="small muted">${p.occurrences[0]?.label ?? ""}${p.occurrences.length > 1 ? ` +${p.occurrences.length - 1}` : ""}</td>
-        <td>${raw(badge(p.state === "approved" ? "passed" : p.state === "rejected" ? "failed" : p.state === "stale" ? "stale" : p.state === "deferred" ? "pending" : "neutral"))} <span class="sr-only">${p.state}</span></td>
+        <td>${raw(decisionBadge(p.state))}</td>
         <td class="actions">${
           p.kind === "correction"
-            ? raw(html`<button type="button" class="btn btn-ghost btn-small" data-act="approve" data-id="${p.id}">Stage change</button>`)
+            ? raw(html`<button type="button" class="btn btn-ghost btn-small" data-act="approve" data-id="${p.id}">Approve change</button>`)
             : ""
-        }<button type="button" class="btn btn-ghost btn-small" data-act="reject" data-id="${p.id}">Keep original</button><button type="button" class="btn btn-ghost btn-small" data-act="defer" data-id="${p.id}">Defer</button>${
+        }<button type="button" class="btn btn-ghost btn-small" data-act="reject" data-id="${p.id}">Keep original</button><button type="button" class="btn btn-ghost btn-small" data-act="defer" data-id="${p.id}">Review later</button>${
           p.state !== "proposed" ? raw(html`<button type="button" class="btn btn-ghost btn-small" data-act="undo" data-id="${p.id}">Undo</button>`) : ""
         }</td>
       </tr>`,
@@ -502,14 +509,34 @@ function renderProposals(): void {
       renderProposals();
       renderEvidence();
     };
-    tr.addEventListener("click", select);
+    tr.addEventListener("click", (ev) => {
+      // a click on a nested action button is that button's, not a row selection
+      if ((ev.target as HTMLElement).closest("[data-act]")) return;
+      select();
+    });
     tr.addEventListener("keydown", (ev) => {
+      // let nested buttons handle their own Enter/Space; only the row itself selects
+      if (ev.target !== tr) return;
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
         select();
       }
     });
   });
+}
+
+const DECISION_BADGE: Record<string, [string, string]> = {
+  proposed: ["neutral", "Undecided"],
+  approved: ["passed", "Approved"],
+  rejected: ["neutral", "Kept original"],
+  deferred: ["pending", "Review later"],
+  stale: ["stale", "Stale — re-review"],
+  applied_to_draft: ["passed", "Approved"],
+};
+
+function decisionBadge(state: string): string {
+  const [cls, label] = DECISION_BADGE[state] ?? ["neutral", state];
+  return html`<span class="badge ${cls}">${label}</span>`;
 }
 
 function renderEvidence(): void {
@@ -551,6 +578,9 @@ function renderEvidence(): void {
 }
 
 async function applyDecision(ids: string[], act: "approve" | "reject" | "defer" | "undo"): Promise<void> {
+  const active = document.activeElement as HTMLElement | null;
+  const focusId = active?.dataset?.["id"];
+  const focusAct = active?.dataset?.["act"];
   const { proposals, affected } = decide(state.proposals, ids, act);
   state.proposals = proposals;
   await refreshFingerprint();
@@ -568,7 +598,21 @@ async function applyDecision(ids: string[], act: "approve" | "reject" | "defer" 
       selection_count: affected,
     });
   }
+  // A decision changes the reviewed change set, so any built artefact is stale.
+  invalidateExport();
   renderAll();
+  if (focusId) restoreRowFocus(focusId, focusAct);
+}
+
+// Keep keyboard focus on the acted row after the table is rebuilt.
+function restoreRowFocus(id: string, act: string | undefined): void {
+  const row = el.proposals.querySelector<HTMLElement>(`tr[data-id="${CSS.escape(id)}"]`);
+  if (!row) return;
+  const target =
+    (act ? row.querySelector<HTMLElement>(`[data-act="${CSS.escape(act)}"]`) : null) ??
+    row.querySelector<HTMLElement>("[data-act]") ??
+    row;
+  target.focus();
 }
 
 for (const [button, act] of [
@@ -580,7 +624,7 @@ for (const [button, act] of [
     const rows = filtered();
     const eligible = act === "approve" ? rows.filter((p) => p.kind === "correction") : rows;
     if (!eligible.length) return;
-    const verb = act === "approve" ? "Stage" : act === "reject" ? "Keep the original for" : "Undo decisions on";
+    const verb = act === "approve" ? "Approve the change on" : act === "reject" ? "Keep the original for" : "Undo decisions on";
     if (confirm(`${verb} ${eligible.length} proposal${eligible.length === 1 ? "" : "s"} matching the current filter (of ${state.proposals.length} total)?`)) {
       void applyDecision(eligible.map((p) => p.id), act);
     }
@@ -629,6 +673,21 @@ function blobLink(a: HTMLAnchorElement, data: BlobPart, type: string, name: stri
   a.hidden = false;
 }
 
+// A built artefact describes one exact reviewed change set. When the source,
+// analysis, mapping or a review decision changes, the download no longer matches
+// what is on screen, so it is withdrawn until the file is built again.
+function invalidateExport(): void {
+  for (const u of urls.splice(0)) URL.revokeObjectURL(u);
+  for (const a of [el.dlCorrected, el.dlExceptions, el.dlLedger, el.dlManifest]) {
+    a.hidden = true;
+    a.removeAttribute("href");
+  }
+  el.dlExtras.hidden = true;
+  el.manifestPreview.hidden = true;
+  el.manifestPreview.textContent = "";
+  if (state.jobState === "completed" || state.jobState === "exporting") state.jobState = "awaiting_review";
+}
+
 el.build.addEventListener("click", async () => {
   if (!state.text || !state.encoding || !state.sourceFile || !state.analysis) return;
   state.jobState = "exporting";
@@ -644,7 +703,8 @@ el.build.addEventListener("click", async () => {
     el.build.disabled = false;
     return;
   }
-  state.proposals = state.proposals.map((p) => (p.state === "approved" ? { ...p, state: "applied_to_draft" } : p));
+  // Decisions are not mutated by building: an approved proposal stays approved, so
+  // rebuilding the same reviewed change set produces identical output.
   const stem = state.sourceFile.filename.replace(/(\.[^.]+)?$/, "");
   const ext = /\.[^.]+$/.exec(state.sourceFile.filename)?.[0] ?? ".txt";
   const outName = `${stem}.corrected${ext}`;
@@ -657,7 +717,7 @@ el.build.addEventListener("click", async () => {
     intent: state.intent,
     detected_format: state.analysis.detected_format,
     output: { sha256: res.sha256, size_bytes: res.bytes.byteLength, encoding: state.encoding, output_mode: "surgical", filename: outName },
-    change_set: { fingerprint: state.fingerprint, fingerprint_version: "1", approved: state.proposals.filter((p) => p.state === "applied_to_draft").length, edits_applied: edits.length },
+    change_set: { fingerprint: state.fingerprint, fingerprint_version: "1", approved: state.proposals.filter((p) => p.state === "approved").length, edits_applied: edits.length },
     approvals: state.approvals,
     counts: { ...state.analysis.counts, logical_records: state.analysis.counts.logical_records ?? -1 } as Record<string, number>,
     unresolved: state.proposals.filter((p) => p.state === "proposed" || p.state === "deferred").length,

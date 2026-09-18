@@ -11,7 +11,7 @@ export type CompareKey = "normalized" | "body";
 export interface CompareSide {
   label: string;
   rows: BulkRow[];
-  refused: boolean;
+  refused: { count: number; cap: number } | null;
 }
 
 export interface CompareEntry {
@@ -30,7 +30,7 @@ export interface CompareResult {
 
 export function sideFromText(label: string, text: string): CompareSide {
   const res = extractTokens(text);
-  return { label, rows: res.rows, refused: res.refused !== null };
+  return { label, rows: res.rows, refused: res.refused };
 }
 
 // Descriptive, neutral outcome labels. A comparison reports where a number

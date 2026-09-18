@@ -19,19 +19,49 @@ export interface BulkRow {
   validation: TokenValidation;
 }
 
+export type ListMode = "validate" | "extract";
+
 export interface BulkResult {
   rows: BulkRow[];
   refused: { count: number; cap: number } | null;
   cells_seen: number;
+  /** Non-empty cells that yielded no identifier-shaped token (extract mode only). */
+  excluded: { count: number; samples: string[] } | null;
 }
 
 const CELL_SPLIT = /[,\t;|]/;
 const WHOLE = /^(?:[A-Z]{4}[0-9]{6,7}|[0-9]{11,12})$/;
 const EMBEDDED = /[A-Z]{4}[0-9]{7}/g;
 
+/**
+ * Validate every supplied entry. One row per non-empty cell, including entries
+ * whose shape is not recognised, which are reported as invalid structure rather
+ * than dropped. Source line and original text are preserved.
+ */
+export function validateEntries(text: string): BulkResult {
+  const rows: BulkRow[] = [];
+  let cells = 0;
+  const lines = text.split(/\r\n|\r|\n/);
+  for (let li = 0; li < lines.length; li++) {
+    for (const cell of (lines[li] as string).split(CELL_SPLIT)) {
+      const raw = cell.trim();
+      if (!raw) continue;
+      cells++;
+      if (rows.length >= BULK_CAP) {
+        const remaining = cells - rows.length + countRemainingCells(lines, li);
+        return { rows, refused: { count: rows.length + remaining, cap: BULK_CAP }, cells_seen: cells, excluded: null };
+      }
+      rows.push({ line: li + 1, as_found: raw, normalized: normalize(raw), validation: validateToken(raw) });
+    }
+  }
+  return { rows, refused: null, cells_seen: cells, excluded: null };
+}
+
 export function extractTokens(text: string): BulkResult {
   const rows: BulkRow[] = [];
   let cells = 0;
+  let excludedCount = 0;
+  const excludedSamples: string[] = [];
   const lines = text.split(/\r\n|\r|\n/);
   outer: for (let li = 0; li < lines.length; li++) {
     const line = lines[li] as string;
@@ -43,17 +73,32 @@ export function extractTokens(text: string): BulkResult {
       const found: string[] = [];
       if (WHOLE.test(norm)) found.push(norm);
       else for (const m of norm.matchAll(EMBEDDED)) found.push(m[0]);
+      if (found.length === 0) {
+        excludedCount++;
+        if (excludedSamples.length < 5) excludedSamples.push(raw);
+        continue;
+      }
       for (const tok of found) {
         if (rows.length >= BULK_CAP) {
           const remaining = countRemaining(lines, li, cells);
-          return { rows, refused: { count: rows.length + remaining, cap: BULK_CAP }, cells_seen: cells };
+          return { rows, refused: { count: rows.length + remaining, cap: BULK_CAP }, cells_seen: cells, excluded: excludedCount ? { count: excludedCount, samples: excludedSamples } : null };
         }
         rows.push({ line: li + 1, as_found: found.length === 1 ? raw : tok, normalized: tok, validation: validateToken(tok) });
       }
       if (rows.length >= BULK_CAP && li === lines.length - 1) break outer;
     }
   }
-  return { rows, refused: null, cells_seen: cells };
+  return { rows, refused: null, cells_seen: cells, excluded: excludedCount ? { count: excludedCount, samples: excludedSamples } : null };
+}
+
+function countRemainingCells(lines: string[], fromLine: number): number {
+  let n = 0;
+  for (let li = fromLine + 1; li < lines.length; li++) {
+    for (const cell of (lines[li] as string).split(CELL_SPLIT)) {
+      if (cell.trim()) n++;
+    }
+  }
+  return n;
 }
 
 function countRemaining(lines: string[], fromLine: number, _cells: number): number {
