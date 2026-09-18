@@ -179,6 +179,17 @@ const ARTICLES: Article[] = [
 const nav = byId("ref-nav");
 const container = byId("articles");
 nav.innerHTML = ARTICLES.map((a, i) => html`<a href="#${a.id}"><span class="n">${i + 1}</span>${a.title}</a>`).join("");
+
+// Compact topic selector for narrow viewports, where the sticky side nav is hidden.
+const jump = byId<HTMLSelectElement>("ref-jump-select");
+jump.innerHTML =
+  `<option value="">Choose a topic…</option>` +
+  ARTICLES.map((a, i) => html`<option value="${a.id}">${i + 1}. ${a.title}</option>`).join("");
+jump.addEventListener("change", () => {
+  const id = jump.value;
+  if (!id) return;
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 container.innerHTML = ARTICLES.map(
   (a, i) => html`<article class="ref" id="${a.id}" data-title="${a.title}"><h2>${i + 1}. ${a.title}</h2><p class="meta">Source: ${a.source} · Reviewed ${REVIEWED}</p>${raw(a.body())}</article>`,
 ).join("");

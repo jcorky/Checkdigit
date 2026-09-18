@@ -31,37 +31,36 @@
 
 <main>
   <section class="hero">
-    <div class="wrap hero-grid">
-      <div>
-        <p class="eyebrow">ISO 6346 · ILU · UIC</p>
-        <h1>Every digit.<br><em>A clearer picture.</em></h1>
-        <p class="lede">Checkdigit verifies container and equipment numbers and shows the one character that does not agree. It runs <b>entirely in your browser</b>: nothing you type here is sent anywhere, and this site has no server that could keep it.</p>
+    <div class="wrap">
+      <p class="eyebrow">ISO 6346 · ILU · UIC</p>
+      <h1>Check container and equipment numbers.</h1>
+      <p class="lede">Check or calculate the check digit for container, ILU and rail wagon numbers. Numbers and files are processed <b>in your browser</b>: nothing you enter here is sent anywhere, and this site has no server that could keep it.</p>
 
+      <div class="hero-grid">
         <div class="validator panel-offset">
-          <div class="vtop">
-            <span class="vlabel" id="vlabel">Check number</span>
-            <span class="vhint" id="vhint">4 letters · 6 digits · 1 check</span>
-          </div>
-          <div class="cells" id="cells" role="group" aria-labelledby="vlabel"></div>
+          <label class="vlabel" id="vlabel" for="whole">Container or equipment number</label>
           <div class="whole-row">
-            <label for="whole">Whole number</label>
-            <input id="whole" class="text-in" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="paste or type, e.g. msku 123456-5">
+            <input id="whole" class="text-in" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. CSQU3054383 or 21 81 2471 217-3">
             <button type="button" class="btn btn-ghost btn-small" id="clear">Clear</button>
+          </div>
+          <p class="vhint" id="vhint">4 letters, 6 digits, 1 check digit — or 11 to 12 digits for a UIC wagon. Spaces, hyphens and lower case are accepted.</p>
+          <div class="breakdown">
+            <span class="breakdown-label">How it breaks down</span>
+            <div class="cells" id="cells" role="group" aria-label="Character breakdown"></div>
           </div>
           <p class="notice" id="notice" role="status" aria-live="polite" hidden></p>
           <p class="status" id="status" role="status" aria-live="polite"></p>
-          <p class="vmore"><a id="vmore-link" href="/check#CSQU3054383">See the arithmetic and every validation layer →</a></p>
+          <div class="vactions">
+            <button type="button" class="btn btn-ghost btn-small" id="try-example">Try an example</button>
+            <a class="btn btn-primary" id="cta" href="/check">Check with the working shown</a>
+          </div>
         </div>
-
-        <div class="cta-row">
-          <a class="btn btn-primary" href="/check">Check number with the working shown</a>
-        </div>
-      </div>
-      <div class="art" aria-hidden="true">
-        <div class="bar b4"></div>
-        <div class="bar b1"></div>
-        <div class="bar b2"></div>
-        <div class="bar b3"></div>
+        <nav class="task-cards" aria-label="Main tasks">
+          <a class="task-card" href="/check"><span class="tc-title">Check a number</span><span class="tc-desc">One number, every validation layer and the arithmetic behind it.</span></a>
+          <a class="task-card" href="/files"><span class="tc-title">Check a file</span><span class="tc-desc">Review and correct a CSV, EDIFACT, X12 or container XML file.</span></a>
+          <a class="task-card" href="/compare"><span class="tc-title">Compare lists</span><span class="tc-desc">See what is only in one list, in both, or carries a different check digit.</span></a>
+          <a class="task-card" href="/reference"><span class="tc-title">Guides &amp; reference</span><span class="tc-desc">Anatomy, check-digit arithmetic, code tables and worked examples.</span></a>
+        </nav>
       </div>
     </div>
   </section>

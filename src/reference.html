@@ -32,9 +32,10 @@
 <main class="page app">
   <div class="wrap">
     <p class="eyebrow">Reference library</p>
-    <h1>Every digit. A clearer picture.</h1>
+    <h1>Guides and reference</h1>
     <div class="stripes" aria-hidden="true" style="margin-bottom:12px"></div>
     <p class="intro">Guides, worked examples, code tables and a quick checker. Each standards-dependent article names its source and review date. These are reference aids; none of them declares a unit safe, compliant or operationally released.</p>
+    <p class="ref-return"><a href="/check">Check a number</a> · <a href="/files">Check a file</a> · <a href="/compare">Compare lists</a></p>
 
     <section class="panel" style="margin-bottom:16px">
       <div class="field-row">
@@ -49,6 +50,10 @@
       </div>
     </section>
 
+    <div class="field-row ref-jump">
+      <label for="ref-jump-select">Jump to</label>
+      <select id="ref-jump-select" class="select-in"></select>
+    </div>
     <div class="ref-grid">
       <nav class="ref-nav" id="ref-nav" aria-label="Articles"></nav>
       <div id="articles"></div>

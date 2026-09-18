@@ -31,15 +31,17 @@ const CELL_LABELS = [
   "Serial digit 6 of 6",
   "Check digit",
 ];
-const PREFILL = "CSQU3054383";
+const EXAMPLE = "CSQU3054383";
 
 const cellsEl = byId("cells");
 const statusEl = byId("status");
 const hintEl = byId("vhint");
+const HINT_DEFAULT = hintEl.textContent ?? "";
 const noticeEl = byId("notice");
 const wholeEl = byId<HTMLInputElement>("whole");
 const clearBtn = byId<HTMLButtonElement>("clear");
-const moreLink = byId<HTMLAnchorElement>("vmore-link");
+const exampleBtn = byId<HTMLButtonElement>("try-example");
+const cta = byId<HTMLAnchorElement>("cta");
 const anatomy = {
   owner: byId("a-owner"),
   cat: byId("a-cat"),
@@ -47,7 +49,7 @@ const anatomy = {
   check: byId("a-check"),
 };
 
-let cells: Cells = cellsFrom(PREFILL);
+let cells: Cells = cellsFrom("");
 
 const cellInputs: HTMLInputElement[] = CELL_LABELS.map((label, i) => {
   if (i === 10) {
@@ -129,6 +131,7 @@ wholeEl.addEventListener("change", () => {
   wholeEl.value = tokenOf(cells);
 });
 clearBtn.addEventListener("click", () => apply(replaceAll(cells, "")));
+exampleBtn.addEventListener("click", () => apply(replaceAll(cells, EXAMPLE)));
 
 function setCheckState(state: "" | "ok" | "fix" | "flag" | "bad" | "computed"): void {
   const check = cellInputs[10] as HTMLInputElement;
@@ -146,9 +149,9 @@ function render(syncWhole = true): void {
   anatomy.cat.textContent = vm.anatomy.category || dash;
   anatomy.serial.textContent = vm.anatomy.serial || dash;
   anatomy.check.textContent = vm.anatomy.check || dash;
-  hintEl.textContent = vm.hint;
+  hintEl.textContent = vm.token ? vm.hint : HINT_DEFAULT;
   (cellInputs[10] as HTMLInputElement).placeholder = vm.state === "computed" ? (vm.computedCheck ?? "") : "";
-  moreLink.href = vm.token.length >= 10 ? `/check#${vm.token}` : "/check";
+  cta.href = vm.token ? `/check#${vm.token}` : "/check";
 
   const r = vm.result;
   switch (vm.state) {

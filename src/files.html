@@ -39,38 +39,22 @@
     <section class="panel step" aria-labelledby="s1">
       <h2 class="step-title" id="s1"><span class="section-no">1</span> Choose the input</h2>
       <div class="drop" id="drop" tabindex="0" role="button" aria-label="Drop a file here or press Enter to choose one">
-        <p><b>Drop a file here</b> or <label class="linklike" for="file">choose a file</label>. Text, CSV/TSV, fixed-width, EDIFACT, X12 and container XML are inspected locally.</p>
+        <p><b>Drop a file here</b> or <label class="linklike" for="file">choose a file</label>.</p>
         <input id="file" type="file" class="sr-only">
       </div>
+      <p class="muted small" style="margin:8px 0 0">Accepted: plain text, CSV/TSV, fixed-width, EDIFACT, X12 and container XML. Up to 5 MiB is inspected in memory; larger files, up to 5 GiB, are streamed from disk. Excel workbooks are not read yet.</p>
       <details class="explain">
         <summary>Or paste text</summary>
-        <textarea id="paste" class="text-area" rows="6" spellcheck="false" placeholder="Paste a list, an EDIFACT message, X12, container XML or CSV"></textarea>
+        <label class="sr-only" for="paste">Text to inspect</label>
+        <textarea id="paste" class="text-area" rows="6" spellcheck="false" placeholder="Paste a list, an EDIFACT message, X12, container XML or CSV" aria-label="Text to inspect"></textarea>
         <div class="row-actions"><button type="button" class="btn btn-ghost btn-small" id="use-paste">Use pasted text</button></div>
       </details>
       <p class="muted small" id="source-line" hidden></p>
     </section>
 
     <section class="panel step" aria-labelledby="s2">
-      <h2 class="step-title" id="s2"><span class="section-no blue">2</span> Declare the import intent</h2>
+      <h2 class="step-title" id="s2"><span class="section-no blue">2</span> Options</h2>
       <div class="form-grid">
-        <label>Import mode
-          <select id="mode" class="select-in">
-            <option value="comparison_only">Comparison only (findings and proposals; nothing applied)</option>
-            <option value="full_snapshot">Full snapshot (needs a workspace baseline)</option>
-            <option value="incremental">Incremental add/update (needs a workspace baseline)</option>
-            <option value="explicit_removal">Explicit removal (needs a workspace baseline)</option>
-          </select>
-        </label>
-        <label>Coverage scope
-          <span class="inline"><select id="scope-kind" class="select-in">
-            <option value="source_fleet">Source fleet</option>
-            <option value="terminal">Terminal</option>
-            <option value="location">Location</option>
-            <option value="voyage">Voyage</option>
-            <option value="profile_population">Profile population</option>
-          </select>
-          <input id="scope-value" class="text-in plain" type="text" placeholder="e.g. DEMO-T1 loadlist" maxlength="80"></span>
-        </label>
         <label>Format
           <select id="format-hint" class="select-in">
             <option value="auto">Detect from content (text, EDIFACT, X12, container XML)</option>
@@ -78,17 +62,11 @@
             <option value="fixed">Fixed-width with column ranges</option>
           </select>
         </label>
-        <label>Owner prefix policy
-          <select id="owner-policy" class="select-in">
-            <option value="strict">Strict: non-standard owner prefixes are flagged</option>
-            <option value="lenient">Lenient: pseudo-prefixes corrected with standard mod-11</option>
-          </select>
-        </label>
-        <label class="check"><input id="trust" type="checkbox"> Treat matches as declared equipment IDs (free text and mapped columns become correctable; otherwise they are flagged for review)</label>
+        <label class="check"><input id="trust" type="checkbox"> Treat matches as declared equipment IDs. Free text and mapped columns then become correctable; left off, numbers found without a declared field are flagged for review rather than corrected.</label>
       </div>
       <div id="mapping" hidden>
         <h3 class="sub-title">Column mapping</h3>
-        <p class="muted small">Proposed from the header; review it. Named columns map by identity, so reordering is harmless. Positional columns block when the column count changes.</p>
+        <p class="muted small">Detected from the header; review it. Named columns map by identity, so reordering is harmless. Positional columns block when the column count changes.</p>
         <div class="tablewrap"><table class="grid" id="mapping-table"><thead><tr><th>Column</th><th>Identity</th><th>Field type</th><th>Required</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div id="fixed" hidden>
@@ -96,9 +74,39 @@
         <label class="inline-label">Ranges, 1-based inclusive <input id="ranges" class="text-in plain" type="text" placeholder="e.g. 5-15,20-30"></label>
         <label class="inline-label">Header lines to skip <input id="header-lines" class="text-in plain" type="number" min="0" value="0" style="width:6em"></label>
       </div>
+      <details class="explain" id="advanced">
+        <summary>Advanced settings</summary>
+        <p class="muted small">These describe how a file would be imported into a fleet. The local inspector only compares and proposes; it never changes a stored fleet, so they affect wording and reporting, not what is applied here.</p>
+        <div class="form-grid" style="margin-top:10px">
+          <label>Import mode
+            <select id="mode" class="select-in">
+              <option value="comparison_only">Comparison only (findings and proposals; nothing applied)</option>
+              <option value="full_snapshot">Full snapshot (needs the private workspace)</option>
+              <option value="incremental">Incremental add/update (needs the private workspace)</option>
+              <option value="explicit_removal">Explicit removal (needs the private workspace)</option>
+            </select>
+          </label>
+          <label>Coverage scope
+            <span class="inline"><select id="scope-kind" class="select-in">
+              <option value="source_fleet">Source fleet</option>
+              <option value="terminal">Terminal</option>
+              <option value="location">Location</option>
+              <option value="voyage">Voyage</option>
+              <option value="profile_population">Profile population</option>
+            </select>
+            <input id="scope-value" class="text-in plain" type="text" placeholder="e.g. DEMO-T1 loadlist" maxlength="80"></span>
+          </label>
+          <label>Owner prefix policy
+            <select id="owner-policy" class="select-in">
+              <option value="strict">Strict: non-standard owner prefixes are flagged</option>
+              <option value="lenient">Lenient: pseudo-prefixes corrected with standard mod-11</option>
+            </select>
+          </label>
+        </div>
+      </details>
       <div class="row-actions">
         <button type="button" class="btn btn-primary" id="inspect" disabled>Inspect file</button>
-        <span class="muted small" id="inspect-note">Runs in a Web Worker in this tab.</span>
+        <span class="muted small" id="inspect-note">Checked in this browser; nothing is uploaded.</span>
       </div>
     </section>
 
@@ -114,14 +122,14 @@
           <h3 class="sub-title">Bulk actions</h3>
           <p class="muted small" id="bulk-scope">Selection applies to the filtered rows.</p>
           <div class="row-actions">
-            <button type="button" class="btn btn-ghost btn-small" id="bulk-approve">Approve filtered</button>
-            <button type="button" class="btn btn-ghost btn-small" id="bulk-reject">Reject filtered</button>
+            <button type="button" class="btn btn-ghost btn-small" id="bulk-approve">Stage filtered</button>
+            <button type="button" class="btn btn-ghost btn-small" id="bulk-reject">Keep original for filtered</button>
             <button type="button" class="btn btn-ghost btn-small" id="bulk-undo">Undo filtered</button>
           </div>
         </aside>
         <div class="grid-wrap">
           <div class="tablewrap"><table class="grid" id="proposals"><thead><tr><th>ID</th><th>Original</th><th>Proposed</th><th>Issue</th><th>Location</th><th>State</th><th>Action</th></tr></thead><tbody></tbody></table></div>
-          <p class="empty-state" id="proposals-empty" hidden><span class="stripes" aria-hidden="true"></span><span>Nothing to review.</span></p>
+          <p class="empty-state" id="proposals-empty" hidden><span class="stripes" aria-hidden="true"></span><span id="proposals-empty-text">Nothing to review.</span></p>
         </div>
         <aside class="evidence" aria-label="Evidence" id="evidence">
           <h3 class="sub-title">Evidence</h3>
@@ -131,14 +139,20 @@
     </section>
 
     <section class="panel step" id="export" aria-labelledby="s4" hidden>
-      <h2 class="step-title" id="s4"><span class="section-no">4</span> Export reviewed file</h2>
+      <h2 class="step-title" id="s4"><span class="section-no">4</span> Download reviewed file</h2>
       <p class="muted small" id="export-state"></p>
       <div class="row-actions">
-        <button type="button" class="btn btn-primary" id="build">Build export</button>
-        <a class="btn btn-ghost" id="dl-corrected" hidden download>Download corrected file</a>
-        <a class="btn btn-ghost" id="dl-exceptions" hidden download>Exceptions CSV</a>
-        <a class="btn btn-ghost" id="dl-ledger" hidden download>Change ledger CSV</a>
-        <a class="btn btn-ghost" id="dl-manifest" hidden download>Manifest JSON</a>
+        <button type="button" class="btn btn-primary" id="build">Build reviewed file</button>
+        <a class="btn btn-primary" id="dl-corrected" hidden download>Download reviewed file</a>
+      </div>
+      <div id="dl-extras" hidden>
+        <h3 class="sub-title">Supporting reports</h3>
+        <p class="muted small">Optional records of the review, alongside the reviewed file above.</p>
+        <div class="row-actions">
+          <a class="btn btn-ghost btn-small" id="dl-exceptions" hidden download>Exceptions (CSV)</a>
+          <a class="btn btn-ghost btn-small" id="dl-ledger" hidden download>Change ledger (CSV)</a>
+          <a class="btn btn-ghost btn-small" id="dl-manifest" hidden download>Manifest (JSON)</a>
+        </div>
       </div>
       <pre class="code" id="manifest-preview" hidden></pre>
     </section>

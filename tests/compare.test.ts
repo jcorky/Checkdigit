@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { compare, compareCsv, sideFromText } from "../src/lib/compare";
+import { compare, compareCsv, outcomeLabel, sideFromText } from "../src/lib/compare";
+
+describe("outcome labels are descriptive and neutral", () => {
+  it("names each membership outcome in plain language, repeating the list names", () => {
+    expect(outcomeLabel("only_a", "Terminal feed", "Fleet master")).toBe("Only in Terminal feed");
+    expect(outcomeLabel("only_b", "Terminal feed", "Fleet master")).toBe("Only in Fleet master");
+    expect(outcomeLabel("both", "A", "B")).toBe("In both lists");
+    expect(outcomeLabel("conflict", "A", "B")).toBe("Check-digit difference");
+    expect(outcomeLabel("duplicate", "A", "B")).toBe("Repeated within a list");
+  });
+
+  it("never uses validation verdict words that a comparison has not established", () => {
+    const banned = /\b(passed|failed|warning|pending|valid|invalid|added|removed)\b/i;
+    for (const o of ["only_a", "only_b", "both", "conflict", "duplicate"] as const) {
+      expect(outcomeLabel(o, "First list", "Second list")).not.toMatch(banned);
+    }
+  });
+});
 
 describe("comparison of two identifier lists", () => {
   const a = sideFromText("feed", "CSQU3054383\nMSKU1234565\nMSKU1234565\nAPLU9192819\nTCLU4567897");

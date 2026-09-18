@@ -167,23 +167,6 @@ kbd,
   max-width: 560px;
 }
 
-.art {
-  position: relative;
-  min-height: 140px;
-  overflow: hidden;
-}
-
-.art .bar {
-  position: absolute;
-  height: 18px;
-  border-radius: 999px;
-}
-
-.art .b1 { left: 4%; top: 22px; width: 42%; background: var(--lime); }
-.art .b2 { left: 30%; top: 58px; width: 55%; background: var(--blue); }
-.art .b3 { left: 12%; top: 94px; width: 30%; background: var(--orange); }
-.art .b4 { left: 58%; top: 12px; width: 36%; height: 44px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
-
 .section-no {
   display: inline-flex;
   align-items: center;
@@ -308,6 +291,7 @@ header.bar :focus-visible {
 .btn-primary {
   background: var(--action-bg);
   color: var(--action-text);
+  min-height: 44px;
 }
 
 .btn-primary:hover {
@@ -344,23 +328,15 @@ header.bar :focus-visible {
   .hero-grid {
     grid-template-columns: 1fr;
   }
-  .hero .art {
-    display: none;
-  }
 }
 
 .hero h1 {
   font-family: var(--display);
-  font-size: clamp(32px, 5.2vw, 56px);
-  line-height: 1.02;
+  font-size: clamp(30px, 5.2vw, 52px);
+  line-height: 1.04;
   letter-spacing: -0.01em;
   margin: 0 0 14px;
-  max-width: 16ch;
-}
-
-.hero h1 em {
-  font-style: normal;
-  color: var(--lime);
+  max-width: 18ch;
 }
 
 .lede {
@@ -383,16 +359,9 @@ header.bar :focus-visible {
   padding: 20px 20px 16px;
 }
 
-.vtop {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
 .vlabel {
+  display: block;
+  margin-bottom: 8px;
   font-family: var(--sans);
   font-weight: 700;
   font-size: 13px;
@@ -467,11 +436,6 @@ header.bar :focus-visible {
   margin-top: 12px;
 }
 
-.whole-row label {
-  font-size: 13px;
-  color: var(--muted);
-}
-
 .status {
   margin: 12px 2px 0;
   font-family: var(--mono);
@@ -512,27 +476,60 @@ header.bar :focus-visible {
 .notice .notice-warn { color: var(--warn-text); }
 .notice .notice-info { color: var(--text); }
 
-.vmore {
-  margin: 10px 2px 0;
-  font-size: 13px;
+.breakdown {
+  margin-top: 14px;
 }
 
-.vmore a {
+.breakdown-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
-  text-decoration: none;
-  border-bottom: 1px dashed var(--line);
+  margin-bottom: 6px;
 }
 
-.vmore a:hover {
-  color: var(--text);
-  border-color: var(--lime);
-}
-
-.cta-row {
+.vactions {
   display: flex;
+  gap: 10px;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 20px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.task-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-content: start;
+}
+
+.task-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.task-card:hover {
+  border-color: var(--lime);
+  background: var(--raised);
+}
+
+.task-card .tc-title {
+  font-weight: 700;
+  font-size: 15.5px;
+}
+
+.task-card .tc-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 /* ---- verdict badges (semantic, never brand) ---- */
@@ -849,6 +846,7 @@ section.band {
 .select-in {
   flex: 1 1 240px;
   min-width: 0;
+  max-width: 100%;
   background: var(--raised);
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -880,6 +878,69 @@ section.band {
   letter-spacing: 0;
   color: var(--muted);
   opacity: 1;
+}
+
+.result-summary {
+  margin: 18px 0 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.rrow {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  gap: 6px 16px;
+  align-items: baseline;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rrow:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  .rrow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+.rrow .rk {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.rrow .rv {
+  font-size: 14.5px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rrow .rv .id {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.result-note {
+  font-size: 13.5px;
+  margin: 4px 0 0;
+}
+
+.result-limit {
+  font-size: 13px;
+  color: var(--muted);
+  border-left: 3px solid var(--line);
+  padding-left: 10px;
+  margin: 14px 0 0;
+  line-height: 1.5;
 }
 
 .result-head {

@@ -33,6 +33,25 @@ export function sideFromText(label: string, text: string): CompareSide {
   return { label, rows: res.rows, refused: res.refused !== null };
 }
 
+// Descriptive, neutral outcome labels. A comparison reports where a number
+// appears; it makes no validation judgement, so none of these implies pass or
+// fail. "Added" and "Removed" are deliberately absent: they would assert a
+// direction the user has not established.
+export function outcomeLabel(outcome: CompareEntry["outcome"], aLabel: string, bLabel: string): string {
+  switch (outcome) {
+    case "only_a":
+      return `Only in ${aLabel}`;
+    case "only_b":
+      return `Only in ${bLabel}`;
+    case "both":
+      return "In both lists";
+    case "conflict":
+      return "Check-digit difference";
+    case "duplicate":
+      return "Repeated within a list";
+  }
+}
+
 const keyOf = (r: BulkRow, key: CompareKey): string => {
   const n = r.normalized;
   if (key === "body") return /^[A-Z]{4}[0-9]{6,7}$/.test(n) ? n.slice(0, 10) : n;
@@ -74,7 +93,7 @@ export function compare(a: CompareSide, b: CompareSide, key: CompareKey = "norma
     }
     if (outcome !== "conflict" && (e.a.length > 1 || e.b.length > 1)) {
       counts["duplicate"] = (counts["duplicate"] ?? 0) + 1;
-      note = note ? `${note}; repeated within a side` : `repeated within a side (${e.a.length}× ${a.label}, ${e.b.length}× ${b.label})`;
+      note = note ? `${note}; repeated within a list` : `repeated within a list (${e.a.length}× ${a.label}, ${e.b.length}× ${b.label})`;
     }
     counts[outcome] = (counts[outcome] ?? 0) + 1;
     entries.push({ key: k, a: e.a, b: e.b, outcome, note });

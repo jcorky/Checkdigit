@@ -39,44 +39,51 @@
     <section class="panel step">
       <div class="two-col">
         <div>
-          <label class="field-label" for="a">Side A</label>
-          <input id="a-label" class="text-in plain" type="text" value="A" maxlength="30" aria-label="Label for side A" style="margin:4px 0">
-          <textarea id="a" class="text-area" rows="8" spellcheck="false" placeholder="Paste or drop a list or file for side A"></textarea>
-          <label class="linklike small" for="a-file">Choose a file for A</label><input id="a-file" type="file" class="sr-only">
+          <label class="field-label" for="a-label">Name of the first list</label>
+          <input id="a-label" class="text-in plain" type="text" value="First list" maxlength="30" style="margin:4px 0">
+          <label class="field-label" for="a">Numbers in the first list</label>
+          <textarea id="a" class="text-area" rows="8" spellcheck="false" placeholder="Paste or drop a list or file for the first list"></textarea>
+          <label class="linklike small" for="a-file">Choose a file for the first list</label><input id="a-file" type="file" class="sr-only">
         </div>
         <div>
-          <label class="field-label" for="b">Side B</label>
-          <input id="b-label" class="text-in plain" type="text" value="B" maxlength="30" aria-label="Label for side B" style="margin:4px 0">
-          <textarea id="b" class="text-area" rows="8" spellcheck="false" placeholder="Paste or drop a list or file for side B"></textarea>
-          <label class="linklike small" for="b-file">Choose a file for B</label><input id="b-file" type="file" class="sr-only">
+          <label class="field-label" for="b-label">Name of the second list</label>
+          <input id="b-label" class="text-in plain" type="text" value="Second list" maxlength="30" style="margin:4px 0">
+          <label class="field-label" for="b">Numbers in the second list</label>
+          <textarea id="b" class="text-area" rows="8" spellcheck="false" placeholder="Paste or drop a list or file for the second list"></textarea>
+          <label class="linklike small" for="b-file">Choose a file for the second list</label><input id="b-file" type="file" class="sr-only">
         </div>
       </div>
-      <div class="row-actions">
-        <span class="field-label">Comparison key</span>
-        <select id="key" class="select-in small">
-          <option value="normalized">Whole normalized identifier</option>
-          <option value="body">Ten-character body (check digit ignored; conflicts reported)</option>
+      <div class="field-row" style="margin-top:12px">
+        <label for="key">Match numbers by</label>
+        <select id="key" class="select-in">
+          <option value="normalized">The whole number, check digit included</option>
+          <option value="body">The body only, ignoring the check digit</option>
         </select>
+      </div>
+      <p class="muted small" id="key-note" style="margin:6px 0 0"></p>
+      <div class="row-actions">
         <button type="button" class="btn btn-primary" id="run">Compare</button>
-        <a class="btn btn-ghost btn-small" id="dl-csv" download="checkdigit-compare.csv" hidden>Export CSV</a>
+        <a class="btn btn-ghost btn-small" id="dl-csv" download="checkdigit-compare.csv" hidden>Download comparison (CSV)</a>
+        <span class="muted small" id="stale-note" role="status" aria-live="polite" hidden></span>
       </div>
     </section>
 
     <section class="panel step" id="results" hidden>
+      <p class="sr-only" id="results-summary" role="status" aria-live="polite"></p>
       <div id="totals" class="totals"></div>
-      <div class="row-actions">
-        <span class="field-label">Show</span>
-        <select id="filter" class="select-in small">
-          <option value="all">All</option>
-          <option value="only_a">Only in A</option>
-          <option value="only_b">Only in B</option>
-          <option value="both">In both</option>
-          <option value="conflict">Conflicts</option>
-          <option value="duplicate">Repeated within a side</option>
+      <div class="field-row">
+        <label for="filter">Show</label>
+        <select id="filter" class="select-in">
+          <option value="all">All rows</option>
+          <option value="only_a" id="opt-only-a">Only in the first list</option>
+          <option value="only_b" id="opt-only-b">Only in the second list</option>
+          <option value="both">In both lists</option>
+          <option value="conflict">Check-digit difference</option>
+          <option value="duplicate">Repeated within a list</option>
         </select>
       </div>
-      <div class="tablewrap"><table class="grid" id="table"><thead><tr><th>Key</th><th>Outcome</th><th id="th-a">A</th><th id="th-b">B</th><th>Note</th></tr></thead><tbody></tbody></table></div>
-      <p class="empty-state" id="empty" hidden><span class="stripes" aria-hidden="true"></span><span>Nothing to compare: no identifiers found on either side.</span></p>
+      <div class="tablewrap"><table class="grid" id="table"><thead><tr><th>Number</th><th>Outcome</th><th id="th-a">First list</th><th id="th-b">Second list</th><th>Note</th></tr></thead><tbody></tbody></table></div>
+      <p class="empty-state" id="empty" hidden><span class="stripes" aria-hidden="true"></span><span id="empty-text">No identifiers were found on either list.</span></p>
     </section>
   </div>
 </main>

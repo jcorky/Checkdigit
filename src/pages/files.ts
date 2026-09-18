@@ -116,10 +116,12 @@ const el = {
   bulkUndo: byId<HTMLButtonElement>("bulk-undo"),
   proposals: byId<HTMLTableElement>("proposals"),
   proposalsEmpty: byId("proposals-empty"),
+  proposalsEmptyText: byId("proposals-empty-text"),
   evidence: byId("evidence"),
   exportSection: byId("export"),
   exportState: byId("export-state"),
   build: byId<HTMLButtonElement>("build"),
+  dlExtras: byId("dl-extras"),
   dlCorrected: byId<HTMLAnchorElement>("dl-corrected"),
   dlExceptions: byId<HTMLAnchorElement>("dl-exceptions"),
   dlLedger: byId<HTMLAnchorElement>("dl-ledger"),
@@ -189,6 +191,7 @@ async function setSource(bytes: Uint8Array, filename: string, contentType: strin
   state.jobState = "uploaded";
   el.results.hidden = true;
   el.exportSection.hidden = true;
+  el.dlExtras.hidden = true;
   refreshMapping();
 }
 
@@ -448,16 +451,32 @@ function renderFacets(): void {
   el.bulkScope.textContent = `Bulk actions apply to the ${n} filtered proposal${n === 1 ? "" : "s"} (all pages), not only the rows on screen.`;
 }
 
+function highlightChange(raw: string, candidate: string | null): string {
+  if (!candidate) return "—";
+  // Show the corrected number with the characters that differ from the original emphasised.
+  let out = "";
+  for (let i = 0; i < candidate.length; i++) {
+    const ch = candidate[i] as string;
+    out += raw[i] === ch ? html`${ch}` : html`<span class="cd">${ch}</span>`;
+  }
+  return out;
+}
+
 function renderProposals(): void {
   const rows = filtered();
   const body = el.proposals.tBodies[0] as HTMLTableSectionElement;
   el.proposalsEmpty.hidden = rows.length > 0;
+  if (rows.length === 0) {
+    el.proposalsEmptyText.textContent = state.proposals.length === 0
+      ? "No changes to review. Every identifier passed, or none was found."
+      : "No proposals match these filters. Change the filter to see the rest.";
+  }
   body.innerHTML = rows
     .map(
       (p) => html`<tr data-id="${p.id}" class="${state.selected === p.id ? "selected" : ""}" tabindex="0">
         <td class="id">${p.id}</td>
         <td class="id">${p.raw}</td>
-        <td class="id">${p.candidate ?? "—"}</td>
+        <td class="id">${raw(highlightChange(p.raw, p.candidate))}</td>
         <td>${issueOf(p)}</td>
         <td class="small muted">${p.occurrences[0]?.label ?? ""}${p.occurrences.length > 1 ? ` +${p.occurrences.length - 1}` : ""}</td>
         <td>${raw(badge(p.state === "approved" ? "passed" : p.state === "rejected" ? "failed" : p.state === "stale" ? "stale" : p.state === "deferred" ? "pending" : "neutral"))} <span class="sr-only">${p.state}</span></td>
@@ -615,6 +634,7 @@ el.build.addEventListener("click", async () => {
   state.jobState = "exporting";
   renderJobState();
   el.build.disabled = true;
+  el.dlExtras.hidden = true;
   for (const u of urls.splice(0)) URL.revokeObjectURL(u);
   const { edits } = applyApproved(state.text, state.proposals);
   const res = (await ask({ type: "apply", text: state.text, edits, encoding: state.encoding })) as ApplyResponse | { type: "error"; message: string };
@@ -653,6 +673,7 @@ el.build.addEventListener("click", async () => {
   blobLink(el.dlLedger, ledgerCsv(state.proposals), "text/csv", `${stem}.ledger.csv`);
   const manifestText = JSON.stringify(manifest, null, 2);
   blobLink(el.dlManifest, manifestText, "application/json", `${stem}.manifest.json`);
+  el.dlExtras.hidden = false;
   el.manifestPreview.hidden = false;
   el.manifestPreview.textContent = manifestText;
   state.jobState = "completed";

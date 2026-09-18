@@ -150,9 +150,9 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
   refuse to edit on an integrity mismatch.
 - OPEN: same-file near-miss suggestions in the inspector use the file's own check-valid
   bodies; there is no workspace history in the browser, by design.
-- OPEN: screenshots of the Files, Compare and Reference pages could not be captured
-  through the Browser pane in this session (timeouts while hidden); states were verified
-  through the DOM.
+- Screenshots of the Files, Compare and Reference pages are captured through the Browser
+  pane at desktop and mobile widths in the UI review pass below; earlier sessions verified
+  their states through the DOM when the pane could not be captured.
 - Streaming path (files above 5 MiB, added 2026-09-17): the cap is 5 GiB by design; the
   practical bound is the browser's storage quota for this origin, since stored records
   (64 bytes per proposal or review item) and the exported copy live in the origin-private
@@ -268,6 +268,45 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
 - The owner-code register must be obtained from the BIC under its own terms and imported
   with the licence note; the repository ships only the observational seed used by the
   public service.
+
+## UI review pass (2026-09-17)
+
+Acted on a researched review of the five public pages at 1440, 390 and 320 px.
+
+- Contradictory interface states: a global `[hidden] { display: none !important }` rule
+  now enforces the `hidden` attribute against display-carrying classes (buttons, links,
+  empty-state blocks). Compare clears its result and export when any input, label or key
+  changes, and distinguishes "no identifiers found" from "no rows match this filter";
+  Files distinguishes "no changes to review" from "no proposals match these filters".
+- Mobile overflow: the Files option selects overflowed because a `1fr` grid track cannot
+  shrink below a `<select>`'s longest option; the form grids now use `minmax(0, 1fr)` and
+  the selects `max-width: 100%`. Reference article tables scroll inside their own box.
+  Every page holds 320 px with no horizontal page scroll; wide tables scroll locally.
+- Contrast: the light-mode homepage headline was lime on off-white (~1.16:1). The
+  headline is now the primary text token (~11.5:1) and lime stays a navigational accent.
+- Homepage names the task ("Check container and equipment numbers."), starts empty with
+  an explicit "Try an example", uses one primary number field with the segmented cells
+  as a breakdown below, links the detailed-checker button to the entered number, and adds
+  four task cards.
+- Single-number result leads with Entered / Result / Expected / Proposed / Explanation
+  and no longer shows the proposed number beside a FAILED badge; the validation table and
+  arithmetic are in a collapsed disclosure; a persistent aria-live region announces a
+  concise result; copy actions sit beside the relevant numbers.
+- Files: workspace-only options (import mode, coverage scope, owner policy) moved into
+  Advanced settings; a plain local comparison no longer raises a blocking
+  `IMPORT_INTENT_UNRESOLVED`; "Runs in a Web Worker" replaced with plain feedback; the
+  changed digit is highlighted; the reviewed file is the primary download and the
+  exception, ledger and manifest files are grouped as supporting reports.
+- Compare: neutral, descriptive outcomes ("Only in <name>", "In both lists",
+  "Check-digit difference", "Repeated within a list"); no validation-verdict badges;
+  labelled matching and filter selects with a plain-language explanation of the key.
+- Reference: heading "Guides and reference", a compact topic selector on narrow
+  viewports, and task links back to the checkers.
+- Verified with automated tests (320 vitest cases, 17 files, including new guards in
+  `tests/ui-states.test.ts`, `tests/compare.test.ts`, `tests/localjob.test.ts`) and
+  browser checks driven through the DOM and screenshots at 1440, 390 and 320 px.
+- OPEN: no usability testing with people was done; findings are from an automated review
+  and browser inspection. The save-dialog export and Firefox/Safari were not exercised.
 
 ## Intentional differences recorded in Pass 1 (superseded for the digit rows above)
 

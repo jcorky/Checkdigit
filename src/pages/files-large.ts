@@ -61,6 +61,16 @@ interface LargeState {
   exported: StreamExportedResponse | null;
 }
 
+function highlightChange(raw: string, candidate: string | null): string {
+  if (!candidate) return "—";
+  let out = "";
+  for (let i = 0; i < candidate.length; i++) {
+    const ch = candidate[i] as string;
+    out += raw[i] === ch ? html`${ch}` : html`<span class="cd">${ch}</span>`;
+  }
+  return out;
+}
+
 function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   const units = ["KiB", "MiB", "GiB"];
@@ -258,7 +268,7 @@ export function createLargeController(ask: Ask): LargeController {
           <td class="id">${p.index + 1}</td>
           <td class="small muted">${p.location}</td>
           <td class="id">${p.raw || "—"}${p.raw_truncated ? "…" : ""}</td>
-          <td class="id">${p.candidate ?? "—"}</td>
+          <td class="id">${raw(highlightChange(p.raw, p.candidate))}</td>
           <td><span class="badge ${p.kind === "missing" ? "neutral" : p.kind}">${KIND_LABEL[p.kind]}</span></td>
           <td><span class="badge ${DECISION_BADGE[p.decision]}">${DECISION_LABEL[p.decision]}</span></td>
           <td class="actions">${

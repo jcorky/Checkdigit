@@ -115,15 +115,17 @@ export function makeFinding(code: string, detail: string, location?: string): Lo
   return { ...base, id: `f${findingSeq}`, detail, ...(location ? { location } : {}) };
 }
 
+// A local inspection only ever compares; it never writes to a stored fleet.
+// Comparison-only mode is the whole capability here, so it needs no finding and
+// a coverage scope is optional. The snapshot, incremental and removal modes do
+// change a stored fleet, which the local inspector cannot do; that limitation is
+// the one worth surfacing.
 export function intentFindings(intent: ImportIntent): LocalFinding[] {
   const out: LocalFinding[] = [];
-  if (!intent.scope.value.trim()) {
-    out.push(makeFinding("IMPORT_INTENT_UNRESOLVED", "No coverage scope was named. The job runs in comparison-only mode."));
-  }
   if (intent.mode !== "comparison_only") {
     out.push(makeFinding(
       "IMPORT_INTENT_UNRESOLVED",
-      `Import mode ${intent.mode} needs a workspace baseline generation to publish into; the local inspector has none. Findings and proposals are produced; nothing is applied to a fleet.`,
+      "Snapshot, incremental and removal modes change a stored fleet, which needs the private workspace. Here the file is inspected in comparison-only mode: findings and proposals are produced and nothing is applied to a fleet.",
     ));
   }
   return out;

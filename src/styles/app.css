@@ -84,13 +84,13 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px 18px;
 }
 
 @media (max-width: 760px) {
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -99,11 +99,18 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
   font-weight: 700;
+}
+
+.form-grid .select-in,
+.form-grid .text-in {
+  width: 100%;
+  max-width: 100%;
 }
 
 .form-grid .inline {
@@ -299,9 +306,15 @@ table.grid td.actions {
   white-space: nowrap;
 }
 
+table.grid td.id .cd {
+  color: var(--warn-text);
+  font-weight: 700;
+}
+
 table.grid td.actions .btn {
-  margin-right: 4px;
-  padding: 3px 9px;
+  margin: 2px 4px 2px 0;
+  padding: 5px 10px;
+  min-height: 26px;
   font-size: 12px;
 }
 
@@ -366,9 +379,27 @@ pre.code {
   max-height: 320px;
 }
 
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 3px;
+  background: var(--unavail);
+}
+
+.dot.in-both {
+  background: var(--blue);
+}
+
+.dot.warn {
+  background: var(--warn);
+}
+
 .two-col {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -379,6 +410,26 @@ pre.code {
 }
 
 /* ---- reference library ---- */
+.ref-return {
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.ref-return a {
+  color: var(--text);
+  border-bottom: 1px dashed var(--line);
+  text-decoration: none;
+}
+
+.ref-return a:hover {
+  border-color: var(--lime);
+}
+
+.ref-jump {
+  display: none;
+  margin-bottom: 14px;
+}
+
 .ref-grid {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -387,7 +438,10 @@ pre.code {
 
 @media (max-width: 860px) {
   .ref-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ref-jump {
+    display: flex;
   }
 }
 
@@ -412,6 +466,12 @@ pre.code {
 
 .ref-nav a:hover {
   background: var(--raised);
+}
+
+@media (max-width: 860px) {
+  .ref-nav {
+    display: none;
+  }
 }
 
 .ref-nav .n {
@@ -459,6 +519,9 @@ article.ref table {
   border-collapse: collapse;
   font-size: 13px;
   margin: 8px 0;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 article.ref th,

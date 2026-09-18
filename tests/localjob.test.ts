@@ -25,16 +25,17 @@ function analyse(trust = false) {
 }
 
 describe("import intent", () => {
-  it("defaults to comparison-only and flags a missing scope", () => {
-    const f = intentFindings(defaultIntent());
-    expect(f.map((x) => x.code)).toEqual(["IMPORT_INTENT_UNRESOLVED"]);
-    expect(f[0]?.blocking_scope).toBe("publication");
+  it("a plain comparison-only inspection raises no import-intent finding", () => {
+    expect(intentFindings(defaultIntent())).toEqual([]);
+    // a coverage scope is optional for a local comparison
+    expect(intentFindings({ ...defaultIntent(), scope: { kind: "terminal", value: "T1" } })).toEqual([]);
   });
 
-  it("other modes are recorded as unresolved, never applied", () => {
+  it("modes that would change a stored fleet are recorded, never applied", () => {
     const f = intentFindings({ ...defaultIntent(), mode: "full_snapshot", scope: { kind: "terminal", value: "T1" } });
     expect(f).toHaveLength(1);
-    expect(f[0]?.detail).toContain("full_snapshot");
+    expect(f[0]?.code).toBe("IMPORT_INTENT_UNRESOLVED");
+    expect(f[0]?.detail).toContain("comparison-only");
   });
 });
 
