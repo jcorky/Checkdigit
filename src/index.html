@@ -65,6 +65,49 @@
   ]
 }
 </script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do I check a container number?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Type or paste the full number into the calculator and choose Check number. Eleven characters (four letters, six digits and the check digit) verifies a complete container number; ten characters calculates the missing check digit. Lower case, spaces and hyphens are accepted, and the tool shows the arithmetic behind the result." }
+    },
+    {
+      "@type": "Question",
+      "name": "What does a valid check digit prove and not prove?",
+      "acceptedAnswer": { "@type": "Answer", "text": "A matching check digit confirms only that the printed digit agrees with the first ten characters under the ISO 6346 mod-11 arithmetic. It does not confirm that the container exists, who owns it, where it is, or whether it can be released, and it cannot catch every possible typo, because two different numbers can share a check digit." }
+    },
+    {
+      "@type": "Question",
+      "name": "Why does my container number fail the check?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Either the check digit or one of the first ten characters is wrong. The most common causes are a transcription error (for example the letter O read as the digit 0) or two characters swapped. Checkdigit shows the expected check digit and the number it would form if the first ten characters are correct, but it never assumes which end is wrong." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the difference between ISO 6346, ILU and UIC numbers?",
+      "acceptedAnswer": { "@type": "Answer", "text": "ISO 6346 covers freight containers (category U), detachable container-related equipment (J) and trailers or chassis (Z), with a mod-11 check digit. ILU units (EN 13044) use category letters A, B, D, E or K and the same arithmetic. UIC wagon numbers are twelve digits with a Luhn (mod-10) check. Checkdigit routes each to the right rule and never cross-applies them." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I check many container numbers at once?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the Bulk check tab to paste a list, one number per line, and get one result for each, with a summary and CSV export, or use Review a file to detect and correct numbers in a CSV, EDIFACT, X12 or container XML file." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is Checkdigit free, and is my data private?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes and yes. The calculator is free and runs entirely in your browser: nothing you enter is uploaded, logged or stored, and the site makes no third-party requests, not even for fonts." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a BIC code or owner prefix?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The first three letters of a container number are the owner code, or BIC code, registered with the Bureau International des Containers. Checkdigit validates the number's format and check digit but does not look owners up; you can search the owner register at bic-code.org." }
+    }
+  ]
+}
+</script>
 <script type="module" src="/pages/index.ts"></script>
 </head>
 <body>
@@ -183,6 +226,54 @@
           <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7l4-3 4 3 4-3 4 3M4 7v10l4 3 4-3 4 3 4-3V7"/></svg>
           <div><h3>Precise, not guessed</h3><p>Numbers are routed to the right standard, and a suggestion is never presented as a confirmed fact.</p></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="wrap">
+      <h2>What is a container check digit?</h2>
+      <p class="lead">A shipping container number follows the ISO 6346 standard: a three-letter owner code, a category letter, a six-digit serial number and a final check digit — for example CSQU 305438 3. The check digit is worked out from the first ten characters, so it acts as a self-check that catches most single-character mistakes and swapped digits when a container number is written down, keyed, or sent in an EDI message.</p>
+
+      <h2>How the ISO 6346 check digit is calculated</h2>
+      <p>Each of the first ten characters is given a value. Digits keep their own value; letters run from A = 10 to Z = 38, skipping every multiple of 11 (so 11, 22 and 33 are never used). Each value is multiplied by a weight — the powers of two from 1 to 512, left to right — and the ten results are added together. The sum is divided by 11, and the remainder is the check digit; a remainder of 10 is written as 0.</p>
+      <div class="worked">
+        <p>Worked example — <span class="id">CSQU305438</span>: the letters are C = 13, S = 30, Q = 28, U = 32. Multiplying the ten characters by 1, 2, 4, 8, …, 512 and adding the results gives 6185. 6185 ÷ 11 leaves a remainder of 3, so the check digit is 3 and the complete number is <span class="id">CSQU3054383</span>. Enter any number in the calculator above to see the full working.</p>
+      </div>
+
+      <h2>How to check or calculate a container number</h2>
+      <p>Use the calculator at the top of this page: enter a complete eleven-character number to verify its check digit, or the first ten characters to calculate the missing one. Checkdigit also handles ILU (EN 13044) unit numbers and UIC wagon numbers, checks whole lists on the <a href="/bulk">Bulk check</a> tab, and reviews and corrects container files under <a href="/files">Review a file</a> — all in your browser, with nothing uploaded. For the anatomy, code tables and worked arithmetic, see the <a href="/reference">reference library</a>.</p>
+
+      <h2>Frequently asked questions</h2>
+      <div class="faq">
+        <details>
+          <summary>How do I check a container number?</summary>
+          <div class="faq-a"><p>Type or paste the full number into the calculator above and choose Check number. Eleven characters (four letters, six digits and the check digit) verifies a complete container number; ten characters calculates the missing check digit. Lower case, spaces and hyphens are accepted, and the tool shows the arithmetic behind the result.</p></div>
+        </details>
+        <details>
+          <summary>What does a valid check digit prove — and not prove?</summary>
+          <div class="faq-a"><p>A matching check digit confirms only that the printed digit agrees with the first ten characters under the ISO 6346 mod-11 arithmetic. It does not confirm that the container exists, who owns it, where it is, or whether it can be released, and it cannot catch every possible typo — two different numbers can share a check digit.</p></div>
+        </details>
+        <details>
+          <summary>Why does my container number fail the check?</summary>
+          <div class="faq-a"><p>Either the check digit or one of the first ten characters is wrong. The most common causes are a transcription error (for example the letter O read as the digit 0) or two characters swapped. Checkdigit shows the expected check digit and the number it would form if the first ten characters are correct, but it never assumes which end is wrong.</p></div>
+        </details>
+        <details>
+          <summary>What is the difference between ISO 6346, ILU and UIC numbers?</summary>
+          <div class="faq-a"><p>ISO 6346 covers freight containers (category U), detachable container-related equipment (J) and trailers or chassis (Z), with a mod-11 check digit. ILU units (EN 13044) use category letters A, B, D, E or K and the same arithmetic. UIC wagon numbers are twelve digits with a Luhn (mod-10) check. Checkdigit routes each to the right rule and never cross-applies them.</p></div>
+        </details>
+        <details>
+          <summary>Can I check many container numbers at once?</summary>
+          <div class="faq-a"><p>Yes. Use the Bulk check tab to paste a list — one number per line — and get one result for each, with a summary and CSV export, or use Review a file to detect and correct numbers in a CSV, EDIFACT, X12 or container XML file.</p></div>
+        </details>
+        <details>
+          <summary>Is Checkdigit free, and is my data private?</summary>
+          <div class="faq-a"><p>Yes and yes. The calculator is free and runs entirely in your browser: nothing you enter is uploaded, logged or stored, and the site makes no third-party requests — not even for fonts.</p></div>
+        </details>
+        <details>
+          <summary>What is a BIC code or owner prefix?</summary>
+          <div class="faq-a"><p>The first three letters of a container number are the owner code, or BIC code, registered with the Bureau International des Containers. Checkdigit validates the number's format and check digit but does not look owners up; you can search the owner register at <a href="https://www.bic-code.org/bic-codes/">bic-code.org</a>.</p></div>
+        </details>
       </div>
     </div>
   </section>
