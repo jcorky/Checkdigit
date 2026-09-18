@@ -128,9 +128,33 @@ export function summarize(rows: readonly BulkRow[]): Record<string, number> {
   return out;
 }
 
-const csvEscape = (v: string): string => (/[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+/*
+ * Neutralise spreadsheet formula injection without losing the original text: a
+ * cell that a spreadsheet would evaluate as a formula (it begins with =, +, -,
+ * @, or a leading tab/CR) is prefixed with an apostrophe, which spreadsheets
+ * treat as "this is text" and do not display. The value is otherwise untouched.
+ */
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+export function sanitizeCell(v: string): string {
+  return FORMULA_LEAD.test(v) ? `'${v}` : v;
+}
+
+const csvEscape = (v: string): string => {
+  const safe = sanitizeCell(v);
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+};
 
 export const BULK_COLUMNS = ["as_found", "normalized", "id_type", "status", "printed_check", "computed_check", "suggested"] as const;
+
+export const BULK_HEADERS: Record<(typeof BULK_COLUMNS)[number], string> = {
+  as_found: "Entered",
+  normalized: "Normalised",
+  id_type: "Type",
+  status: "Status",
+  printed_check: "Printed",
+  computed_check: "Expected",
+  suggested: "Suggested",
+};
 
 export function rowRecord(r: BulkRow): Record<(typeof BULK_COLUMNS)[number], string> {
   const e = r.validation.explanation;
@@ -160,4 +184,15 @@ export function toCsv(rows: readonly BulkRow[]): string {
 
 export function toJson(rows: readonly BulkRow[]): string {
   return JSON.stringify(rows.map((r) => ({ line: r.line, ...rowRecord(r), layers: r.validation.layers })), null, 2);
+}
+
+/** Tab-separated text for the clipboard, with a header row and the same guard. */
+export function toTsv(rows: readonly BulkRow[]): string {
+  const clean = (v: string): string => sanitizeCell(v).replace(/[\t\r\n]/g, " ");
+  const lines = [BULK_COLUMNS.map((c) => BULK_HEADERS[c]).join("\t")];
+  for (const r of rows) {
+    const rec = rowRecord(r);
+    lines.push(BULK_COLUMNS.map((c) => clean(rec[c])).join("\t"));
+  }
+  return lines.join("\n");
 }

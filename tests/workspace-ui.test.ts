@@ -61,9 +61,9 @@ describe("workspace pages build", () => {
     expect(js).toMatch(/credentials:["'`]same-origin["'`]/);
   });
 
-  it("uses the Electric Yard tokens from the shared stylesheet", () => {
+  it("uses the shared design tokens from the site stylesheet", () => {
     const css = walk(out).filter((f) => f.endsWith(".css")).map((f) => readFileSync(f, "utf8")).join("\n");
-    for (const token of ["--bg:#172229", "--lime:#bce962", "--ok-bg:", "--warn-bg:", "--err-bg:"]) {
+    for (const token of ["--bg:#f4f6f8", "--action-bg:#1459b8", "--ok-bg:", "--warn-bg:", "--err-bg:"]) {
       expect(css.replace(/\s+/g, ""), token).toContain(token);
     }
   });

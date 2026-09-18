@@ -3,89 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Check a list — Checkdigit</title>
-<meta name="description" content="Paste several container, ILU or UIC numbers and get one result per number and per validation layer, with CSV and JSON export. Runs in your browser.">
-<meta name="color-scheme" content="dark light">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172229'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23BCE962' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23BCE962' fill-opacity='0.25' stroke='%23BCE962' stroke-width='2'/%3E%3C/svg%3E">
+<title>Bulk check — Checkdigit</title>
+<meta name="description" content="Paste many container, ILU or UIC numbers and get one result for each, with a summary, copy and CSV export. Every entry gets an outcome. Runs in your browser.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
 <script type="module" src="/pages/bulk.ts"></script>
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to the checker</a>
 <header class="bar">
   <div class="wrap row">
-    <a class="brand" href="/">
+    <a class="brand" href="/" aria-label="Checkdigit home">
       <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
         <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
-        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
       </svg>
       Checkdigit
     </a>
-    <nav aria-label="Site">
-      <a class="navlink" href="/check">Check</a>
-      <a class="navlink" href="/bulk" aria-current="page">List</a>
-      <a class="navlink" href="/files">Files</a>
-      <a class="navlink" href="/compare">Compare</a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk" aria-current="page"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
       <a class="navlink" href="/reference">Reference</a>
     </nav>
   </div>
 </header>
 
-<main class="page app">
+<main class="page app" id="main">
   <div class="wrap">
-    <p class="eyebrow">Several numbers</p>
-    <h1>Check a list</h1>
-    <div class="stripes" aria-hidden="true" style="margin-bottom:12px"></div>
-    <p class="intro">Paste a list (one per line, or comma, tab, semicolon or pipe separated) or drop a text or CSV file. Lower-case letters, spaces and hyphens inside a number are normalized first and the original is kept beside the result. Up to 10,000 numbers; nothing leaves this tab.</p>
-
-    <section class="panel step">
-      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Drop a text or CSV file here or press Enter to choose one">
-        <p><b>Drop a .txt or .csv here</b> or <label class="linklike" for="file">choose a file</label>, or paste below.</p>
-        <input id="file" type="file" class="sr-only" accept=".txt,.csv,.tsv,text/plain,text/csv">
-      </div>
-      <label class="sr-only" for="paste">Numbers to check</label>
-      <textarea id="paste" class="text-area" rows="7" spellcheck="false" placeholder="CSQU3054383&#10;msku 123456 7&#10;APLU100000&#10;21 81 2471 217-3" aria-label="Numbers to check"></textarea>
-      <div class="field-row" style="margin-top:10px">
-        <label for="mode">Treat the input as</label>
-        <select id="mode" class="select-in">
-          <option value="validate">A list: check every entry, one row each</option>
-          <option value="extract">Free text: find the numbers inside it</option>
-        </select>
-      </div>
-      <p class="muted small" id="mode-note" style="margin:6px 0 0"></p>
-      <div class="row-actions">
-        <button type="button" class="btn btn-primary" id="run">Check list</button>
-        <button type="button" class="btn btn-ghost btn-small" id="clear">Clear</button>
-        <span class="muted small" id="note" role="status" aria-live="polite"></span>
-      </div>
-    </section>
-
-    <section class="panel step" id="results" hidden>
-      <div id="totals" class="totals"></div>
-      <div class="field-row">
-        <label for="filter">Show</label>
-        <select id="filter" class="select-in">
-          <option value="all">All</option>
-          <option value="check_failed">Check digit failed</option>
-          <option value="check_passed">Check digit passed</option>
-          <option value="computed">Check digit computed (10 chars)</option>
-          <option value="flagged">Flagged by the kernel</option>
-          <option value="structure_failed">Invalid or unrecognized</option>
-        </select>
-      </div>
-      <div class="row-actions">
-        <a class="btn btn-ghost btn-small" id="dl-csv" download="checkdigit-list.csv">Download shown (CSV)</a>
-        <a class="btn btn-ghost btn-small" id="dl-json" download="checkdigit-list.json">Download shown (JSON)</a>
-      </div>
-      <div class="tablewrap"><table class="grid" id="table"><thead><tr><th>Line</th><th>As found</th><th>Normalized</th><th>Scheme</th><th>Structure</th><th>Check digit</th><th>Printed</th><th>Expected</th><th>Suggested</th></tr></thead><tbody></tbody></table></div>
-      <p class="empty-state" id="empty" hidden><span class="stripes" aria-hidden="true"></span><span id="empty-text">Nothing to check yet.</span></p>
-    </section>
+    <p class="eyebrow">Many numbers</p>
+    <h1>Bulk check</h1>
+    <p class="intro">Paste a list of container, ILU or UIC numbers — one per line — and get one result for each. Every entry gets an outcome, including malformed and incomplete ones. Nothing leaves this tab. For files with columns to map or corrections to splice back in, use <a href="/files">Review a file</a>.</p>
+    <div id="bulk-root"></div>
   </div>
 </main>
 
 <footer>
   <div class="wrap row">
     <span class="mono-sm">Checkdigit — lists are checked in this tab and never sent anywhere</span>
-    <span class="mono-sm"><a href="/check">Check one number</a></span>
+    <span class="mono-sm"><a href="/">Calculator</a> · <a href="/compare">Compare lists</a></span>
   </div>
 </footer>
 

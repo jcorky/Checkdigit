@@ -168,58 +168,63 @@ describe("design tokens", () => {
     return (l1 + 0.05) / (l2 + 0.05);
   };
 
-  it("keeps text at or above 4.5:1 on both palettes", () => {
-    // Electric Yard tokens (src/styles/site.css). Text colours are checked on
-    // every surface they appear on; decorative blocks carry their own text token.
-    const dark = { bg: "#172229", panel: "#24343c", raised: "#2d4048" };
-    const darkText = ["#e8f3e9", "#afc7c6", "#bce962", "#7cd9a2", "#f0a97e", "#f58a7e", "#9fb6ec", "#a9babb"];
-    const light = { bg: "#f2f4e9", panel: "#fffff8", raised: "#e9ecde" };
-    const lightText = ["#1c363b", "#4f6a6d", "#1e6b45", "#8c4a15", "#a9382b", "#2b4fa8", "#4f6164"];
+  it("keeps interface text at or above 4.5:1 on every surface", () => {
+    // The light industrial palette (src/styles/site.css). Text colours are
+    // checked on every surface they appear on; status colours are also checked
+    // on their own tinted background.
+    const surfaces = { bg: "#f4f6f8", panel: "#ffffff", raised: "#eef2f6" };
+    const bodyText = ["#172b3a", "#526171", "#146c43", "#8a4b08", "#b42318", "#0f478f"];
     const failures: string[] = [];
-    for (const [name, surface] of Object.entries(dark)) {
-      for (const t of darkText) if (contrast(t, surface) < 4.5) failures.push(`dark ${t} on ${name} = ${contrast(t, surface).toFixed(2)}`);
+    for (const [name, surface] of Object.entries(surfaces)) {
+      for (const t of bodyText) if (contrast(t, surface) < 4.5) failures.push(`${t} on ${name} = ${contrast(t, surface).toFixed(2)}`);
     }
-    for (const [name, surface] of Object.entries(light)) {
-      for (const t of lightText) if (contrast(t, surface) < 4.5) failures.push(`light ${t} on ${name} = ${contrast(t, surface).toFixed(2)}`);
-    }
-    // action buttons and decorative blocks
+    // status text on its own tinted background
     for (const [fg, bg, label] of [
-      ["#21332b", "#bce962", "dark primary action"],
-      ["#ffffff", "#145c63", "light primary action"],
-      ["#17373c", "#bce962", "text on lime (dark)"],
-      ["#17373c", "#ceef77", "text on lime (light)"],
-      ["#17373c", "#e79768", "text on orange (dark)"],
-      ["#17373c", "#f9a572", "text on orange (light)"],
-      ["#17373c", "#7d9feb", "text on blue (light)"],
+      ["#146c43", "#e6f3ec", "match on tint"],
+      ["#8a4b08", "#fbf0e1", "review on tint"],
+      ["#b42318", "#fbeae8", "mismatch on tint"],
+      ["#0f478f", "#e7effa", "calculated on tint"],
     ] as const) {
       if (contrast(fg, bg) < 4.5) failures.push(`${label} = ${contrast(fg, bg).toFixed(2)}`);
+    }
+    // white on the primary action, at rest and on hover
+    for (const [fg, bg, label] of [
+      ["#ffffff", "#1459b8", "white on primary action"],
+      ["#ffffff", "#0f478f", "white on action hover"],
+    ] as const) {
+      if (contrast(fg, bg) < 4.5) failures.push(`${label} = ${contrast(fg, bg).toFixed(2)}`);
+    }
+    // the input boundary is a UI component: at least 3:1 against its surface
+    for (const [surface, name] of [["#ffffff", "panel"], ["#f4f6f8", "bg"], ["#eef2f6", "raised"]] as const) {
+      if (contrast("#758493", surface) < 3) failures.push(`input boundary on ${name} = ${contrast("#758493", surface).toFixed(2)}`);
     }
     expect(failures).toEqual([]);
   });
 
-  it("keeps brand and semantic tokens separate in the stylesheet", () => {
+  it("defines the documented palette and keeps the action colour out of status meaning", () => {
     const css = read(resolve(srcDir, "styles/site.css")).toLowerCase();
     for (const [token, value] of Object.entries({
-      "--bg": "#172229",
-      "--panel": "#24343c",
-      "--text": "#e8f3e9",
-      "--muted": "#afc7c6",
-      "--line": "#42595c",
-      "--lime": "#bce962",
-      "--action-bg": "#bce962",
-      "--action-text": "#21332b",
-      "--blue": "#718fd2",
-      "--orange": "#e79768",
-      "--on-decor": "#17373c",
+      "--bg": "#f4f6f8",
+      "--panel": "#ffffff",
+      "--text": "#172b3a",
+      "--muted": "#526171",
+      "--line": "#d8e0e7",
+      "--border-strong": "#758493",
+      "--action-bg": "#1459b8",
+      "--action-text": "#ffffff",
+      "--ok": "#146c43",
+      "--warn": "#8a4b08",
+      "--err": "#b42318",
     })) {
       expect(css, token).toContain(`${token}: ${value};`);
     }
-    // lime is a brand colour, never the meaning of "valid"
+    // the primary action colour is never the meaning of a status
     const ok = /--ok: (#[0-9a-f]{6});/.exec(css)?.[1];
     const err = /--err: (#[0-9a-f]{6});/.exec(css)?.[1];
-    expect(ok).toBeDefined();
-    expect(ok).not.toBe("#bce962");
-    expect(err).not.toBe("#bce962");
+    expect(ok).toBe("#146c43");
+    expect(err).toBe("#b42318");
+    expect(ok).not.toBe("#1459b8");
+    expect(err).not.toBe("#1459b8");
     expect(css).toContain(".badge.valid, .badge.passed { color: var(--ok-text)");
   });
 });

@@ -6,14 +6,19 @@ static site that runs entirely in the visitor's browser; nothing is sent to or s
 a server. The Python service under `checkdigit/` is the reference implementation and the
 private processing path; it is not exposed by the static site.
 
-Design direction: Electric Yard (charcoal/teal surfaces, electric lime navigation,
-cornflower and warm-orange accents). Tokens live in `src/styles/site.css`; the
-application shell styles in `src/styles/app.css`.
+Design direction: a light industrial utility (off-white page, white surfaces, one blue
+action colour, and status colours paired with a word and an icon). IBM Plex Sans for the
+interface and IBM Plex Mono for identifiers, self-hosted under `public/fonts/` so the site
+still makes no outside request. Tokens live in `src/styles/site.css`; the application shell
+styles in `src/styles/app.css`. See `DESIGN_NOTES.md` for the redesign rationale and the
+verification record.
 
-Pages: `/` (segmented validator), `/check` (one number with every validation layer),
-`/bulk` (a list), `/files` (local file inspector with review and export; files above
-5 MiB and up to 5 GiB are streamed), `/compare`
-(two lists or files), `/reference` (library with the size/type decoder).
+Pages: `/` (the calculator — a single-number checker and a bulk tab), `/check` (one number
+with the worked arithmetic and every validation layer, and shareable permalinks such as
+`/check#CSQU3054384`), `/bulk` (the bulk checker on its own page), `/files` (local file
+inspector with review and export; files above 5 MiB and up to 5 GiB are streamed),
+`/compare` (two lists or files), `/reference` (library with the size/type decoder).
+A compact header — Calculator · Tools · Reference — puts Files and Compare under Tools.
 
 Documents:
 

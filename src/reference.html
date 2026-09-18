@@ -5,32 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference — Checkdigit</title>
 <meta name="description" content="Reference library for container and equipment identifiers: anatomy, check-digit arithmetic, common transcription errors, size/type codes, ILU and UIC schemes, prefix registration, EDI message types, mass and reefer fields, and the limits of each file mode.">
-<meta name="color-scheme" content="dark light">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172229'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23BCE962' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23BCE962' fill-opacity='0.25' stroke='%23BCE962' stroke-width='2'/%3E%3C/svg%3E">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
 <script type="module" src="/pages/reference.ts"></script>
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to content</a>
 <header class="bar">
   <div class="wrap row">
-    <a class="brand" href="/">
+    <a class="brand" href="/" aria-label="Checkdigit home">
       <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
         <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
-        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
       </svg>
       Checkdigit
     </a>
-    <nav aria-label="Site">
-      <a class="navlink" href="/check">Check</a>
-      <a class="navlink" href="/bulk">List</a>
-      <a class="navlink" href="/files">Files</a>
-      <a class="navlink" href="/compare">Compare</a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
       <a class="navlink" href="/reference" aria-current="page">Reference</a>
     </nav>
   </div>
 </header>
 
-<main class="page app">
+<main class="page app" id="main">
   <div class="wrap">
     <p class="eyebrow">Reference library</p>
     <h1>Guides and reference</h1>

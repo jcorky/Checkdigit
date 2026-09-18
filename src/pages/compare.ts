@@ -3,6 +3,9 @@ import "../styles/app.css";
 import { compare, compareCsv, outcomeLabel, sideFromText, type CompareKey, type CompareResult } from "../lib/compare";
 import { decodeBytes } from "../lib/encoding";
 import { byId, html, raw } from "../ui/dom";
+import { enhanceNav } from "../ui/nav";
+
+enhanceNav();
 
 const el = {
   a: byId<HTMLTextAreaElement>("a"),

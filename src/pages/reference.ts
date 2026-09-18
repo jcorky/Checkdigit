@@ -4,6 +4,9 @@ import { explain, ISO6346_LETTER_VALUES, iso6346Value } from "../lib/checkdigit"
 import { decodeSizeType, VERIFY_NOTES } from "../lib/sizetype";
 import { validateToken } from "../lib/validation";
 import { byId, html, raw } from "../ui/dom";
+import { enhanceNav } from "../ui/nav";
+
+enhanceNav();
 
 // The reference library: static articles with sources and review dates, a
 // letter table generated from the kernel's own values, an interactive

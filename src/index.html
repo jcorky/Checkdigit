@@ -3,161 +3,128 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Checkdigit — every digit, a clearer picture</title>
-<meta name="description" content="Verify ISO 6346 container, ILU and UIC wagon check digits in your browser. Nothing you type is sent anywhere.">
-<meta name="color-scheme" content="dark light">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172229'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23BCE962' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23BCE962' fill-opacity='0.25' stroke='%23BCE962' stroke-width='2'/%3E%3C/svg%3E">
+<title>Container Check Digit Calculator — Checkdigit</title>
+<meta name="description" content="Calculate a missing container check digit or check a complete ISO 6346, ILU or UIC number. Everything runs in your browser; nothing you type is sent anywhere.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
 <script type="module" src="/pages/index.ts"></script>
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to the calculator</a>
 <header class="bar">
   <div class="wrap row">
-    <a class="brand" href="/" aria-current="page">
+    <a class="brand" href="/" aria-label="Checkdigit home">
       <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
         <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
-        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
       </svg>
       Checkdigit
     </a>
-    <nav aria-label="Site">
-      <a class="navlink" href="/check">Check</a>
-      <a class="navlink" href="/bulk">List</a>
-      <a class="navlink" href="/files">Files</a>
-      <a class="navlink" href="/compare">Compare</a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/" aria-current="page">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
       <a class="navlink" href="/reference">Reference</a>
     </nav>
   </div>
 </header>
 
-<main>
-  <section class="hero">
+<main id="main">
+  <section class="calc-hero">
     <div class="wrap">
       <p class="eyebrow">ISO 6346 · ILU · UIC</p>
-      <h1>Check container and equipment numbers.</h1>
-      <p class="lede">Check or calculate the check digit for container, ILU and rail wagon numbers. Numbers and files are processed <b>in your browser</b>: nothing you enter here is sent anywhere, and this site has no server that could keep it.</p>
+      <h1>Container Check Digit Calculator</h1>
+      <p class="lede">Calculate a missing digit or check a complete container number.</p>
+      <div class="tabs" role="tablist" aria-label="Calculator mode">
+        <button type="button" class="tab" role="tab" id="tab-single" aria-selected="true" aria-controls="panel-single">Single number</button>
+        <button type="button" class="tab" role="tab" id="tab-bulk" aria-selected="false" aria-controls="panel-bulk" tabindex="-1">Bulk check</button>
+      </div>
+    </div>
+  </section>
 
-      <div class="hero-grid">
-        <div class="validator panel-offset">
-          <label class="vlabel" id="vlabel" for="whole">Container or equipment number</label>
-          <div class="whole-row">
-            <input id="whole" class="text-in" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. CSQU3054383 or 21 81 2471 217-3">
-            <button type="button" class="btn btn-ghost btn-small" id="clear">Clear</button>
+  <section class="wrap">
+    <div id="panel-single" class="tabpanel" role="tabpanel" aria-labelledby="tab-single">
+      <div class="surface">
+        <label class="calc-label" for="calc-input">Container number</label>
+        <div class="calc-input-row">
+          <input id="calc-input" class="calc-input" type="text" maxlength="40"
+                 autocomplete="off" autocapitalize="characters" spellcheck="false"
+                 placeholder="e.g. CSQU3054383" aria-describedby="calc-help">
+        </div>
+        <p class="calc-help" id="calc-help">Enter 10 characters to calculate the missing check digit, or 11 to check a complete ISO 6346 number. Lower case, spaces and hyphens are accepted.</p>
+        <p class="notice" id="notice" role="status" aria-live="polite" hidden></p>
+
+        <details class="disclosure" id="scheme-dis">
+          <summary>Other identifier types</summary>
+          <div class="disclosure-body">
+            <div class="scheme-row">
+              <label for="scheme">Identifier type</label>
+              <select id="scheme" class="select-in">
+                <option value="auto">Detect from the number</option>
+                <option value="iso6346">ISO 6346 container</option>
+                <option value="ilu">ILU (EN 13044)</option>
+                <option value="uic">UIC wagon</option>
+              </select>
+            </div>
+            <p><b>ILU (EN 13044).</b> Intermodal loading units use category letters A, B, D, E or K and the same mod-11 arithmetic as ISO 6346. The equivalence to the normative EN 13044-1 text is not independently confirmed here.</p>
+            <p><b>UIC wagon.</b> Rail vehicle numbers are 11 digits plus a Luhn check digit (12 in total). Enter 11 digits to calculate the check digit, or 12 to check a complete number.</p>
           </div>
-          <p class="vhint" id="vhint">4 letters, 6 digits, 1 check digit — or 11 to 12 digits for a UIC wagon. Spaces, hyphens and lower case are accepted.</p>
-          <div class="breakdown">
-            <span class="breakdown-label">How it breaks down</span>
-            <div class="cells" id="cells" role="group" aria-label="Character breakdown"></div>
-          </div>
-          <p class="notice" id="notice" role="status" aria-live="polite" hidden></p>
-          <p class="status" id="status" role="status" aria-live="polite"></p>
-          <div class="vactions">
-            <button type="button" class="btn btn-ghost btn-small" id="try-example">Try an example</button>
-            <a class="btn btn-primary" id="cta" href="/check">Check with the working shown</a>
-          </div>
+        </details>
+
+        <div class="calc-actions">
+          <button type="button" class="btn btn-primary" id="check-btn">Check number</button>
+          <button type="button" class="btn btn-ghost" id="clear-btn">Clear</button>
+          <button type="button" class="btn btn-quiet" id="example-btn">Try an example</button>
         </div>
-        <nav class="task-cards" aria-label="Main tasks">
-          <a class="task-card" href="/check"><span class="tc-title">Check a number</span><span class="tc-desc">One number, every validation layer and the arithmetic behind it.</span></a>
-          <a class="task-card" href="/bulk"><span class="tc-title">Check a list</span><span class="tc-desc">Paste many numbers and get one validation result for each.</span></a>
-          <a class="task-card" href="/files"><span class="tc-title">Review a file</span><span class="tc-desc">Review and correct a CSV, EDIFACT, X12 or container XML file.</span></a>
-          <a class="task-card" href="/compare"><span class="tc-title">Compare lists</span><span class="tc-desc">See what is only in one list, in both, or carries a different check digit.</span></a>
-          <a class="task-card" href="/reference"><span class="tc-title">Guides &amp; reference</span><span class="tc-desc">Anatomy, check-digit arithmetic, code tables and worked examples.</span></a>
-        </nav>
+        <p class="sr-only" id="live" role="status" aria-live="polite"></p>
+        <p class="calc-help" id="stale-hint" hidden>The number changed — press <b>Check number</b> to update the result.</p>
+        <div class="result" id="result"></div>
       </div>
+
+      <div class="diagram" id="diagram"></div>
+
+      <details class="disclosure" id="how-dis" hidden>
+        <summary>How this was calculated</summary>
+        <div class="disclosure-body" id="how-body"></div>
+      </details>
+
+      <details class="disclosure" id="covers-dis">
+        <summary>What this check covers</summary>
+        <div class="disclosure-body">
+          <p>Checkdigit confirms two things: the number has a valid <b>shape</b>, and its printed <b>check digit</b> agrees with the body under the identifier's own arithmetic.</p>
+          <p>It does not confirm that a container exists or is registered, who owns it, where it is, or whether it may be released. A correct check digit also cannot catch every typo — two different bodies can share a check digit.</p>
+          <div id="covers-layers"></div>
+        </div>
+      </details>
+
+      <p class="calc-help"><a href="/check" id="full-working">Open the full working, with every validation layer →</a></p>
     </div>
+
+    <div id="panel-bulk" class="tabpanel" role="tabpanel" aria-labelledby="tab-bulk" hidden></div>
   </section>
 
-  <section class="anat" aria-label="Anatomy of the number">
+  <section class="band">
     <div class="wrap">
-      <p class="eyebrow">Anatomy of the number you typed</p>
-      <div class="grid">
-        <div class="seg"><div class="k">Prefix · 3</div><div class="v id" id="a-owner">CSQ</div><div class="d">Owner or principal operator code</div></div>
-        <div class="seg"><div class="k">Category · 1</div><div class="v id" id="a-cat">U</div><div class="d">U container · J detachable equipment · Z trailer/chassis</div></div>
-        <div class="seg" style="flex:2 1 200px"><div class="k">Serial · 6</div><div class="v id" id="a-serial">305438</div><div class="d">Assigned by the owner</div></div>
-        <div class="seg s-check"><div class="k">Check · 1</div><div class="v id" id="a-check">3</div><div class="d">mod-11 over the first ten</div></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="band" id="how">
-    <div class="wrap">
-      <p class="eyebrow">What it does</p>
-      <h2 class="h2">Four steps, nothing guessed</h2>
-      <p class="sub">Each identifier is validated against the standard it actually uses. When the type is ambiguous, or the number came from somewhere that does not declare it as an equipment ID, Checkdigit flags it instead of silently rewriting it.</p>
-      <div class="steps">
-        <div class="step">
-          <span class="section-no">1</span><h3>Detect</h3>
-          <p>Finds every equipment number by its shape: four letters and seven digits for containers, twelve digits for rail wagons.</p>
-        </div>
-        <div class="step">
-          <span class="section-no blue">2</span><h3>Route</h3>
-          <p>Sends each number to the right algorithm: ISO 6346 mod-11 for containers and ILU codes, Luhn mod-10 for UIC wagons. Never the wrong one.</p>
-        </div>
-        <div class="step">
-          <span class="section-no orange">3</span><h3>Correct</h3>
-          <p>Computes the expected check digit for the body and proposes it. In a file, only that one character changes; every other character stays as it was.</p>
-        </div>
-        <div class="step">
-          <span class="section-no">4</span><h3>Review</h3>
-          <p>Shows what changed, what was flagged for a human, and why. Nothing is stored: close the tab and it is gone.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="band" id="identifiers">
-    <div class="wrap">
-      <p class="eyebrow">Coverage</p>
-      <h2 class="h2">Identifiers it knows</h2>
-      <p class="sub">The arithmetic is the one printed in the standards, and the checker shows every step of it. A correct check digit proves that the printed digit agrees with the body; it does not prove existence, ownership, location or permission to release.</p>
-      <div class="cols">
-        <div class="card">
-          <h3>Identifier types</h3>
-          <ul class="deflist">
-            <li><span class="term">ISO 6346</span><span class="desc">Freight containers (category U), detachable container-related equipment (J) and trailers or chassis (Z). Mod-11 check digit.</span></li>
-            <li><span class="term">ILU · EN 13044</span><span class="desc">Intermodal loading units (category A, B, D, E or K). Same arithmetic, routed to its own category set; equivalence to the normative text is not yet confirmed.</span></li>
-            <li><span class="term">UIC wagon</span><span class="desc">Twelve-digit rail vehicle numbers. Luhn mod-10, never cross-applied.</span></li>
-            <li><span class="term">Size / type</span><span class="desc">Codes such as 22G1 are descriptive, not check-digit targets. Never altered.</span></li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Results, one per layer</h3>
-          <ul class="verdicts">
-            <li><span class="badge passed">Passed</span><span>Structure or check digit agrees.</span></li>
-            <li><span class="badge failed">Failed</span><span>The printed digit does not agree with the body; the expected digit is shown.</span></li>
-            <li><span class="badge flagged">Flagged</span><span>Something needs a human: an unknown category letter, a non-standard prefix, or a number found in free text.</span></li>
-            <li><span class="badge not_checked">Not checked</span><span>Prefix registration, equipment records and operational state need a named source; the public checker has none and says so.</span></li>
-          </ul>
-        </div>
-      </div>
-      <div class="callout">
-        <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
-        <p><b>Flagged, not guessed.</b> When a number fails its check but the context does not justify a silent fix, Checkdigit flags it for review and shows the digit it would have used.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="band" id="trust">
-    <div class="wrap">
-      <p class="eyebrow">Where it runs</p>
-      <h2 class="h2">In your browser, and quiet about your data</h2>
-      <p class="sub">There is no account, no upload and no server. The pages are static files; the work happens in this tab.</p>
-      <div class="trust">
-        <div class="tr">
+      <div class="trust-grid">
+        <div class="trust-item">
           <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg>
-          <div><h3>Runs in your browser</h3><p>No sign-up and no third-party upload. What you type or drop here never leaves this tab.</p></div>
+          <div><h3>Runs in your browser</h3><p>No sign-up, no upload, no server. What you type or paste stays in this tab.</p></div>
         </div>
-        <div class="tr">
+        <div class="trust-item">
           <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/></svg>
-          <div><h3>Stores nothing</h3><p>There is no database, no log and no analytics. The site cannot remember a number because it has nowhere to put one.</p></div>
+          <div><h3>Stores nothing</h3><p>No database, no logging, no analytics, and no outside requests — not even for fonts.</p></div>
         </div>
-        <div class="tr">
-          <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
-          <div><h3>No outside requests</h3><p>No fonts, scripts or trackers from other hosts. Public lookups never consult anyone's private history.</p></div>
-        </div>
-        <div class="tr">
+        <div class="trust-item">
           <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7l4-3 4 3 4-3 4 3M4 7v10l4 3 4-3 4 3 4-3V7"/></svg>
-          <div><h3>Byte-exact correction</h3><p>A corrected number differs from the original only at the check digit. Everything else is preserved.</p></div>
+          <div><h3>Precise, not guessed</h3><p>Numbers are routed to the right standard, and a suggestion is never presented as a confirmed fact.</p></div>
         </div>
       </div>
     </div>
@@ -166,8 +133,8 @@
 
 <footer>
   <div class="wrap row">
-    <span class="mono-sm">Checkdigit — ISO 6346 / ILU / UIC check digits, verified in your browser</span>
-    <span class="mono-sm"><a href="/check">Check number</a></span>
+    <span class="mono-sm">Checkdigit — ISO 6346, ILU and UIC check digits, verified in your browser</span>
+    <span class="mono-sm"><a href="/reference">Reference</a> · <a href="/check">Full working</a></span>
   </div>
 </footer>
 

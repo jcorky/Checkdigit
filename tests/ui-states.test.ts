@@ -32,18 +32,25 @@ describe("the headline uses a readable colour, not the low-contrast lime", () =>
 describe("check page announces results and keeps a persistent live region", () => {
   const htmlText = read("check.html");
   const ts = read("pages/check.ts");
+  const view = read("lib/result-view.ts");
   it("has a persistent aria-live region", () => {
     expect(htmlText).toMatch(/id="live"[^>]*aria-live="polite"/);
   });
-  it("leads a mismatch with the entered number, not the proposed number", () => {
-    // the summary rows name Entered and Proposed as separate fields
-    expect(ts).toContain('resultRow("Entered"');
-    expect(ts).toContain('resultRow("Proposed number"');
-    expect(ts).toContain("Check digit mismatch");
-    expect(ts).toContain("Calculated check digit");
-    expect(ts).toContain("Check digit matches");
-    // the full validation table is disclosed, not shown by default
+  it("builds its result from the shared result view and discloses the working", () => {
+    expect(ts).toContain("buildResult");
+    // the full validation table and arithmetic are disclosed, not shown by default
     expect(ts).toMatch(/<details class="explain">/);
+  });
+  it("leads a mismatch with the entered number, not the suggestion", () => {
+    // the shared view names Entered, Entered digit and Expected digit separately
+    expect(view).toContain('rrow("Entered"');
+    expect(view).toContain('rrow("Entered digit"');
+    expect(view).toContain('rrow("Expected digit"');
+    expect(view).toContain("Check digit mismatch");
+    expect(view).toContain("Check digit calculated.");
+    expect(view).toContain("Check digit matches.");
+    // the suggestion is never presented as a confirmed correction
+    expect(view).toContain("not a confirmed correction");
   });
 });
 
@@ -123,16 +130,23 @@ describe("compare and check page correctness guards", () => {
     expect(checkTs).toContain("function fragmentFor");
     expect(checkTs).toMatch(/scheme !== "auto"/);
   });
-  it("check keeps a matching check digit from suppressing a category warning", () => {
-    expect(checkTs).toContain("category needs review");
+  it("an unknown category never reads as a valid match", () => {
+    const view = read("lib/result-view.ts");
+    expect(view).toContain("Unsupported category");
+    // the unknown-category branch is reached before the "matches" branch
+    expect(view.indexOf('e.category_set === "unknown"')).toBeGreaterThan(0);
+    expect(view.indexOf('e.category_set === "unknown"')).toBeLessThan(view.indexOf('e.verdict === "valid"'));
   });
 });
 
-describe("homepage routes unsupported input instead of showing a stale result", () => {
+describe("homepage does not leave a stale result and links to the full working", () => {
   const indexTs = read("pages/index.ts");
-  it("clears the segmented result and routes a UIC number to the full checker", () => {
-    expect(indexTs).toContain("handleUnsupported");
-    expect(indexTs).toMatch(/\/check#uic:/);
+  it("marks a shown result as outdated when the number changes", () => {
+    expect(indexTs).toContain("markOutdated");
+    expect(indexTs).toContain('resultEl.dataset["outdated"]');
+  });
+  it("opens the detailed checker with the entered number", () => {
+    expect(indexTs).toMatch(/fullWorking\.href = view\.normalized \? `\/check#\$\{view\.normalized\}`/);
   });
 });
 
@@ -144,26 +158,39 @@ describe("reference page names the task and offers a compact selector", () => {
   });
 });
 
-describe("homepage names the task and starts empty", () => {
+describe("homepage leads with the calculator and starts empty", () => {
   const htmlText = read("index.html");
   const ts = read("pages/index.ts");
-  it("leads with a task-naming headline and task cards for every entry point", () => {
-    expect(htmlText).toContain("Check container and equipment numbers.");
-    expect(htmlText).toContain("Check a number");
-    expect(htmlText).toContain("Check a list");
-    expect(htmlText).toContain("Review a file");
-    expect(htmlText).toContain("Compare lists");
-    expect(htmlText).toContain("Guides &amp; reference");
+  it("names the task in the headline and offers single and bulk modes", () => {
+    expect(htmlText).toContain("Container Check Digit Calculator");
+    expect(htmlText).toContain("Calculate a missing digit or check a complete container number.");
+    expect(htmlText).toMatch(/role="tab"[^>]*>Single number/);
+    expect(htmlText).toMatch(/role="tab"[^>]*>Bulk check/);
   });
-  it("exposes the list checker in the main navigation", () => {
-    expect(htmlText).toMatch(/<a class="navlink" href="\/bulk">List<\/a>/);
+  it("leads with one labelled field, not eleven character boxes", () => {
+    expect(htmlText).toMatch(/<label class="calc-label" for="calc-input">Container number<\/label>/);
+    expect(htmlText).not.toContain('id="cells"');
+    expect(ts).not.toContain("cellsFrom");
   });
-  it("starts empty and offers an explicit example action", () => {
-    expect(ts).toContain('cellsFrom("")');
+  it("exposes the other tools in the Tools menu", () => {
+    expect(htmlText).toMatch(/<details class="menu">/);
+    for (const href of ["/bulk", "/files", "/compare"]) {
+      expect(htmlText, href).toMatch(new RegExp(`menu-panel[\\s\\S]*href="${href}"`));
+    }
+  });
+  it("starts empty with a deliberate example action and a display-only diagram", () => {
     expect(ts).toContain('const EXAMPLE = "CSQU3054383"');
-    expect(htmlText).toContain('id="try-example"');
+    expect(htmlText).toContain('id="example-btn"');
+    expect(htmlText).toContain('id="diagram"');
+    // the empty result state is painted from the shared view, not a prefilled success
+    expect(ts).toContain('buildResult("", "auto")');
+  });
+  it("offers the two required explainer disclosures", () => {
+    expect(htmlText).toContain("How this was calculated");
+    expect(htmlText).toContain("What this check covers");
+    expect(htmlText).toContain("Other identifier types");
   });
   it("preserves the entered number when opening the detailed checker", () => {
-    expect(ts).toMatch(/cta\.href = vm\.token \? `\/check#\$\{vm\.token\}` : "\/check"/);
+    expect(ts).toMatch(/fullWorking\.href = view\.normalized \? `\/check#\$\{view\.normalized\}`/);
   });
 });

@@ -3,69 +3,84 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Check number — Checkdigit</title>
-<meta name="description" content="Worked check-digit calculation for one ISO 6346 container, ILU code or UIC wagon number, with one result per validation layer. Runs in your browser.">
-<meta name="color-scheme" content="dark light">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172229'/%3E%3Crect x='6.5' y='9.5' width='19' height='13' rx='2' fill='none' stroke='%23BCE962' stroke-width='2'/%3E%3Crect x='18.5' y='9.5' width='7' height='13' rx='2' fill='%23BCE962' fill-opacity='0.25' stroke='%23BCE962' stroke-width='2'/%3E%3C/svg%3E">
+<title>Check a container number — Checkdigit</title>
+<meta name="description" content="Check or calculate the check digit for one ISO 6346 container, ILU code or UIC wagon number, with the worked arithmetic and every validation layer. Runs in your browser.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
 <script type="module" src="/pages/check.ts"></script>
 </head>
 <body>
 
+<a class="skip-link" href="#main">Skip to the checker</a>
 <header class="bar">
   <div class="wrap row">
-    <a class="brand" href="/">
+    <a class="brand" href="/" aria-label="Checkdigit home">
       <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
         <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
-        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
       </svg>
       Checkdigit
     </a>
-    <nav aria-label="Site">
-      <a class="navlink" href="/check" aria-current="page">Check</a>
-      <a class="navlink" href="/bulk">List</a>
-      <a class="navlink" href="/files">Files</a>
-      <a class="navlink" href="/compare">Compare</a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/" aria-current="page">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
       <a class="navlink" href="/reference">Reference</a>
     </nav>
   </div>
 </header>
 
-<main class="page">
+<main class="page" id="main">
   <div class="wrap">
-    <p class="eyebrow">Single number</p>
-    <h1>Check number</h1>
-    <div class="stripes" aria-hidden="true" style="margin-bottom:16px"></div>
-    <p class="intro">Type a container or ILU number (10 characters computes the check digit, 11 verifies it) or a UIC wagon number (11 digits computes, 12 verifies). Each validation layer reports on its own. Nothing you type leaves this page.</p>
+    <p class="eyebrow">Single number · full working</p>
+    <h1>Check a container number</h1>
+    <p class="intro">Check or calculate the check digit for one container, ILU or UIC wagon number. Ten characters calculates the missing digit; eleven checks a complete ISO 6346 number. Every validation layer and the arithmetic are shown below.</p>
 
-    <div class="panel">
-      <div class="field-row">
-        <label for="tok">Number</label>
-        <input id="tok" class="text-in" type="text" maxlength="40" autocomplete="off"
+    <div class="surface">
+      <label class="calc-label" for="tok">Container or equipment number</label>
+      <div class="calc-input-row">
+        <input id="tok" class="calc-input" type="text" maxlength="40" autocomplete="off"
                autocapitalize="characters" spellcheck="false"
-               placeholder="e.g. MSKU1234565, csqu 305438, 21 81 2471 217-3">
-        <select id="scheme" class="select-in" aria-label="Identifier scheme">
-          <option value="auto">Scheme: detect from shape</option>
+               placeholder="e.g. CSQU3054383" aria-describedby="tok-help">
+      </div>
+      <div class="scheme-row" style="margin-top:12px">
+        <label for="scheme">Identifier type</label>
+        <select id="scheme" class="select-in">
+          <option value="auto">Detect from the number</option>
           <option value="iso6346">ISO 6346 container</option>
           <option value="ilu">ILU (EN 13044)</option>
           <option value="uic">UIC wagon</option>
         </select>
       </div>
+      <p class="calc-help" id="tok-help">Lower case, spaces and hyphens are accepted. For a UIC wagon, enter 11 digits to calculate or 12 to check.</p>
       <p class="notice" id="notice" role="status" aria-live="polite" hidden></p>
+      <div class="calc-actions">
+        <button type="button" class="btn btn-primary" id="check-btn">Check number</button>
+        <button type="button" class="btn btn-ghost" id="clear-btn">Clear</button>
+        <button type="button" class="btn btn-quiet" id="example-btn">Try an example</button>
+      </div>
       <p class="sr-only" id="live" role="status" aria-live="polite"></p>
       <div id="out"></div>
     </div>
 
     <div class="callout orange" id="ilu-note">
       <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>
-      <p><b>ILU codes (EN 13044).</b> Category letters A, B, D, E and K are routed to the ILU set and checked with the same mod-11 arithmetic as ISO 6346. The publisher describes the ILU code as compatible with the BIC code; the check-digit procedure itself has not been verified against the normative EN 13044-1 text, so this is not a claim of normative compliance.</p>
+      <p><b>ILU codes (EN 13044).</b> Category letters A, B, D, E and K are routed to the ILU set and checked with the same mod-11 arithmetic as ISO 6346. The publisher describes the ILU code as compatible with the BIC code; the check-digit procedure itself is not independently verified here against the normative EN 13044-1 text, so this is not a claim of normative compliance.</p>
     </div>
   </div>
 </main>
 
 <footer>
   <div class="wrap row">
-    <span class="mono-sm">Checkdigit — ISO 6346 / ILU / UIC check digits, verified in your browser</span>
-    <span class="mono-sm"><a href="/">Home</a></span>
+    <span class="mono-sm">Checkdigit — verified in your browser; nothing is sent anywhere</span>
+    <span class="mono-sm"><a href="/">Calculator</a> · <a href="/reference">Reference</a></span>
   </div>
 </footer>
 

@@ -10,6 +10,7 @@
   align-items: center;
   gap: 12px;
   font-family: var(--display);
+  font-weight: 700;
   font-size: 18px;
   margin: 0 0 12px;
 }
@@ -68,10 +69,14 @@
   margin-top: 8px;
 }
 
+.text-area {
+  border: 1.5px solid var(--border-strong);
+}
+
 .text-area:focus {
   outline: none;
-  border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(188, 233, 98, 0.25);
+  border-color: var(--action-bg);
+  box-shadow: 0 0 0 3px rgba(20, 89, 184, 0.22);
 }
 
 .row-actions {
@@ -478,12 +483,13 @@ pre.code {
   display: inline-flex;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: 6px;
   align-items: center;
   justify-content: center;
-  background: var(--lime);
-  color: var(--on-decor);
+  background: var(--action-tint);
+  color: var(--action-strong);
   font-family: var(--display);
+  font-weight: 700;
   font-size: 11px;
   flex: 0 0 auto;
 }
@@ -499,6 +505,7 @@ article.ref {
 
 article.ref h2 {
   font-family: var(--display);
+  font-weight: 700;
   font-size: 20px;
   margin: 0 0 6px;
 }

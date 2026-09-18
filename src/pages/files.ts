@@ -1,5 +1,6 @@
 import "../styles/site.css";
 import "../styles/app.css";
+import { enhanceNav } from "../ui/nav";
 import { sha256Hex, type Codec } from "../lib/encoding";
 import {
   applyApproved,
@@ -26,6 +27,8 @@ import { createLargeController } from "./files-large";
 // The Files page: bind the local job model to the DOM. Parsing and splicing
 // happen in the worker; approvals and exports are built from the model here.
 // Files above WHOLE_FILE_LIMIT are handed to the streaming controller.
+
+enhanceNav();
 
 const worker = new Worker(new URL("../worker/inspect.worker.ts", import.meta.url), { type: "module" });
 let requestSeq = 0;
