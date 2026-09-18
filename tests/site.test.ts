@@ -57,6 +57,10 @@ describe("built output", () => {
       if (f.rel.endsWith(".html")) {
         const tags = text.matchAll(/<(script|link|img|iframe|source|video|audio|object|embed|use)\b[^>]*>/gi);
         for (const tag of tags) {
+          // canonical and alternate links are metadata (they declare a URL, they
+          // do not load a resource), so an absolute URL there is expected.
+          const rel = /\brel\s*=\s*["']([^"']*)["']/i.exec(tag[0])?.[1]?.toLowerCase();
+          if (/^<link\b/i.test(tag[0]) && (rel === "canonical" || rel === "alternate")) continue;
           const attrs = tag[0].matchAll(/\b(?:src|href|srcset|xlink:href|data)\s*=\s*["']([^"']*)["']/gi);
           for (const a of attrs) {
             if (external.test(a[1] as string)) offenders.push(`${f.rel}: ${tag[0]}`);
