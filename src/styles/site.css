@@ -558,6 +558,33 @@ footer a:hover {
   color: var(--text);
 }
 
+.sig-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.signature {
+  display: inline-block;
+  line-height: 0;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.signature img {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  border-radius: 12px;
+}
+
+.signature:hover {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 6px 14px rgba(23, 43, 58, 0.18));
+}
+
 /* ================= Calculator ================= */
 .calc-hero {
   padding: 34px 0 20px;
