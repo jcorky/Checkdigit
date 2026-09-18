@@ -1,0 +1,39 @@
+{
+  "path": "browser streaming path, Files page (/files) driven in the desktop app's Browser pane",
+  "recorded": "2026-09-17",
+  "browser": "Chromium 152 embedded in the Claude desktop app (user agent Chrome/152.0.7977.76), Windows 11, i7-14700HX, 64 GiB",
+  "site": "npx wrangler dev --port 8797 serving dist/ built from the working tree",
+  "parser_version": "local-stream-ts/1",
+  "storage_note": "navigator.storage.estimate() reported a 9.78 GiB quota, but writes into the origin-private file system failed at 2,088,768,460 bytes on both a writable stream and a sync access handle, and a 5,000,000,041-byte Blob could not be read back. The 1.6 GB run therefore used an in-page Blob as the source and the origin-private file system for records and output; the 5 GB measurement is in stream_5g.benchmark.json (same TypeScript under Node).",
+  "runs": [
+    {
+      "name": "64 MiB CSV, full workflow",
+      "source": { "bytes": 67108897, "records": 1618746, "generator": "in-page, seeded LCG; header record_id,note,container,qty; quoted note column with an embedded comma; CRLF" },
+      "expected": { "valid": 1370441, "corrected": 182682, "missing": 65623, "invalid_structure": 0 },
+      "inspect": { "seconds": 1.6, "mib_per_s": 40, "counts": { "records": 1618746, "identifiers": 1553123, "valid": 1370441, "corrected": 182682, "flagged": 0, "invalid_structure": 0, "missing": 65623, "stored": 248305 } },
+      "decisions": "one row staged, one kept original, one deferred, then bulk stage of the 182,680 remaining with the exact expected count; second run staged all 182,682 in one bulk action",
+      "export": { "seconds": 1.0, "bytes_written": 67108897, "edits_applied": 182682, "exception_rows": 65623, "ledger_rows": 182682, "block_digest": "blocks-de444f90fe894b186609964ca62d585544afaa415b0692bcc7fd6e9c8133c28a" },
+      "verification": [
+        "first ledger row checked against source and output bytes at offset 418",
+        "corrected output copied and re-inspected on the streaming path: 0 corrections proposed, 1,553,123 valid, 65,623 missing",
+        "an earlier export at this size took 35 s for the first 32 MiB because every spliced span reached the sync access handle as its own write; output is now gathered into 1 MiB buffers before encoding"
+      ],
+      "main_thread_heap_mib": 4.6
+    },
+    {
+      "name": "1.6 GB CSV, inspect, bulk stage, export",
+      "source": { "bytes": 1600000028, "records": 36900944, "generator": "in-page Blob assembled from 16 MiB parts, seeded LCG, same layout" },
+      "expected": { "valid": 35874435, "corrected": 725634, "missing": 230082, "invalid_structure": 70793 },
+      "inspect": { "seconds": 39.7, "mib_per_s": 38.4, "counts": { "records": 36900944, "identifiers": 36670862, "valid": 35874435, "corrected": 725634, "flagged": 0, "invalid_structure": 70793, "missing": 230082, "not_a_target": 0, "stored": 1026509 } },
+      "decide": { "seconds": 1.0, "approved": 725634, "expected_count_checked": true },
+      "export": { "seconds": 15, "mib_per_s": 64.2, "bytes_written": 1600000028, "edits_applied": 725634, "exception_rows": 300875, "ledger_rows": 725634, "block_digest": "blocks-86b49fbce164c33c" },
+      "origin_private_storage_bytes": { "records.bin": 65696576, "decisions.bin": 1026509, "corrected.bin": 1600000028, "ledger.csv": 42026784, "exceptions.csv": 13954966 },
+      "verification": [
+        "counts equal the generator's expected counts in every category",
+        "ledger rows counted by streaming the ledger file: 725,634",
+        "edits 0, 68 and 1,026,508 (offset 1,599,999,881) checked against the source Blob and the output file: raw span matches the source, candidate matches the output"
+      ],
+      "main_thread_heap_mib": 42
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+ "csv": {
+  "text": "a,b,c\r\n1,\"x\r\ny\",é\n2,\"say \"\"hi\"\"\",😀\r\n3,,\n\"4\",\"\",last\r\n\r\n5,北京,\"q,r\"",
+  "delimiter": ",",
+  "records": [
+   {
+    "no": 0,
+    "start": 0,
+    "end": 5,
+    "fields": [
+     {
+      "col": 0,
+      "value": "a",
+      "start": 0,
+      "end": 1,
+      "quoted": false
+     },
+     {
+      "col": 1,
+      "value": "b",
+      "start": 2,
+      "end": 3,
+      "quoted": false
+     },
+     {
+      "col": 2,
+      "value": "c",
+      "start": 4,
+      "end": 5,
+      "quoted": false
+     }
+    ]
+   },
+   {
+    "no": 1,
+    "start": 7,
+    "end": 17,
+    "fields": [
+     {
+      "col": 0,
+      "value": "1",
+      "start": 7,
+      "end": 8,
+      "quoted": false
+     },
+     {
+      "col": 1,
+      "value": "x\r\ny",
+      "start": 9,
+      "end": 15,
+      "quoted": true
+     },
+     {
+      "col": 2,
+      "value": "é",
+      "start": 16,
+      "end": 17,
+      "quoted": false
+     }
+    ]
+   },
+   {
+    "no": 2,
+    "start": 18,
+    "end": 34,
+    "fields": [
+     {
+      "col": 0,
+      "value": "2",
+      "start": 18,
+      "end": 19,
+      "quoted": false
+     },
+     {
+      "col": 1,
+      "value": "say \"hi\"",
+      "start": 20,
+      "end": 32,
+      "quoted": true
+     },
+     {
+      "col": 2,
+      "value": "😀",
+      "start": 33,
+      "end": 34,
+      "quoted": false
+     }
+    ]
+   },
+   {
+    "no": 3,
+    "start": 36,
+    "end": 39,
+    "fields": [
+     {
+      "col": 0,
+      "value": "3",
+      "start": 36,
+      "end": 37,
+      "quoted": false
+     },
+     {
+      "col": 1,
+      "value": "",
+      "start": 38,
+      "end": 38,
+      "quoted": false
+     },
+     {
+      "col": 2,
+      "value": "",
+      "start": 39,
+      "end": 39,
+      "quoted": false
+     }
+    ]
+   },
+   {
+    "no": 4,
+    "start": 40,
+    "end": 51,
+    "fields": [
+     {
+      "col": 0,
+      "value": "4",
+      "start": 40,
+      "end": 43,
+      "quoted": true
+     },
+     {
+      "col": 1,
+      "value": "",
+      "start": 44,
+      "end": 46,
+      "quoted": true
+     },
+     {
+      "col": 2,
+      "value": "last",
+      "start": 47,
+      "end": 51,
+      "quoted": false
+     }
+    ]
+   },
+   {
+    "no": 5,
+    "start": 53,
+    "end": 53,
+    "fields": [
+     {
+      "col": 0,
+      "value": "",
+      "start": 53,
+      "end": 53,
+      "quoted": false
+     }
+    ]
+   },
+   {
+    "no": 6,
+    "start": 55,
+    "end": 65,
+    "fields": [
+     {
+      "col": 0,
+      "value": "5",
+      "start": 55,
+      "end": 56,
+      "quoted": false
+     },
+     {
+      "col": 1,
+      "value": "北京",
+      "start": 57,
+      "end": 59,
+      "quoted": false
+     },
+     {
+      "col": 2,
+      "value": "q,r",
+      "start": 60,
+      "end": 65,
+      "quoted": true
+     }
+    ]
+   }
+  ]
+ },
+ "edifact": {
+  "text": "UNA:+.? 'UNB+UNOA:2+A+B'EQD+CN+MSKU9070323+22G1'FTX+AAA+++it?'s escaped ?+plus'\nEQD+CN+CSQU3054383'UNZ+1'",
+  "release": "?",
+  "terminator": "'",
+  "skip_una": true,
+  "segments": [
+   {
+    "start": 9,
+    "raw": "UNB+UNOA:2+A+B"
+   },
+   {
+    "start": 24,
+    "raw": "EQD+CN+MSKU9070323+22G1"
+   },
+   {
+    "start": 48,
+    "raw": "FTX+AAA+++it?'s escaped ?+plus"
+   },
+   {
+    "start": 80,
+    "raw": "EQD+CN+CSQU3054383"
+   },
+   {
+    "start": 99,
+    "raw": "UNZ+1"
+   }
+  ]
+ },
+ "edifact_no_una": {
+  "text": "UNB+UNOA:2+A+B'EQD+CN+MSKU9070323'UNT+2+1'",
+  "release": "?",
+  "terminator": "'",
+  "skip_una": true,
+  "segments": [
+   {
+    "start": 0,
+    "raw": "UNB+UNOA:2+A+B"
+   },
+   {
+    "start": 15,
+    "raw": "EQD+CN+MSKU9070323"
+   },
+   {
+    "start": 34,
+    "raw": "UNT+2+1"
+   }
+  ]
+ },
+ "x12": {
+  "text": "ISA*00*          *00*          *ZZ*TERM           *ZZ*RAIL           *260916*1200*U*00401*000000001*0*P*:~\nGS*IO*TERM*RAIL~ST*322*0001~N7*MSCU*123456*******L*******0****22G1~SE*3*0001~IEA*1*000000001~",
+  "release": "",
+  "terminator": "~",
+  "skip_una": false,
+  "segments": [
+   {
+    "start": 0,
+    "raw": "ISA*00*          *00*          *ZZ*TERM           *ZZ*RAIL           *260916*1200*U*00401*000000001*0*P*:"
+   },
+   {
+    "start": 107,
+    "raw": "GS*IO*TERM*RAIL"
+   },
+   {
+    "start": 123,
+    "raw": "ST*322*0001"
+   },
+   {
+    "start": 135,
+    "raw": "N7*MSCU*123456*******L*******0****22G1"
+   },
+   {
+    "start": 174,
+    "raw": "SE*3*0001"
+   },
+   {
+    "start": 184,
+    "raw": "IEA*1*000000001"
+   }
+  ]
+ },
+ "xml": {
+  "text": "<?xml version=\"1.0\"?><r><!-- <container eqid=\"MSKU0000001\"/> --><![CDATA[<container eqid=\"MSKU0000002\"/>]]><?pi <container eqid=\"MSKU0000003\"/> ?><container eqid=\"MSKU9070320\" note=\"a > b\" x='y\"z'/><unit id=\"CSQU3054383\" unique-key=\"CSQU3054383\"/><élément eqid=\"X\"/></r>",
+  "tags": [
+   {
+    "start": 21,
+    "tag": "<r>"
+   },
+   {
+    "start": 146,
+    "tag": "<container eqid=\"MSKU9070320\" note=\"a > b\" x='y\"z'/>"
+   },
+   {
+    "start": 198,
+    "tag": "<unit id=\"CSQU3054383\" unique-key=\"CSQU3054383\"/>"
+   },
+   {
+    "start": 247,
+    "tag": "<élément eqid=\"X\"/>"
+   }
+  ]
+ },
+ "lines": {
+  "text": "one\r\ntwo\nthree\r\n\r\nfour é😀\nlast",
+  "lines": [
+   {
+    "no": 1,
+    "start": 0,
+    "text": "one"
+   },
+   {
+    "no": 2,
+    "start": 5,
+    "text": "two"
+   },
+   {
+    "no": 3,
+    "start": 9,
+    "text": "three"
+   },
+   {
+    "no": 4,
+    "start": 16,
+    "text": ""
+   },
+   {
+    "no": 5,
+    "start": 18,
+    "text": "four é😀"
+   },
+   {
+    "no": 6,
+    "start": 26,
+    "text": "last"
+   }
+  ]
+ },
+ "offset_kind": "text_codepoint"
+}

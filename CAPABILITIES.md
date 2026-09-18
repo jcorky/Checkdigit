@@ -18,7 +18,7 @@ deployment). Anything not marked is not claimed.
 | Segmented eleven-cell validator with whole-number entry, paste redistribution, overflow refusal, clear, visible normalization, explicit refusal of non-identifier characters with a proposal | implemented, connected, tested | `tests/segmented.test.ts` |
 | Single-number check with per-character arithmetic, Luhn steps, remainder-10 note, category notes, one result per validation layer, scheme selection, share link, copy result | implemented, connected, tested | `tests/kernel.parity.test.ts`, `tests/validation.test.ts`, `tests/site.test.ts` |
 | Check a list (`/bulk`): paste or drop a text/CSV file, normalized extraction with the original kept, per-layer results, filters, CSV (BOM, CRLF) and JSON export, 10,000-token cap refused with the count, explicit empty state | implemented, connected, tested | `tests/bulk.test.ts` |
-| Files (`/files`): local inspector in a Web Worker for plain text, delimited (with a reviewed column mapping), fixed-width, EDIFACT, X12 and container XML; import intent declared before analysis; findings; proposals with evidence, occurrences and same-file near-misses; per-row and filtered bulk decisions with exact counts; change-set fingerprint; stale approvals on re-analysis; surgical export with exceptions CSV, change ledger CSV and manifest JSON; output reparsed before it is called ready | implemented, connected, tested (model and ports); browser workflow verified manually | `tests/localjob.test.ts`, `tests/mapping.test.ts`, `tests/splice.parity.test.ts`, `tests/detect.test.ts` |
+| Files (`/files`): local inspector in a Web Worker for plain text, delimited (with a reviewed column mapping), fixed-width, EDIFACT, X12 and container XML; import intent declared before analysis; findings; proposals with evidence, occurrences and same-file near-misses; per-row and filtered bulk decisions with exact counts; change-set fingerprint; stale approvals on re-analysis; surgical export with exceptions CSV, change ledger CSV and manifest JSON; output reparsed before it is called ready. Files above 5 MiB and up to 5 GiB take a streaming path: chunked decoding with the same readers as the workspace, proposals stored as fixed 64-byte records in the browser's origin-private file system, decisions per row or per filter with exact counts, streamed export that verifies each source span before splicing, exceptions and ledger streamed, manifest with a decision-set digest | implemented, connected, tested (model and ports); browser workflow verified manually, including a five-gigabyte CSV on the streaming path (`BENCHMARK.md`) | `tests/localjob.test.ts`, `tests/mapping.test.ts`, `tests/splice.parity.test.ts`, `tests/detect.test.ts` |
 | Mapping contract checks for delimited feeds: named reorder continues, positional column-count change blocks, duplicate or missing required headers block, extension columns preserved, full-stream identifier validation with late-violation blocking and isolated-record reporting | implemented, connected, tested | `tests/mapping.test.ts` |
 | Compare (`/compare`): two lists or files, whole-identifier or body key, only-in-A/only-in-B/both/conflict/repeated outcomes, raw values kept beside comparable values, CSV export | implemented, connected, tested | `tests/compare.test.ts` |
 | Reference library (`/reference`): anatomy, arithmetic with the generated letter table, interactive blind-spot demonstrator, size/type decoder, ILU and UIC notes, prefix registration and BoxTech, reference code sets, mass/VGM/reefer/DG terminology, terminal error patterns, file-mode limits, glossary, keyboard guidance; each article names its source and review date; search; quick checker | implemented, connected | `tests/sizetype.test.ts` for the decoder; article content reviewed 2026-09-16 |
@@ -86,14 +86,14 @@ deployment). Anything not marked is not claimed.
 
 Columns: detect (recognize by content), inspect (locate identifiers), validate (message
 syntax/schema/partner rules), edit (surgical correction), export (write output), re-import
-(output reparses and revalidates). "Local" means the browser inspector; "service" means
-the Python path.
+(output reparses and revalidates). "Local" means the browser inspector (whole-file up to 5 MiB, streamed up to 5 GiB
+unless noted); "service" means the Python path.
 
 | Format | Detect | Inspect | Validate | Edit | Export | Re-import | Local | Service | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | Plain text | yes (catch-all) | yes | no | yes | yes | yes | yes | yes, streamed | uppercase `[A-Z]{4}[0-9]{7}` only in files; free text is flagged unless trusted |
 | CSV / TSV | opt-in mapping | yes | contract checks only | yes | yes | yes | yes | yes, streamed | RFC 4180 quoting, sniffed delimiter; leading zeros preserved as text. Whole-file path locates bare 4+7 tokens only; the workspace path evaluates every cell of a mapped column (kernel normalization of spaces and hyphens, whole trimmed cell as the splice span) |
-| Fixed-width | opt-in ranges | yes | no | yes | yes | yes | yes | yes | 1-based inclusive ranges; whole-file parse |
+| Fixed-width | opt-in ranges | yes | no | yes | yes | yes | whole-file only | yes | 1-based inclusive ranges; whole-file parse; not on the browser streaming path |
 | XLSX | yes | yes | no | yes | yes (ZIP re-assembled) | yes | no | yes | formula-cached values and split runs flagged; timestamps not preserved |
 | JSON / JSONL | no | no | no | no | no | no | no | no | not supported |
 | Generic XML | only recognized container XML | no | no | no | no | no | no | no | other XML is refused, not scanned |
@@ -105,8 +105,12 @@ the Python path.
 
 Excel worksheets hold at most 1,048,576 rows; a three-million-record export is written
 as CSV by the workspace path. "Streamed" means the workspace job reads the file in
-fixed-size chunks and never holds it in memory; the whole-file path stays behind the
-5 MiB upload limit of `/correct`.
+fixed-size chunks and never holds it in memory; the service's whole-file path stays behind
+the 5 MiB upload limit of `/correct`. The browser streaming path (`src/lib/stream.ts`,
+`src/lib/largejob.ts`) uses ports of the same readers, proven against Python-generated
+vectors at every chunk boundary (`tests/stream.test.ts`), and the same identifier
+extraction rules as `workspace/ingest.py` for delimited, plain text, EDIFACT, X12 and
+container XML files.
 
 ## Terminal systems
 

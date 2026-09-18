@@ -11,7 +11,8 @@ cornflower and warm-orange accents). Tokens live in `src/styles/site.css`; the
 application shell styles in `src/styles/app.css`.
 
 Pages: `/` (segmented validator), `/check` (one number with every validation layer),
-`/bulk` (a list), `/files` (local file inspector with review and export), `/compare`
+`/bulk` (a list), `/files` (local file inspector with review and export; files above
+5 MiB and up to 5 GiB are streamed), `/compare`
 (two lists or files), `/reference` (library with the size/type decoder).
 
 Documents:

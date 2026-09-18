@@ -34,7 +34,7 @@
     <p class="eyebrow">Local file inspector</p>
     <h1>Files</h1>
     <div class="stripes" aria-hidden="true" style="margin-bottom:12px"></div>
-    <p class="intro">Inspect one file in this browser tab. The file is read here, the format is detected from its content, every proposed correction is shown with its evidence, and the corrected file is built from the edits you approve. Nothing is uploaded and nothing is kept after you close the tab. Files up to 5 MB; larger files need the private workspace.</p>
+    <p class="intro">Inspect one file in this browser tab. The file is read here, the format is detected from its content, every proposed correction is shown with its evidence, and the corrected file is built from the edits you approve. Nothing is uploaded. Files up to 5 MiB are inspected whole in memory, with near-miss suggestions; larger files, up to 5 GiB, are streamed from disk, their proposals are kept in this site's private browser storage instead of memory, and the corrected file is written back as a stream. That storage is cleared when you discard the job or next open this page.</p>
 
     <section class="panel step" aria-labelledby="s1">
       <h2 class="step-title" id="s1"><span class="section-no">1</span> Choose the input</h2>
@@ -141,6 +141,54 @@
         <a class="btn btn-ghost" id="dl-manifest" hidden download>Manifest JSON</a>
       </div>
       <pre class="code" id="manifest-preview" hidden></pre>
+    </section>
+
+    <section class="panel step" id="large-results" aria-labelledby="s3l" hidden>
+      <h2 class="step-title" id="s3l"><span class="section-no orange">3</span> Review findings</h2>
+      <div id="large-state" class="job-state"></div>
+      <div class="progress" id="large-progress" hidden><div class="bar"></div></div>
+      <p class="muted small" id="large-progress-note"></p>
+      <div class="row-actions"><button type="button" class="btn btn-ghost btn-small" id="large-cancel" hidden>Cancel</button></div>
+      <div id="large-totals" class="totals"></div>
+      <div id="large-findings"></div>
+      <div class="workbench">
+        <aside class="facets" aria-label="Filters">
+          <h3 class="sub-title">Filter</h3>
+          <div id="large-facets"></div>
+          <h3 class="sub-title">Bulk actions</h3>
+          <p class="muted small" id="large-bulk-scope"></p>
+          <div class="row-actions">
+            <button type="button" class="btn btn-ghost btn-small" id="large-approve">Stage filtered</button>
+            <button type="button" class="btn btn-ghost btn-small" id="large-reject">Keep original for filtered</button>
+            <button type="button" class="btn btn-ghost btn-small" id="large-defer">Defer filtered</button>
+            <button type="button" class="btn btn-ghost btn-small" id="large-undo">Undo filtered</button>
+          </div>
+        </aside>
+        <div class="grid-wrap">
+          <div class="tablewrap"><table class="grid" id="large-table"><thead><tr><th>#</th><th>Location</th><th>Original</th><th>Proposed</th><th>Kind</th><th>Decision</th><th>Action</th></tr></thead><tbody></tbody></table></div>
+          <p class="empty-state" id="large-empty" hidden><span class="stripes" aria-hidden="true"></span><span>Nothing to review.</span></p>
+          <div class="row-actions"><button type="button" class="btn btn-ghost btn-small" id="large-more" hidden>Load more</button><span class="muted small" id="large-page-note"></span></div>
+        </div>
+        <aside class="evidence" aria-label="Decisions" id="large-approvals">
+          <h3 class="sub-title">Decisions</h3>
+        </aside>
+      </div>
+    </section>
+
+    <section class="panel step" id="large-export" aria-labelledby="s4l" hidden>
+      <h2 class="step-title" id="s4l"><span class="section-no">4</span> Export reviewed file</h2>
+      <p class="muted small" id="large-export-state"></p>
+      <div class="progress" id="large-export-progress" hidden><div class="bar"></div></div>
+      <div class="row-actions">
+        <button type="button" class="btn btn-primary" id="large-build">Build export</button>
+        <button type="button" class="btn btn-ghost" id="large-save" hidden>Save corrected file as…</button>
+        <a class="btn btn-ghost" id="large-dl-corrected" hidden download>Download corrected file</a>
+        <a class="btn btn-ghost" id="large-dl-exceptions" hidden download>Exceptions CSV</a>
+        <a class="btn btn-ghost" id="large-dl-ledger" hidden download>Change ledger CSV</a>
+        <a class="btn btn-ghost" id="large-dl-manifest" hidden download>Manifest JSON</a>
+        <button type="button" class="btn btn-ghost btn-small" id="large-discard">Discard job data</button>
+      </div>
+      <pre class="code" id="large-manifest" hidden></pre>
     </section>
   </div>
 </main>

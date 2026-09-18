@@ -149,6 +149,22 @@ label.check {
   margin-bottom: 10px;
 }
 
+.progress {
+  height: 8px;
+  margin: 8px 0;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress .bar {
+  height: 100%;
+  width: 0;
+  background: var(--lime);
+  transition: width 0.2s linear;
+}
+
 .totals {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

@@ -27,6 +27,19 @@ python3 -m workspace.bench run --dataset ../bench/fleet_3m.csv --root ../bench/r
 Every generator is seeded (`--seed 20260916`): the same arguments produce the same
 bytes, the same category counts and the same expected output hash.
 
+The browser streaming code is measured at five gigabytes under Node with the same
+generator's truth file:
+
+```bash
+cd checkdigit && python3 -m workspace.bench generate --records 101500000 --out ../bench/fleet_5g.csv && cd ..
+npx vite build --config bench/stream_bench.vite.config.ts
+node --max-old-space-size=512 bench/runs/stream_bench/stream_bench.mjs --source bench/fleet_5g.csv --column container --out bench/runs/stream_5g
+```
+
+The runner exits non-zero when the output hash or the edit count differs from the truth
+file. In-browser runs are driven by hand on the Files page; the recorded ones are in
+`bench/results/browser_stream.benchmark.json`.
+
 ## Hardware and software
 
 | Item | Value |
@@ -133,6 +146,72 @@ database. Each process claimed one job (the completion audit records two distinc
 worker ids), both jobs reached `awaiting_review` with the counts above, wall time
 80.4 s for 2,333,334 records (29,018 records/s aggregate). One file is never split
 across processes; parallelism is per job.
+
+## Browser streaming path
+
+Recorded 2026-09-17 on the same machine. The Files page (`/files`) hands files above
+5 MiB to a streaming path: the Web Worker reads the file in 4 MiB slices, decodes and
+parses across slice boundaries with the readers in `src/lib/stream.ts`, evaluates every
+identifier with the kernel, and appends one 64-byte record per proposal or review item
+to a file in the browser's origin-private file system (`src/lib/largejob.ts`,
+`src/worker/opfs.ts`). Decisions are one byte per record. Export streams the source
+again, verifies each approved span against the source text at its recorded offset,
+splices the candidate, and writes the output to the origin-private file system (or
+straight to a file chosen in the save dialog). Results: `bench/results/browser_stream.benchmark.json`
+and `bench/results/stream_5g.benchmark.json`.
+
+| Run | Where | Inspect | Export | Verified by |
+|---|---|---|---|---|
+| CSV, 64 MiB, 1,618,746 records | Browser pane, page driven through the DOM | 1.6 s, 40 MiB/s | 1.0 s | counts equal the generator's; ledger row checked against source and output bytes; corrected output re-inspected: 0 corrections proposed |
+| CSV, 1,600,000,028 bytes, 36,900,944 records | Browser pane, source held as an in-page Blob | 39.7 s, 38.4 MiB/s | 15 s, 64 MiB/s | counts equal the generator's in every category; 725,634 ledger rows; edits 0, 68 and 1,026,508 checked against source and output bytes |
+| CSV, 5,202,683,835 bytes, 101,500,000 records (`workspace.bench generate --records 101500000`) | same TypeScript under Node, file-backed store and sink, 512 MiB heap cap | 129.6 s, 38.3 MiB/s | 27.1 s, 183 MiB/s | output SHA-256 and edit count equal the generator's truth file |
+
+Tab memory stays flat: the main thread's JavaScript heap was 5 MiB after the 64 MiB run
+and 42 MiB after the 1.6 GB run (the page holds one 200-row page of proposals); the
+worker holds one 4 MiB slice, a 256 KiB record buffer and the decisions array (one byte
+per stored record, 1 MiB for the 1.6 GB run).
+
+Two defects were found and fixed by these runs: the export's block digest reset its
+buffer after an await, so the worker spun once the first 1 MiB block filled; and every
+spliced span reached the sync access handle as its own write, which took 35 s for the
+first 32 MiB. Output is now gathered into 1 MiB buffers before encoding.
+
+The Browser pane embedded in the desktop app could not hold a five-gigabyte file:
+`navigator.storage.estimate()` reported a 9.78 GiB quota, but writes into the
+origin-private file system failed at 2,088,768,460 bytes on both a writable stream and a
+sync access handle, and a 5,000,000,041-byte Blob could not be read back. No other
+browser was connected, so the five-gigabyte measurement runs the same streaming code
+under Node with the proposal store and the output as ordinary files
+(`bench/stream_bench.ts`); the browser-specific pieces (slice reads from a `File`, sync
+access handles) are exercised by the 1.6 GB run above.
+
+### CSV, five gigabytes, browser streaming code under Node
+
+Dataset: `workspace.bench generate --records 101500000`, 5,202,683,835 bytes, header
+`ref,container,size_type,gross_kg,remark`, quoted remarks with embedded commas and
+escaped quotes, mixed CRLF and LF line ends, 11,673,145 expected corrections (wrong
+check digits, wrong bodies whose recomputed digit differs, conflicting duplicates).
+Result: `bench/results/stream_5g.benchmark.json`; run with `--max-old-space-size=512`.
+
+| Step | Result |
+|---|---|
+| Inspect (decode, parse, kernel, store) | 129.6 s, 38.3 MiB/s, 783,206 records/s |
+| Counts | 101,500,000 records; 100,485,863 identifiers; 87,796,659 valid; 11,673,145 corrections proposed; 1,016,059 invalid structure; 1,014,137 missing; 13,703,341 stored records (877,013,824 bytes) |
+| Approve every proposal with the expected count | 1.3 s |
+| Export (re-read, verify spans, splice, write) | 27.1 s, 183 MiB/s, 11,673,145 edits |
+| Exceptions and ledger files | 13.0 s; 2,030,196 exception rows, 11,673,145 ledger rows |
+| Output SHA-256 | `7bb5fe6c…7851b30`, equal to the generator's expected hash; edit count equal |
+| Peak V8 heap plus array buffers | 272,826,649 bytes |
+| Peak process working set | 5,620,502,528 bytes |
+
+The heap figure is what the streaming code holds: the 512 MiB cap was never hit. The
+working-set figure is the Node process on Windows keeping freed slice buffers mapped;
+it is reported as measured, not as a memory requirement. The same code in the browser
+ran the 1.6 GB file with a 42 MiB main-thread heap.
+
+Inspection throughput is the same in the browser (38.4 MiB/s) and under Node
+(38.3 MiB/s), so the parser and kernel, not the file system, set the pace; a five
+gigabyte file takes a little over two minutes to inspect and half a minute to export.
 
 ## What this does and does not show
 

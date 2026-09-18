@@ -1,0 +1,70 @@
+{
+  "path": "browser streaming code under Node",
+  "parser_version": "local-stream-ts/1",
+  "source": {
+    "path": "bench/fleet_5g.csv",
+    "size_bytes": 5202683835,
+    "column": "container"
+  },
+  "node": "v24.19.0",
+  "hardware": {
+    "cpus": 28,
+    "model": "Intel(R) Core(TM) i7-14700HX",
+    "ram_bytes": 68375748608,
+    "platform": "win32 x64"
+  },
+  "inspect": {
+    "seconds": 129.6,
+    "mib_per_s": 38.3,
+    "records_per_s": 783206,
+    "counts": {
+      "bytes_total": 5202683835,
+      "bytes_done": 5202683835,
+      "records": 101500000,
+      "identifiers": 100485863,
+      "valid": 87796659,
+      "corrected": 11673145,
+      "flagged": 0,
+      "invalid_structure": 1016059,
+      "missing": 1014137,
+      "not_a_target": 0,
+      "stored": 13703341
+    },
+    "encoding": "utf-8",
+    "format": "csv"
+  },
+  "decide": {
+    "seconds": 1.3,
+    "approved": 11673145,
+    "digest": "57af04d22acdccef003e91e536a3f973ad6536a9ac6807112851035160c0e6e5"
+  },
+  "export": {
+    "seconds": 27.1,
+    "mib_per_s": 182.8,
+    "bytes_written": 5202683835,
+    "edits_applied": 11673145,
+    "block_digest": "blocks-e8711bd210e3a210d904ae513631aee26b4b027a754c8b0e8bc7083a6b96334d",
+    "output_sha256": "7bb5fe6c47cda662da748bac26a022a90ef4fcdb86784b7862e9a61977851b30",
+    "hash_seconds": 3.8
+  },
+  "reports": {
+    "seconds": 13,
+    "exception_rows": 2030196,
+    "ledger_rows": 11673145
+  },
+  "storage_bytes": {
+    "records": 877013824,
+    "decisions": 13703341
+  },
+  "peak_rss_bytes": 5620502528,
+  "peak_heap_plus_buffers_bytes": 272826649,
+  "node_flags": [
+    "--max-old-space-size=512"
+  ],
+  "truth": {
+    "expected_corrected_sha256": "7bb5fe6c47cda662da748bac26a022a90ef4fcdb86784b7862e9a61977851b30",
+    "expected_corrected_edits": 11673145,
+    "output_matches": true,
+    "edits_match": true
+  }
+}

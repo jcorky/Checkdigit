@@ -18,16 +18,23 @@ import {
 } from "../lib/localjob";
 import { proposeContract, type MappingContract } from "../lib/mapping";
 import { decodeBytes } from "../lib/encoding";
-import type { ApplyResponse, InspectResponse, WorkerRequest, WorkerResponse } from "../worker/inspect.worker";
+import { WHOLE_FILE_LIMIT } from "../lib/largejob";
+import type { ApplyResponse, InspectResponse, StreamProgressMessage, WorkerRequest, WorkerResponse } from "../worker/inspect.worker";
 import { badge, byId, html, raw } from "../ui/dom";
+import { createLargeController } from "./files-large";
 
 // The Files page: bind the local job model to the DOM. Parsing and splicing
 // happen in the worker; approvals and exports are built from the model here.
+// Files above WHOLE_FILE_LIMIT are handed to the streaming controller.
 
 const worker = new Worker(new URL("../worker/inspect.worker.ts", import.meta.url), { type: "module" });
 let requestSeq = 0;
 const pending = new Map<number, (r: WorkerResponse) => void>();
 worker.onmessage = (ev: MessageEvent<WorkerResponse>) => {
+  if (ev.data.type === "stream_progress") {
+    large.progress(ev.data as StreamProgressMessage);
+    return;
+  }
   const cb = pending.get(ev.data.id);
   if (cb) {
     pending.delete(ev.data.id);
@@ -122,7 +129,43 @@ const el = {
 
 // ---- step 1: source ---------------------------------------------------------
 
+const large = createLargeController(ask);
+
+async function chooseFile(f: File): Promise<void> {
+  if (f.size > WHOLE_FILE_LIMIT) {
+    await setLargeSource(f);
+    return;
+  }
+  await setSource(new Uint8Array(await f.arrayBuffer()), f.name, f.type);
+}
+
+async function setLargeSource(f: File): Promise<void> {
+  let head: string;
+  try {
+    head = await large.setSource(f);
+  } catch (err) {
+    el.sourceLine.hidden = false;
+    el.sourceLine.innerHTML = html`<span class="notice-error">${(err as Error).message}</span>`;
+    return;
+  }
+  state.source = null;
+  state.sourceFile = null;
+  state.text = head;
+  state.encoding = null;
+  state.mapping = null;
+  state.analysis = null;
+  state.proposals = [];
+  state.jobState = "uploaded";
+  el.sourceLine.hidden = false;
+  el.sourceLine.innerHTML = html`<span class="id">${f.name}</span> · ${f.size.toLocaleString()} bytes · streaming path (above ${(WHOLE_FILE_LIMIT / 1024 / 1024).toFixed(0)} MiB) · read from disk in this tab only`;
+  el.inspect.disabled = false;
+  el.results.hidden = true;
+  el.exportSection.hidden = true;
+  refreshMapping();
+}
+
 async function setSource(bytes: Uint8Array, filename: string, contentType: string): Promise<void> {
+  large.clear();
   state.source = { bytes, filename, content_type: contentType };
   const sha = await sha256Hex(bytes);
   state.sourceFile = {
@@ -152,7 +195,7 @@ async function setSource(bytes: Uint8Array, filename: string, contentType: strin
 el.file.addEventListener("change", async () => {
   const f = el.file.files?.[0];
   if (!f) return;
-  await setSource(new Uint8Array(await f.arrayBuffer()), f.name, f.type);
+  await chooseFile(f);
 });
 el.drop.addEventListener("click", () => el.file.click());
 el.drop.addEventListener("keydown", (ev) => {
@@ -170,7 +213,7 @@ el.drop.addEventListener("drop", async (ev) => {
   ev.preventDefault();
   el.drop.classList.remove("over");
   const f = ev.dataTransfer?.files?.[0];
-  if (f) await setSource(new Uint8Array(await f.arrayBuffer()), f.name, f.type);
+  if (f) await chooseFile(f);
 });
 el.usePaste.addEventListener("click", async () => {
   const text = el.paste.value;
@@ -246,6 +289,15 @@ el.formatHint.addEventListener("change", refreshMapping);
 // ---- step 3: inspect --------------------------------------------------------
 
 el.inspect.addEventListener("click", async () => {
+  if (large.active()) {
+    el.inspect.disabled = true;
+    try {
+      await large.inspect(readIntent(), state.mapping);
+    } finally {
+      el.inspect.disabled = false;
+    }
+    return;
+  }
   if (!state.source) return;
   const intent = readIntent();
   const previous = state.analysis;

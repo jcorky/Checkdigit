@@ -52,6 +52,9 @@ exceptions file, ledger and manifest, the list checker, the initial comparison a
 reference library. Application semantics other than comparison stay comparison-only
 (recorded as `IMPORT_INTENT_UNRESOLVED`). Not yet: Excel in the browser, saved mapping
 recipes, offline shell.
+Extended 2026-09-17: a streaming path for files above 5 MiB and up to 5 GiB (chunked
+readers ported from the workspace, proposals in the browser's origin-private file
+system, streamed export), measured on a five-gigabyte CSV in `BENCHMARK.md`.
 
 ### Phase C: private durable-job workspace and the three-million-record path (delivered 2026-09-16)
 

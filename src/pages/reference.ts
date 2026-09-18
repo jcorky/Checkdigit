@@ -142,7 +142,7 @@ const ARTICLES: Article[] = [
         <thead><tr><th>Mode</th><th>Where it runs</th><th>Limits</th></tr></thead>
         <tbody>
           <tr><td>Check one number, check a list</td><td>This browser tab</td><td>Lists up to 10,000 numbers; nothing stored</td></tr>
-          <tr><td>Files (local inspector)</td><td>A Web Worker in this tab</td><td>One file up to 5 MB; plain text, delimited, fixed-width, EDIFACT, X12 and container XML; Excel workbooks not yet; results live in browser memory until the tab closes</td></tr>
+          <tr><td>Files (local inspector)</td><td>A Web Worker in this tab</td><td>One file at a time. Up to 5 MiB: inspected whole in memory (plain text, delimited, fixed-width, EDIFACT, X12, container XML) with same-file near-miss suggestions. Above that and up to 5 GiB: streamed from disk (delimited, plain text, EDIFACT, X12, container XML; no fixed-width, no near-misses); proposals live in this site’s private browser storage until the job is discarded or the page is next opened. Excel workbooks not yet</td></tr>
           <tr><td>Private workspace</td><td>A configured service you control</td><td>Not part of this static site; larger files, durable jobs and history need it</td></tr>
         </tbody>
       </table>

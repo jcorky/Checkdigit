@@ -128,6 +128,18 @@ Enum member names and string values are the Python ones (`Status.CORRECTED === "
 | `xlsx_locator`, `xlsx_corrector` | not ported | | OPEN (service only) |
 | `batch.process_batch` | not ported | | OPEN (service only) |
 
+## Browser streaming path (`checkdigit/workspace/stream.py`, `workspace/ingest.py`)
+
+| Python symbol | TypeScript symbol | Proven by | Status |
+|---|---|---|---|
+| `stream.text_chunks` (strict UTF-8, ISO-8859-1 fallback) | `stream.textChunks`, `CodecError` | `tests/stream.test.ts` (split inside multibyte sequences, invalid byte offset, every byte 0x00–0xFF under latin-1) | PARITY |
+| `stream.csv_records` | `stream.csvRecords` | `tests/stream.test.ts`: `tests/vectors/stream_vectors.json` from `scripts/gen_stream_vectors.py`, chunk sizes 1, 2, 3, 5, 7, 11, 64, 1000 | PARITY (offsets translated from code points to UTF-16 units) |
+| `stream.line_records` | `stream.lineRecords` | same vectors | PARITY |
+| `stream.delimited_segments` (release character, UNA across chunks) | `stream.delimitedSegments` | same vectors (EDIFACT with and without UNA, X12) | PARITY |
+| `stream.xml_start_tags`, `XmlSecurityError` | `stream.xmlStartTags`, `XmlSecurityError` | same vectors (comments, CDATA, processing instructions, quoted `>`; DOCTYPE refused) | PARITY |
+| `ingest._csv_stream`, `_txt_stream` (`RE_TOKEN`), `_edifact_stream`, `_x12_stream`, `_xml_stream`, `evaluate_item` | `largejob.runStream` | `tests/largejob.test.ts`: kernel-classified expectations, spliced output equals the expected text for CSV, latin-1 CSV, EDIFACT, X12 (N7 slot, absent N7-18, N9*EQ), container XML and free text; `bench/results/stream_5g.benchmark.json` output SHA-256 equals `workspace.bench generate` truth | PARITY |
+| `review.decide` with expected counts, `export.build_artifact` splice | `largejob.decideMatching` (SELECTION_DRIFT, EMPTY_SELECTION), `largejob.exportCorrected` (EDIT_MISMATCH) | `tests/largejob.test.ts` | PARITY (no generations or baselines in the browser, by design) |
+
 ## Idempotence and non-corruption (every golden pair)
 
 | Property | Proven by | Status |

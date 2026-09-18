@@ -153,6 +153,21 @@ These numbers match the ones assumed at kickoff; nothing was overridden.
 - OPEN: screenshots of the Files, Compare and Reference pages could not be captured
   through the Browser pane in this session (timeouts while hidden); states were verified
   through the DOM.
+- Streaming path (files above 5 MiB, added 2026-09-17): the cap is 5 GiB by design; the
+  practical bound is the browser's storage quota for this origin, since stored records
+  (64 bytes per proposal or review item) and the exported copy live in the origin-private
+  file system. The export refuses to start when the quota cannot hold the output and
+  points to "Save corrected file as", which writes straight to a chosen location through
+  the browser's save dialog (Chromium browsers).
+- OPEN: the save-dialog export could not be driven in the Browser pane (it needs a native
+  dialog); the origin-private file system export and downloads were exercised instead.
+- OPEN: browsers without sync access handles in workers fall back to an in-memory store
+  capped at 256 MiB with a clear message; Firefox and Safari were not exercised here.
+- Not on the streaming path: fixed-width ranges, same-file near-miss suggestions, and
+  the whole-file integrity cross-checks for container XML (the streaming scanner does not
+  verify well-formedness). The manifest records a digest of the first 1 MiB of the source
+  and a block digest of the output rather than a whole-file SHA-256, because hashing five
+  gigabytes twice would double the run time; both are labelled as such.
 
 ## Phase C notes
 
