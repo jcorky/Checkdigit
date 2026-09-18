@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Container number errors the check digit catches — and misses — Checkdigit</title>
+<meta name="description" content="The container check digit catches most typos and transpositions, but not all. The errors it detects, the blind spot it has, and why O and 0 are never swapped automatically.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="canonical" href="https://thecheckdigit.com/guides/container-number-errors">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Checkdigit">
+<meta property="og:title" content="Container number errors the check digit catches — and misses">
+<meta property="og:description" content="The container check digit catches most typos and transpositions, but not all. The errors it detects, the blind spot it has, and why O and 0 are never swapped automatically.">
+<meta property="og:url" content="https://thecheckdigit.com/guides/container-number-errors">
+<meta property="og:image" content="https://thecheckdigit.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Checkdigit — Container Check Digit Calculator">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Container number errors the check digit catches — and misses">
+<meta name="twitter:description" content="The container check digit catches most typos and transpositions, but not all. The errors it detects, the blind spot it has, and why O and 0 are never swapped automatically.">
+<meta name="twitter:image" content="https://thecheckdigit.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "Container number errors the check digit catches — and misses",
+      "description": "The container check digit catches most typos and transpositions, but not all. The errors it detects, the blind spot it has, and why O and 0 are never swapped automatically.",
+      "url": "https://thecheckdigit.com/guides/container-number-errors",
+      "mainEntityOfPage": "https://thecheckdigit.com/guides/container-number-errors",
+      "datePublished": "2026-09-18",
+      "dateModified": "2026-09-18",
+      "inLanguage": "en",
+      "author": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://thecheckdigit.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Reference",
+          "item": "https://thecheckdigit.com/reference"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Container number errors the check digit catches — and misses",
+          "item": "https://thecheckdigit.com/guides/container-number-errors"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script type="module" src="/pages/shell.ts"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/" aria-label="Checkdigit home">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit
+    </a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
+      <a class="navlink" href="/reference" aria-current="page">Reference</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page guide" id="main">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">Home</a> · <a href="/reference">Reference</a> · <span aria-current="page">Container number errors the check digit catches — and misses</span></p>
+    <h1>Container number errors the check digit catches — and misses</h1>
+    <p class="intro">A container check digit is a good guard against mistakes made when a number is written down, keyed or transmitted — but it is not perfect. Knowing what it catches, and the one class of error it cannot see, helps you trust a passing result appropriately.</p>
+    <div class="content">
+      <h2>What the check digit catches</h2>
+      <p>The ISO 6346 mod-11 check digit detects every single-character error — one wrong letter or digit anywhere in the first ten characters — and most transpositions, where two adjacent characters are swapped. That covers the large majority of real keying and transcription mistakes.</p>
+
+      <h2>The blind spot</h2>
+      <p>The check is blind to a substitution whose two characters have values that differ by a multiple of 11, because both contribute the same amount modulo 11. The classic pair is the digit 1 (value 1) and the letter B (value 12): swapping one for the other leaves the check digit unchanged. A transposition inside the serial can also survive the check. When the first ten characters are wrong but still produce the printed check digit, only comparison against another source — a booking, a load list, the physical box — will reveal it.</p>
+
+      <h2>Why O and 0 are never swapped for you</h2>
+      <p>The most common real-world errors are the look-alikes: the letter O read as the digit 0, the letter I as the digit 1, or the letter B as the digit 8. Checkdigit never substitutes one for the other on its own. If a serial contains a letter where a digit belongs, it says so and keeps your original entry, rather than quietly "fixing" it into a different container number.</p>
+
+      <h2>How Checkdigit reports a failure</h2>
+      <p>When a number fails, the <a href="/">calculator</a> shows the expected check digit and the number it would form if the first ten characters are correct — but it never assumes which end is wrong. Verify the whole number against your source, because the error may be in the body rather than the check digit.</p>
+    </div>
+    <p class="guide-cta"><a href="/">Open the container check digit calculator →</a></p>
+      <nav class="related" aria-label="Related guides">
+        <h2>Related guides</h2>
+        <ul class="related-list">
+        <li><a href="/guides/iso-6346">ISO 6346 container numbers explained</a></li>
+        <li><a href="/guides/bic-code">BIC codes and container owner prefixes</a></li>
+        <li><a href="/guides/uic-wagon-number">UIC wagon numbers and the Luhn check digit</a></li>
+        </ul>
+      </nav>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">Checkdigit — ISO 6346, ILU and UIC check digits, verified in your browser</span>
+    <span class="mono-sm"><a href="/">Calculator</a> · <a href="/reference">Reference</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -3,7 +3,21 @@ import { defineConfig } from "vitest/config";
 
 const root = resolve(import.meta.dirname, "src");
 
-export const pages = ["index", "check", "files", "bulk", "compare", "reference", "404"] as const;
+export const pages = [
+  "index",
+  "check",
+  "files",
+  "bulk",
+  "compare",
+  "reference",
+  "404",
+  "guides/iso-6346",
+  "guides/container-size-type-codes",
+  "guides/ilu-code",
+  "guides/uic-wagon-number",
+  "guides/bic-code",
+  "guides/container-number-errors",
+] as const;
 
 export default defineConfig({
   root,

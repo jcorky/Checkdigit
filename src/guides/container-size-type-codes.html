@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Container size and type codes (ISO 6346) — Checkdigit</title>
+<meta name="description" content="What container size and type codes such as 22G1, 42G1 and 45R1 mean: the length, height, width and type characters — and why the size/type code has no check digit.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="canonical" href="https://thecheckdigit.com/guides/container-size-type-codes">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Checkdigit">
+<meta property="og:title" content="Container size and type codes (ISO 6346)">
+<meta property="og:description" content="What container size and type codes such as 22G1, 42G1 and 45R1 mean: the length, height, width and type characters — and why the size/type code has no check digit.">
+<meta property="og:url" content="https://thecheckdigit.com/guides/container-size-type-codes">
+<meta property="og:image" content="https://thecheckdigit.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Checkdigit — Container Check Digit Calculator">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Container size and type codes (ISO 6346)">
+<meta name="twitter:description" content="What container size and type codes such as 22G1, 42G1 and 45R1 mean: the length, height, width and type characters — and why the size/type code has no check digit.">
+<meta name="twitter:image" content="https://thecheckdigit.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "Container size and type codes (ISO 6346)",
+      "description": "What container size and type codes such as 22G1, 42G1 and 45R1 mean: the length, height, width and type characters — and why the size/type code has no check digit.",
+      "url": "https://thecheckdigit.com/guides/container-size-type-codes",
+      "mainEntityOfPage": "https://thecheckdigit.com/guides/container-size-type-codes",
+      "datePublished": "2026-09-18",
+      "dateModified": "2026-09-18",
+      "inLanguage": "en",
+      "author": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://thecheckdigit.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Reference",
+          "item": "https://thecheckdigit.com/reference"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Container size and type codes (ISO 6346)",
+          "item": "https://thecheckdigit.com/guides/container-size-type-codes"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script type="module" src="/pages/shell.ts"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/" aria-label="Checkdigit home">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit
+    </a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
+      <a class="navlink" href="/reference" aria-current="page">Reference</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page guide" id="main">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">Home</a> · <a href="/reference">Reference</a> · <span aria-current="page">Container size and type codes (ISO 6346)</span></p>
+    <h1>Container size and type codes (ISO 6346)</h1>
+    <p class="intro">The four-character size/type code stencilled near a container number — for example 22G1 or 45R1 — describes the equipment's dimensions and type. Under ISO 6346 it is purely descriptive: unlike the container number itself, the size/type code has no check digit.</p>
+    <div class="content">
+      <h2>How to read a size/type code</h2>
+      <p>The four characters split into three fields:</p>
+      <ul>
+        <li><b>Character 1 — length.</b> 2 is 20 ft, 4 is 40 ft and L is 45 ft. Length code 5 is unassigned, so a 45 ft unit uses L rather than 5.</li>
+        <li><b>Character 2 — height and width.</b> It encodes the container's height together with whether it is standard or extra width; for example a value here distinguishes a standard 8 ft 6 in box from a 9 ft 6 in high cube.</li>
+        <li><b>Characters 3 and 4 — type.</b> A letter and a digit naming the kind of container and a variant, such as G for a general-purpose box or R for a refrigerated (reefer) one.</li>
+      </ul>
+
+      <h2>Common size/type codes</h2>
+      <table>
+        <thead><tr><th>Code</th><th>Means</th></tr></thead>
+        <tbody>
+          <tr><td class="id">22G1</td><td>20 ft standard-height general-purpose container</td></tr>
+          <tr><td class="id">42G1</td><td>40 ft standard-height general-purpose container</td></tr>
+          <tr><td class="id">45G1</td><td>40 ft high-cube general-purpose container</td></tr>
+          <tr><td class="id">45R1</td><td>40 ft high-cube refrigerated (reefer) container</td></tr>
+          <tr><td class="id">22R1</td><td>20 ft refrigerated container</td></tr>
+        </tbody>
+      </table>
+      <p>Type groups you will meet include G (general purpose), R and H (thermal/reefer), U (open top), T (tank), P (platform and flat rack) and S (named cargo). The exact type digit depends on the variant.</p>
+
+      <h2>Decode a specific code</h2>
+      <p>The <a href="/reference">reference library</a> has an interactive size/type decoder that resolves a code to its length, height, width, type and TEU, and marks anything unknown as undefined rather than guessing.</p>
+
+      <h2>Why the size/type code has no check digit</h2>
+      <p>The size/type code is descriptive metadata, not an identifier, so it is never a check-digit target and is never altered when Checkdigit corrects a file. Only the <a href="/guides/iso-6346">container number</a> carries a check digit.</p>
+    </div>
+    <p class="guide-cta"><a href="/">Open the container check digit calculator →</a></p>
+      <nav class="related" aria-label="Related guides">
+        <h2>Related guides</h2>
+        <ul class="related-list">
+        <li><a href="/guides/iso-6346">ISO 6346 container numbers explained</a></li>
+        <li><a href="/guides/bic-code">BIC codes and container owner prefixes</a></li>
+        <li><a href="/guides/ilu-code">ILU codes (EN 13044) explained</a></li>
+        </ul>
+      </nav>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">Checkdigit — ISO 6346, ILU and UIC check digits, verified in your browser</span>
+    <span class="mono-sm"><a href="/">Calculator</a> · <a href="/reference">Reference</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

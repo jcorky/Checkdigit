@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISO 6346 container numbers explained — Checkdigit</title>
+<meta name="description" content="ISO 6346 explained: the owner code, equipment category, serial number and check digit that make up a shipping container number, with a worked check-digit example.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="canonical" href="https://thecheckdigit.com/guides/iso-6346">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Checkdigit">
+<meta property="og:title" content="ISO 6346 container numbers explained">
+<meta property="og:description" content="ISO 6346 explained: the owner code, equipment category, serial number and check digit that make up a shipping container number, with a worked check-digit example.">
+<meta property="og:url" content="https://thecheckdigit.com/guides/iso-6346">
+<meta property="og:image" content="https://thecheckdigit.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Checkdigit — Container Check Digit Calculator">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ISO 6346 container numbers explained">
+<meta name="twitter:description" content="ISO 6346 explained: the owner code, equipment category, serial number and check digit that make up a shipping container number, with a worked check-digit example.">
+<meta name="twitter:image" content="https://thecheckdigit.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "ISO 6346 container numbers explained",
+      "description": "ISO 6346 explained: the owner code, equipment category, serial number and check digit that make up a shipping container number, with a worked check-digit example.",
+      "url": "https://thecheckdigit.com/guides/iso-6346",
+      "mainEntityOfPage": "https://thecheckdigit.com/guides/iso-6346",
+      "datePublished": "2026-09-18",
+      "dateModified": "2026-09-18",
+      "inLanguage": "en",
+      "author": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://thecheckdigit.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Reference",
+          "item": "https://thecheckdigit.com/reference"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "ISO 6346 container numbers explained",
+          "item": "https://thecheckdigit.com/guides/iso-6346"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script type="module" src="/pages/shell.ts"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/" aria-label="Checkdigit home">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit
+    </a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
+      <a class="navlink" href="/reference" aria-current="page">Reference</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page guide" id="main">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">Home</a> · <a href="/reference">Reference</a> · <span aria-current="page">ISO 6346 container numbers explained</span></p>
+    <h1>ISO 6346 container numbers explained</h1>
+    <p class="intro">ISO 6346 is the international standard for coding, identifying and marking intermodal (shipping) containers. It defines the container number stencilled on the box, the size and type code beside it, and the operational markings. It is the format the calculator on this site checks.</p>
+    <div class="content">
+      <h2>The four parts of a container number</h2>
+      <p>A container number under ISO 6346 is eleven characters — for example <span class="id">CSQU3054383</span> — made of four parts:</p>
+      <table>
+        <thead><tr><th>Part</th><th>Length</th><th>Example</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Owner code</td><td>3 letters</td><td class="id">CSQ</td><td>The owner or principal operator, registered as a <a href="/guides/bic-code">BIC code</a></td></tr>
+          <tr><td>Equipment category</td><td>1 letter</td><td class="id">U</td><td>U for freight containers, J for detachable container-related equipment, Z for trailers and chassis</td></tr>
+          <tr><td>Serial number</td><td>6 digits</td><td class="id">305438</td><td>Chosen by the owner</td></tr>
+          <tr><td>Check digit</td><td>1 digit</td><td class="id">3</td><td>Calculated from the first ten characters</td></tr>
+        </tbody>
+      </table>
+      <p>The prefix holder, the owner, a lessor, the operator and the carrier moving the box today can all be different parties. A refrigerated container is still category U — refrigeration is described by the size/type code, not the category letter.</p>
+
+      <h2>How the ISO 6346 check digit is calculated</h2>
+      <p>The check digit is a mod-11 self-check over the first ten characters. Each character is given a value: digits keep their own value, and letters run from A = 10 to Z = 38, skipping every multiple of 11 (so 11, 22 and 33 are never used, and no letter value collides with the modulus). Each value is multiplied by a weight — the powers of two from 1 to 512, left to right — the ten results are added, and the remainder after dividing by 11 is the check digit. A remainder of 10 is written as 0.</p>
+      <div class="worked">
+        <p>Worked example — <span class="id">CSQU305438</span>: the letters are C = 13, S = 30, Q = 28, U = 32. The weighted sum C·1 + S·2 + Q·4 + U·8 + 3·16 + 0·32 + 5·64 + 4·128 + 3·256 + 8·512 is 6185, and 6185 mod 11 is 3, so the check digit is 3 and the full number is <span class="id">CSQU3054383</span>. <a href="/check#CSQU3054383">Open this example in the checker</a>.</p>
+      </div>
+
+      <h2>The size and type code</h2>
+      <p>Next to the container number you will usually see a four-character size/type code such as 22G1 or 45R1. It describes the container's dimensions and kind and, unlike the number, has no check digit. See <a href="/guides/container-size-type-codes">container size and type codes</a> for how to read it.</p>
+
+      <h2>What a valid ISO 6346 number does not prove</h2>
+      <p>A correct check digit confirms only that the printed digit agrees with the first ten characters under the standard's arithmetic. It does not prove that the container exists, who owns or operates it, where it is, or that anyone may release it — and it cannot catch every mistake, because <a href="/guides/container-number-errors">some errors are invisible to the check digit</a>.</p>
+    </div>
+    <p class="guide-cta"><a href="/">Open the container check digit calculator →</a></p>
+      <nav class="related" aria-label="Related guides">
+        <h2>Related guides</h2>
+        <ul class="related-list">
+        <li><a href="/guides/container-size-type-codes">Container size and type codes (ISO 6346)</a></li>
+        <li><a href="/guides/bic-code">BIC codes and container owner prefixes</a></li>
+        <li><a href="/guides/container-number-errors">Container number errors the check digit catches — and misses</a></li>
+        </ul>
+      </nav>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">Checkdigit — ISO 6346, ILU and UIC check digits, verified in your browser</span>
+    <span class="mono-sm"><a href="/">Calculator</a> · <a href="/reference">Reference</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

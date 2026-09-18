@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ILU codes (EN 13044) explained — Checkdigit</title>
+<meta name="description" content="ILU codes under EN 13044 identify intermodal loading units — four letters, six digits and a check digit — and are described as compatible with the BIC/ISO 6346 container code.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="canonical" href="https://thecheckdigit.com/guides/ilu-code">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Checkdigit">
+<meta property="og:title" content="ILU codes (EN 13044) explained">
+<meta property="og:description" content="ILU codes under EN 13044 identify intermodal loading units — four letters, six digits and a check digit — and are described as compatible with the BIC/ISO 6346 container code.">
+<meta property="og:url" content="https://thecheckdigit.com/guides/ilu-code">
+<meta property="og:image" content="https://thecheckdigit.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Checkdigit — Container Check Digit Calculator">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ILU codes (EN 13044) explained">
+<meta name="twitter:description" content="ILU codes under EN 13044 identify intermodal loading units — four letters, six digits and a check digit — and are described as compatible with the BIC/ISO 6346 container code.">
+<meta name="twitter:image" content="https://thecheckdigit.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "ILU codes (EN 13044) explained",
+      "description": "ILU codes under EN 13044 identify intermodal loading units — four letters, six digits and a check digit — and are described as compatible with the BIC/ISO 6346 container code.",
+      "url": "https://thecheckdigit.com/guides/ilu-code",
+      "mainEntityOfPage": "https://thecheckdigit.com/guides/ilu-code",
+      "datePublished": "2026-09-18",
+      "dateModified": "2026-09-18",
+      "inLanguage": "en",
+      "author": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://thecheckdigit.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Reference",
+          "item": "https://thecheckdigit.com/reference"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "ILU codes (EN 13044) explained",
+          "item": "https://thecheckdigit.com/guides/ilu-code"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script type="module" src="/pages/shell.ts"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/" aria-label="Checkdigit home">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit
+    </a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
+      <a class="navlink" href="/reference" aria-current="page">Reference</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page guide" id="main">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">Home</a> · <a href="/reference">Reference</a> · <span aria-current="page">ILU codes (EN 13044) explained</span></p>
+    <h1>ILU codes (EN 13044) explained</h1>
+    <p class="intro">An ILU code identifies an intermodal loading unit — a swap body, certain semi-trailers or a container used in European intermodal transport — under the standard EN 13044. It looks like a container number and is checked with the same arithmetic.</p>
+    <div class="content">
+      <h2>The format of an ILU code</h2>
+      <p>An ILU code is four letters, six digits and one check digit. The fourth letter is the category and is A, B, D, E or K — distinguishing intermodal loading units from ISO 6346 containers, which use U, J or Z. The owner is identified by the first three letters, registered in the ILU register operated by UIRR.</p>
+
+      <h2>Relationship to the ISO 6346 container code</h2>
+      <p>UIRR, which manages the ILU register, describes the ILU code as fully compatible with the BIC code used for maritime containers under <a href="/guides/iso-6346">ISO 6346</a>, and refers to a defined procedure for the check digit. Checkdigit routes categories A, B, D, E and K to the ILU set and checks them with the same mod-11 arithmetic as ISO 6346.</p>
+      <p>That arithmetic has not been independently verified here against the normative EN 13044-1 text, so this is a statement of compatibility, not a claim of normative compliance. The <a href="/">calculator</a> labels ILU results accordingly.</p>
+
+      <h2>Where you will see ILU codes</h2>
+      <p>ILU codes appear on swap bodies and intermodal units in European rail and combined transport, alongside container numbers and, on rail vehicles, <a href="/guides/uic-wagon-number">UIC wagon numbers</a>.</p>
+    </div>
+    <p class="guide-cta"><a href="/">Open the container check digit calculator →</a></p>
+      <nav class="related" aria-label="Related guides">
+        <h2>Related guides</h2>
+        <ul class="related-list">
+        <li><a href="/guides/iso-6346">ISO 6346 container numbers explained</a></li>
+        <li><a href="/guides/uic-wagon-number">UIC wagon numbers and the Luhn check digit</a></li>
+        <li><a href="/guides/container-size-type-codes">Container size and type codes (ISO 6346)</a></li>
+        </ul>
+      </nav>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">Checkdigit — ISO 6346, ILU and UIC check digits, verified in your browser</span>
+    <span class="mono-sm"><a href="/">Calculator</a> · <a href="/reference">Reference</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -9,6 +9,8 @@
     "test": "vitest run",
     "preview": "wrangler dev",
     "vectors": "node scripts/regen-vectors.mjs",
+    "guides": "node scripts/gen-guides.mjs",
+    "og": "node scripts/make-og.mjs",
     "deploy": "wrangler deploy",
     "sync": "node scripts/sync-onedrive.mjs",
     "test:py": "node scripts/run-python-tests.mjs",

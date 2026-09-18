@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UIC wagon numbers and the Luhn check digit — Checkdigit</title>
+<meta name="description" content="UIC wagon numbers are twelve digits with a Luhn (mod-10) check digit over the first eleven. How the number and its self-check work, and how they differ from a container number.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f4f6f8">
+<link rel="canonical" href="https://thecheckdigit.com/guides/uic-wagon-number">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Checkdigit">
+<meta property="og:title" content="UIC wagon numbers and the Luhn check digit">
+<meta property="og:description" content="UIC wagon numbers are twelve digits with a Luhn (mod-10) check digit over the first eleven. How the number and its self-check work, and how they differ from a container number.">
+<meta property="og:url" content="https://thecheckdigit.com/guides/uic-wagon-number">
+<meta property="og:image" content="https://thecheckdigit.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Checkdigit — Container Check Digit Calculator">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="UIC wagon numbers and the Luhn check digit">
+<meta name="twitter:description" content="UIC wagon numbers are twelve digits with a Luhn (mod-10) check digit over the first eleven. How the number and its self-check work, and how they differ from a container number.">
+<meta name="twitter:image" content="https://thecheckdigit.com/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ffffff'/%3E%3Crect x='5' y='9' width='22' height='14' rx='2.5' fill='none' stroke='%231459B8' stroke-width='2.4'/%3E%3Crect x='19.5' y='9' width='7.5' height='14' rx='2.5' fill='%231459B8' fill-opacity='0.16' stroke='%231459B8' stroke-width='2.4'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "UIC wagon numbers and the Luhn check digit",
+      "description": "UIC wagon numbers are twelve digits with a Luhn (mod-10) check digit over the first eleven. How the number and its self-check work, and how they differ from a container number.",
+      "url": "https://thecheckdigit.com/guides/uic-wagon-number",
+      "mainEntityOfPage": "https://thecheckdigit.com/guides/uic-wagon-number",
+      "datePublished": "2026-09-18",
+      "dateModified": "2026-09-18",
+      "inLanguage": "en",
+      "author": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Checkdigit",
+        "url": "https://thecheckdigit.com/"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://thecheckdigit.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Reference",
+          "item": "https://thecheckdigit.com/reference"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "UIC wagon numbers and the Luhn check digit",
+          "item": "https://thecheckdigit.com/guides/uic-wagon-number"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<script type="module" src="/pages/shell.ts"></script>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="bar">
+  <div class="wrap row">
+    <a class="brand" href="/" aria-label="Checkdigit home">
+      <svg class="glyph" viewBox="0 0 28 20" aria-hidden="true">
+        <rect x="1" y="1" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        <rect x="19" y="1" width="8" height="18" rx="3" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      Checkdigit
+    </a>
+    <nav aria-label="Main">
+      <a class="navlink" href="/">Calculator</a>
+      <details class="menu">
+        <summary aria-expanded="false">Tools</summary>
+        <div class="menu-panel" aria-label="Tools">
+          <a href="/bulk"><span class="mtitle">Bulk check</span><span class="mdesc">Check many numbers at once</span></a>
+          <a href="/files"><span class="mtitle">Review a file</span><span class="mdesc">Correct a CSV, EDIFACT, X12 or XML file</span></a>
+          <a href="/compare"><span class="mtitle">Compare lists</span><span class="mdesc">Added, removed and conflicting numbers</span></a>
+        </div>
+      </details>
+      <a class="navlink" href="/reference" aria-current="page">Reference</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page guide" id="main">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">Home</a> · <a href="/reference">Reference</a> · <span aria-current="page">UIC wagon numbers and the Luhn check digit</span></p>
+    <h1>UIC wagon numbers and the Luhn check digit</h1>
+    <p class="intro">A UIC wagon number is the twelve-digit identifier carried by a European rail vehicle. Its last digit is a check digit, but it is computed differently from a container number — with the Luhn (mod-10) algorithm rather than the ISO 6346 mod-11.</p>
+    <div class="content">
+      <h2>How the UIC check digit works</h2>
+      <p>The check digit is the twelfth digit, computed by the Luhn algorithm over the first eleven digits. Reading from the right, digits are weighted 2, 1, 2, 1 and so on; any product of ten or more has its two digits added together; the products are summed; and the check digit is (10 − sum mod 10) mod 10.</p>
+      <div class="worked">
+        <p>Worked example — the first eleven digits <span class="id">21 81 2471 217</span> give a Luhn check digit of 3, so the complete number ends 217-3. <a href="/check#uic:218124712173">Open a UIC example in the checker</a>.</p>
+      </div>
+
+      <h2>How it differs from a container number</h2>
+      <p>A <a href="/guides/iso-6346">container number</a> uses a mod-11 check over four letters and six digits; a UIC wagon number uses Luhn mod-10 over eleven digits. The two are never cross-applied. A bare twelve-digit run is also not self-identifying, so Checkdigit only treats it as a UIC number where the context (a rail-vehicle field, or the UIC option in the calculator) says so.</p>
+
+      <h2>A note on other rail schemes</h2>
+      <p>North American railcar reporting marks are a different identification scheme with their own rules and are not handled here.</p>
+    </div>
+    <p class="guide-cta"><a href="/">Open the container check digit calculator →</a></p>
+      <nav class="related" aria-label="Related guides">
+        <h2>Related guides</h2>
+        <ul class="related-list">
+        <li><a href="/guides/iso-6346">ISO 6346 container numbers explained</a></li>
+        <li><a href="/guides/ilu-code">ILU codes (EN 13044) explained</a></li>
+        <li><a href="/guides/container-number-errors">Container number errors the check digit catches — and misses</a></li>
+        </ul>
+      </nav>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span class="mono-sm">Checkdigit — ISO 6346, ILU and UIC check digits, verified in your browser</span>
+    <span class="mono-sm"><a href="/">Calculator</a> · <a href="/reference">Reference</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
